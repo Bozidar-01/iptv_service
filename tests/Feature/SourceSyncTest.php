@@ -84,7 +84,7 @@ it('updates, keeps admin choices and removes vanished channels on re-sync', func
         ->push(PLAYLIST)
         ->push(<<<'M3U'
             #EXTM3U
-            #EXTINF:-1 group-title="Sports",Sport One
+            #EXTINF:-1 tvg-id="s1" group-title="Sports",Sport One
             http://provider.test/live/u/p/NEW-1.ts
             #EXTINF:-1 group-title="Sports",Sport Two
             http://provider.test/live/u/p/2.ts
@@ -243,4 +243,58 @@ it('keeps the user agent and referrer a stream needs and puts them in the M3U', 
     $this->get(route('playlist', ['token' => $user->playlist_token]))
         ->assertOk()
         ->assertSee("#EXTVLCOPT:http-user-agent=Mozilla/5.0 Picky\n#EXTVLCOPT:http-referrer=https://picky.test/\nhttp", false);
+});
+
+describe('stable channel ids', function () {
+    function playlistWith(string $entries): void
+    {
+        // Replace the fake each time: earlier stubs would otherwise keep answering
+        app()->instance(\Illuminate\Http\Client\Factory::class, new \Illuminate\Http\Client\Factory);
+        Http::clearResolvedInstances();
+        Http::fake(['provider.test/*' => fn () => Http::response("#EXTM3U\n".$entries)]);
+    }
+
+    it('keeps the same channel when the provider renames it or moves it to another group', function () {
+        $source = urlSource();
+        playlistWith("#EXTINF:-1 tvg-id=\"Kanal5.mk\" group-title=\"MK\",Kanal 5\nhttp://provider.test/live/k5.m3u8\n");
+        syncSource($source);
+        $channel = Channel::sole();
+        $bouquet = Bouquet::create(['name' => 'Manual pick']);
+        $bouquet->channels()->attach($channel);
+
+        playlistWith("#EXTINF:-1 tvg-id=\"Kanal5.mk\" group-title=\"Macedonia\",Канал 5 HD\nhttp://provider.test/live/k5-new.m3u8\n");
+        syncSource($source->fresh());
+
+        expect(Channel::sole())->id->toBe($channel->id)->name->toBe('Канал 5 HD')->stream_url->toBe('http://provider.test/live/k5-new.m3u8')
+            ->and($bouquet->channels()->count())->toBe(1);
+    });
+
+    it('moves channels imported with the old group + name key to the tvg-id key', function () {
+        $source = urlSource();
+        $old = Channel::create([
+            'source_id' => $source->id, 'external_key' => sha1(mb_strtolower('MK|Kanal 5')),
+            'name' => 'Kanal 5', 'stream_url' => 'http://old.test/a', 'is_active' => false,
+        ]);
+        playlistWith("#EXTINF:-1 tvg-id=\"Kanal5.mk\" group-title=\"MK\",Kanal 5\nhttp://provider.test/live/k5.m3u8\n");
+
+        syncSource($source);
+
+        expect(Channel::sole())->id->toBe($old->id)->external_key->toBe('tvg:'.sha1('kanal5.mk'))
+            ->is_active->toBeFalse() // the admin's choice survives
+            ->stream_url->toBe('http://provider.test/live/k5.m3u8');
+    });
+
+    it('still uses group + name for entries without a tvg-id, and counts duplicates', function () {
+        $source = urlSource();
+        playlistWith(implode("\n", [
+            '#EXTINF:-1 group-title="News",News 24', 'http://provider.test/1',
+            '#EXTINF:-1 tvg-id="Same.it" group-title="It",Same', 'http://provider.test/2',
+            '#EXTINF:-1 tvg-id="Same.it" group-title="It",Same backup', 'http://provider.test/3',
+        ])."\n");
+
+        syncSource($source);
+
+        expect(Channel::orderBy('id')->pluck('external_key')->all())
+            ->toBe([sha1('news|news 24'), 'tvg:'.sha1('same.it'), 'tvg:'.sha1('same.it').'-2']);
+    });
 });

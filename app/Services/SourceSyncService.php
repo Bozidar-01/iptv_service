@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Models\StreamAlert;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -14,8 +15,10 @@ use Throwable;
 /**
  * Imports a source's M3U playlist into the channels table.
  *
- * Channels are matched across syncs by (source_id, external_key), where the key is
- * derived from group + name. Re-syncing updates name/URL/logo/category/order but keeps
+ * Channels are matched across syncs by (source_id, external_key). The key comes from the
+ * entry's tvg-id when it has one (so renaming a channel or moving it to another group keeps
+ * the same channel, its bouquets and viewers' favourites), otherwise from group + name.
+ * Channels imported before tvg-id keys existed are moved to their new key on the next sync. Re-syncing updates name/URL/logo/category/order but keeps
  * the admin's is_active choice; channels that disappeared from the playlist are deleted.
  */
 class SourceSyncService
@@ -103,7 +106,9 @@ class SourceSyncService
             ->all();
 
         $rows = [];
+        $legacyKeys = [];
         $seenKeys = [];
+        $seenLegacy = [];
         $order = 0;
         $sawEntries = false;
 
@@ -114,7 +119,10 @@ class SourceSyncService
                 continue;
             }
 
-            $key = $this->externalKey($entry, $seenKeys);
+            [$key, $legacyKey] = $this->externalKeys($entry, $seenKeys, $seenLegacy);
+            if ($key !== $legacyKey) {
+                $legacyKeys[$key] = $legacyKey;
+            }
 
             $rows[] = [
                 'source_id' => $source->id,
@@ -133,8 +141,9 @@ class SourceSyncService
             ];
 
             if (count($rows) >= self::CHUNK_SIZE) {
+                $this->rekey($source, $legacyKeys);
                 $this->upsert($rows);
-                $rows = [];
+                $rows = $legacyKeys = [];
             }
         }
 
@@ -142,6 +151,7 @@ class SourceSyncService
             throw new RuntimeException('The playlist is empty or not a valid M3U file.');
         }
 
+        $this->rekey($source, $legacyKeys);
         $this->upsert($rows);
 
         // Anything not touched by this sync is no longer in the playlist
@@ -169,14 +179,62 @@ class SourceSyncService
     }
 
     /**
-     * Stable identity for an entry: group + name, with a counter for duplicates within one playlist.
+     * Identity for an entry: its tvg-id when present, else group + name; with a counter for
+     * duplicates within one playlist. Also returns the group + name key used before tvg-id keys.
+     *
+     * @return array{0: string, 1: string} [key, legacy key]
      */
-    private function externalKey(array $entry, array &$seenKeys): string
+    private function externalKeys(array $entry, array &$seenKeys, array &$seenLegacy): array
     {
-        $base = sha1(mb_strtolower(($entry['group'] ?? '').'|'.$entry['name']));
+        $legacyBase = sha1(mb_strtolower(($entry['group'] ?? '').'|'.$entry['name']));
+        $seenLegacy[$legacyBase] = ($seenLegacy[$legacyBase] ?? 0) + 1;
+        $legacy = $seenLegacy[$legacyBase] === 1 ? $legacyBase : $legacyBase.'-'.$seenLegacy[$legacyBase];
+
+        if (!$entry['tvg_id']) {
+            return [$legacy, $legacy];
+        }
+
+        $base = 'tvg:'.sha1(mb_strtolower(trim($entry['tvg_id'])));
         $seenKeys[$base] = ($seenKeys[$base] ?? 0) + 1;
 
-        return $seenKeys[$base] === 1 ? $base : $base.'-'.$seenKeys[$base];
+        return [$seenKeys[$base] === 1 ? $base : $base.'-'.$seenKeys[$base], $legacy];
+    }
+
+    /**
+     * Move channels still stored under their old group + name key to their tvg-id key, so the
+     * upsert updates them instead of creating new channels. One query per chunk.
+     *
+     * @param  array<string, string>  $legacyKeys  new key => legacy key
+     */
+    private function rekey(Source $source, array $legacyKeys): void
+    {
+        if ($legacyKeys === []) {
+            return;
+        }
+
+        $existing = Channel::where('source_id', $source->id)
+            ->whereIn('external_key', array_merge(array_values($legacyKeys), array_keys($legacyKeys)))
+            ->pluck('external_key')
+            ->flip();
+
+        // Only legacy rows whose new key isn't taken yet
+        $moves = array_filter($legacyKeys, fn ($legacy, $key) => isset($existing[$legacy]) && !isset($existing[$key]), ARRAY_FILTER_USE_BOTH);
+
+        if ($moves === []) {
+            return;
+        }
+
+        $cases = implode(' ', array_fill(0, count($moves), 'WHEN ? THEN ?'));
+        $placeholders = implode(',', array_fill(0, count($moves), '?'));
+        $bindings = [];
+        foreach ($moves as $key => $legacy) {
+            array_push($bindings, $legacy, $key);
+        }
+
+        DB::update(
+            "UPDATE channels SET external_key = CASE external_key {$cases} END WHERE source_id = ? AND external_key IN ({$placeholders})",
+            [...$bindings, $source->id, ...array_values($moves)]
+        );
     }
 
     private function categoryId(?string $group): ?int
