@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\Channel;
 use App\Models\Source;
+use App\Models\StreamAlert;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -42,7 +43,7 @@ class SourceSyncService
         try {
             $path = $source->type === 'file'
                 ? Storage::path($source->file_path)
-                : $tempFile = $this->download($source->url);
+                : $tempFile = $this->download($source->playlistUrl());
 
             $count = $this->import($source, $path);
 
@@ -54,8 +55,13 @@ class SourceSyncService
         } catch (Throwable $e) {
             $source->update([
                 'status' => Source::STATUS_FAILED,
-                'last_error' => mb_substr($e->getMessage(), 0, 1000),
+                // Never store a relay secret that a connection error message may contain
+                'last_error' => mb_substr($source->relay_secret ? str_replace([$source->relay_secret, urlencode($source->relay_secret)], '***', $e->getMessage()) : $e->getMessage(), 0, 1000),
             ]);
+
+            if ($source->alert_on_down) {
+                StreamAlert::create(['type' => StreamAlert::TYPE_SYNC_FAILED, 'source_id' => $source->id, 'name' => $source->name]);
+            }
 
             throw $e;
         } finally {
@@ -117,6 +123,8 @@ class SourceSyncService
                 'stream_url' => mb_substr($entry['url'], 0, 2048),
                 'logo_url' => $entry['logo'] ? mb_substr($entry['logo'], 0, 2048) : null,
                 'tvg_id' => $entry['tvg_id'] ? mb_substr($entry['tvg_id'], 0, 255) : null,
+                'http_user_agent' => $entry['user_agent'] ? mb_substr($entry['user_agent'], 0, 512) : null,
+                'http_referrer' => $entry['referrer'] ? mb_substr($entry['referrer'], 0, 1024) : null,
                 'category_id' => $this->categoryId($entry['group']),
                 'sort_order' => ++$order,
                 'is_active' => true,
@@ -156,7 +164,7 @@ class SourceSyncService
         Channel::upsert(
             $rows,
             ['source_id', 'external_key'],
-            ['name', 'stream_url', 'logo_url', 'tvg_id', 'category_id', 'sort_order', 'updated_at']
+            ['name', 'stream_url', 'logo_url', 'tvg_id', 'http_user_agent', 'http_referrer', 'category_id', 'sort_order', 'updated_at']
         );
     }
 

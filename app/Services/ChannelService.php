@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\DB;
 
 class ChannelService
 {
-    public const BULK_ACTIONS = ['enable', 'disable', 'add_to_bouquet', 'remove_from_bouquet', 'delete'];
+    public const BULK_ACTIONS = ['enable', 'disable', 'add_to_bouquet', 'remove_from_bouquet', 'alerts_on', 'alerts_off', 'delete'];
 
     /**
      * Channels matching the admin list filters.
      *
-     * Filters: search, category (id or "none"), source (id or "manual"), bouquet (id), status ("active"|"inactive").
+     * Filters: search, category (id or "none"), source (id or "manual"), bouquet (id),
+     * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on).
      */
     public function filteredQuery(array $filters): Builder
     {
@@ -27,7 +28,11 @@ class ChannelService
                 ? $q->whereNull('source_id')
                 : $q->where('source_id', $source))
             ->when($filters['bouquet'] ?? null, fn ($q, $bouquet) => $q->whereHas('bouquets', fn ($b) => $b->where('bouquets.id', $bouquet)))
-            ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('is_active', $status === 'active'));
+            ->when($filters['status'] ?? null, fn ($q, $status) => match ($status) {
+                'offline' => $q->where('auto_disabled', true),
+                'watched' => $q->watched(),
+                default => $q->where('is_active', $status === 'active'),
+            });
     }
 
     public function getAllChannels(array $filters = [])
@@ -47,12 +52,15 @@ class ChannelService
      */
     public function bulkAction(string $action, Builder $query, ?int $bouquetId = null): int
     {
+        // Enabling or disabling by hand takes the channel out of the stream check's control
         // Wrapped in a derived table: MySQL can't UPDATE/DELETE channels with a subquery on channels
         $ids = DB::query()->fromSub((clone $query)->select('channels.id'), 'matched')->select('id');
 
         return match ($action) {
-            'enable' => Channel::whereIn('id', $ids)->update(['is_active' => true]),
-            'disable' => Channel::whereIn('id', $ids)->update(['is_active' => false]),
+            'enable' => Channel::whereIn('id', $ids)->update(['is_active' => true, 'auto_disabled' => false]),
+            'disable' => Channel::whereIn('id', $ids)->update(['is_active' => false, 'auto_disabled' => false]),
+            'alerts_on' => Channel::whereIn('id', $ids)->update(['alert_on_down' => true]),
+            'alerts_off' => Channel::whereIn('id', $ids)->update(['alert_on_down' => false]),
             'delete' => Channel::whereIn('id', $ids)->delete(),
             'add_to_bouquet' => self::attachToBouquet($bouquetId, Channel::whereIn('id', $ids)),
             'remove_from_bouquet' => DB::table('bouquet_channel')
@@ -99,6 +107,10 @@ class ChannelService
 
     public function updateChannel(Channel $channel, array $data)
     {
+        if (array_key_exists('is_active', $data) && $data['is_active'] !== $channel->is_active) {
+            $data['auto_disabled'] = false;
+        }
+
         return $channel->update($data);
     }
 

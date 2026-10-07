@@ -1,5 +1,5 @@
 @if ($paginator->hasPages())
-    <nav class="pagination" aria-label="{{ __('Pagination') }}">
+    <nav class="pagination" aria-label="{{ __('Page navigation') }}">
         <span>{{ __('Showing :from–:to of :total', ['from' => number_format($paginator->firstItem()), 'to' => number_format($paginator->lastItem()), 'total' => number_format($paginator->total())]) }}</span>
         <div class="pages">
             @if ($paginator->onFirstPage())

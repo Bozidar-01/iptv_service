@@ -65,14 +65,62 @@ it('denies channels outside the user bouquets', function () {
     $this->get(route('play', ['channel_id' => $channel->id, 'token' => tokenFor($user)]))->assertStatus(403);
 });
 
-it('enforces the connection limit on a different channel', function () {
+it('enforces the connection limit for a second device on a different channel', function () {
     $user = User::factory()->create(['max_connections' => 1]);
     $first = subscribedChannel($user);
     $second = subscribedChannel($user);
     $token = tokenFor($user);
 
     $this->get(route('play', ['channel_id' => $first->id, 'token' => $token]))->assertRedirect();
-    $this->get(route('play', ['channel_id' => $second->id, 'token' => $token]))->assertStatus(403);
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.2'])
+        ->get(route('play', ['channel_id' => $second->id, 'token' => $token]))->assertStatus(403);
+});
+
+it('lets a device switch channels at the limit and replaces its session', function () {
+    $user = User::factory()->create(['max_connections' => 1]);
+    $first = subscribedChannel($user);
+    $second = subscribedChannel($user);
+    $token = tokenFor($user);
+
+    $this->get(route('play', ['channel_id' => $first->id, 'token' => $token]))->assertRedirect();
+    $this->get(route('play', ['channel_id' => $second->id, 'token' => $token]))->assertRedirect($second->stream_url);
+
+    expect(ActiveSession::where('user_id', $user->id)->pluck('channel_id')->all())->toBe([$second->id]);
+
+    // The slot is still taken, so another device is denied
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.2'])
+        ->get(route('play', ['channel_id' => $first->id, 'token' => $token]))->assertStatus(403);
+});
+
+it('counts a second device in the same household against the limit, even on the same channel', function () {
+    $user = User::factory()->create(['max_connections' => 1]);
+    $first = subscribedChannel($user);
+    $second = subscribedChannel($user);
+    $token = tokenFor($user);
+    $livingRoom = ['HTTP_USER_AGENT' => 'TiviMate/5.0 (Android TV)'];
+    $bedroom = ['HTTP_USER_AGENT' => 'IPTV Smarters/3.1 (Fire TV)'];
+
+    $this->withServerVariables($livingRoom)
+        ->get(route('play', ['channel_id' => $first->id, 'token' => $token]))->assertRedirect();
+    $this->withServerVariables($bedroom)
+        ->get(route('play', ['channel_id' => $second->id, 'token' => $token]))->assertStatus(403);
+    $this->withServerVariables($bedroom)
+        ->get(route('play', ['channel_id' => $first->id, 'token' => $token]))->assertStatus(403);
+
+    expect(ActiveSession::count())->toBe(1);
+});
+
+it('allows two devices with a limit of 2', function () {
+    $user = User::factory()->create(['max_connections' => 2]);
+    $channel = subscribedChannel($user);
+    $token = tokenFor($user);
+
+    foreach (['TV A', 'TV B'] as $agent) {
+        $this->withServerVariables(['HTTP_USER_AGENT' => $agent])
+            ->get(route('play', ['channel_id' => $channel->id, 'token' => $token]))->assertRedirect();
+    }
+    $this->withServerVariables(['HTTP_USER_AGENT' => 'TV C'])
+        ->get(route('play', ['channel_id' => $channel->id, 'token' => $token]))->assertStatus(403);
 });
 
 it('allows re-requesting the channel already being watched at the limit', function () {
@@ -106,7 +154,8 @@ it('does not let a stale same-channel session bypass the limit', function () {
     $token = tokenFor($user);
 
     $this->get(route('play', ['channel_id' => $current->id, 'token' => $token]))->assertRedirect();
-    $this->get(route('play', ['channel_id' => $stale->id, 'token' => $token]))->assertStatus(403);
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.2'])
+        ->get(route('play', ['channel_id' => $stale->id, 'token' => $token]))->assertStatus(403);
 });
 
 it('keeps started_at while a session stays active and resets it after it goes stale', function () {

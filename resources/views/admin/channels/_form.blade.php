@@ -41,6 +41,11 @@
                 <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $channel->is_active ?? true))>
                 <div><strong>{{ __('Enabled') }}</strong><span>{{ __("Disabled channels are hidden from playlists and can't be played.") }}</span></div>
             </label>
+            <input type="hidden" name="alert_on_down" value="0">
+            <label class="check" style="margin-top: 12px">
+                <input type="checkbox" name="alert_on_down" value="1" @checked(old('alert_on_down', $channel->alert_on_down ?? false))>
+                <div><strong>{{ __('Send me alerts') }}</strong><span>{{ __('Checked every 15 minutes. You get an alert in the panel and by email when it stops or starts working.') }}</span></div>
+            </label>
         </div>
     </div>
     <div class="card-footer">

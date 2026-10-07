@@ -164,6 +164,7 @@ return [
     // Field names as shown in messages ("Полето корисничко име е задолжително.")
     'attributes' => [
         'action' => 'дејство',
+        'alert_on_down' => 'известувања',
         'auto_sync' => 'автоматско освежување',
         'bouquet_id' => 'пакет',
         'bouquets' => 'пакети',
@@ -178,10 +179,14 @@ return [
         'max_connections' => 'истовремени стримови',
         'name' => 'име',
         'password' => 'лозинка',
+        'relay_secret' => 'заедничка тајна',
+        'relay_url' => 'адреса на релејот',
         'role' => 'улога',
         'skip_vod' => 'само ТВ во живо',
+        'source_id' => 'извор',
         'status' => 'статус',
         'stream_url' => 'URL на стримот',
+        'transcode' => 'транскодирање',
         'type' => 'тип',
         'url' => 'M3U URL',
         'username' => 'корисничко име',

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\SyncSource;
 use App\Models\Bouquet;
+use App\Models\Channel;
 use App\Models\Source;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -46,7 +47,15 @@ class SourceService
             $data['file_path'] = null;
         }
 
+        $stopsChecking = $source->check_streams && array_key_exists('check_streams', $data) && !$data['check_streams'];
+
         $source->update($data);
+
+        // Channels the check switched off come back once the admin stops checking this source
+        if ($stopsChecking) {
+            Channel::where('source_id', $source->id)->where('auto_disabled', true)
+                ->update(['is_active' => true, 'auto_disabled' => false]);
+        }
 
         return $source;
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\BouquetController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChannelController;
@@ -9,8 +10,6 @@ use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
-use App\Http\Controllers\M3uController;
-use App\Http\Controllers\PlayController;
 use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,12 +27,14 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 Route::post('/theme', [ThemeController::class, 'update'])->name('theme.update');
 
 // Admin Routes
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('sources/{source}/sync', [SourceController::class, 'sync'])->name('sources.sync');
     Route::resource('sources', SourceController::class)->except(['show']);
 
+    Route::post('channels/check-streams', [ChannelController::class, 'checkStreams'])->name('channels.check-streams');
+    Route::get('channels/{channel}/preview', [ChannelController::class, 'preview'])->name('channels.preview');
     Route::post('channels/bulk', [ChannelController::class, 'bulk'])->name('channels.bulk');
     Route::resource('channels', ChannelController::class)->except(['show']);
 
@@ -44,10 +45,9 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
     Route::resource('users', UserController::class);
 
+    Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
 });
 
-// IPTV Public Endpoints
-Route::get('/m3u', [M3uController::class, 'generate'])->name('m3u');
-Route::get('/playlist/{token}.m3u', [M3uController::class, 'playlist'])->name('playlist');
-Route::get('/play/{channel_id}/{token}', [PlayController::class, 'play'])->name('play');
+// Player endpoints (M3U, play, Xtream Codes API) are in routes/player.php

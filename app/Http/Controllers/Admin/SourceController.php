@@ -7,6 +7,7 @@ use App\Models\Bouquet;
 use App\Models\Source;
 use App\Services\SourceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SourceController extends Controller
@@ -28,8 +29,10 @@ class SourceController extends Controller
     public function create()
     {
         $bouquets = Bouquet::orderBy('name')->get();
+        // Suggested shared secret for a new receiver relay
+        $newSecret = Str::random(40);
 
-        return view('admin.sources.create', compact('bouquets'));
+        return view('admin.sources.create', compact('bouquets', 'newSecret'));
     }
 
     public function store(Request $request)
@@ -77,8 +80,12 @@ class SourceController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', Rule::in(['url', 'file'])],
+            'type' => ['required', Rule::in(['url', 'file', 'receiver'])],
             'url' => ['nullable', 'required_if:type,url', 'url', 'max:2048'],
+            'relay_url' => ['nullable', 'required_if:type,receiver', 'url', 'max:2048'],
+            // Required for a new receiver; blank on edit keeps the current secret
+            'relay_secret' => [Rule::requiredIf($request->input('type') === 'receiver' && !$source?->relay_secret), 'nullable', 'string', 'min:16', 'max:255'],
+            'transcode' => ['boolean'],
             // A file is required for new file sources, optional when replacing an existing one
             'file' => [
                 Rule::requiredIf($request->input('type') === 'file' && !$source?->file_path),
@@ -91,14 +98,29 @@ class SourceController extends Controller
             }],
             'skip_vod' => ['boolean'],
             'auto_sync' => ['boolean'],
+            'check_streams' => ['boolean'],
+            'alert_on_down' => ['boolean'],
         ]);
 
         unset($data['file']);
         $data['skip_vod'] = $request->boolean('skip_vod');
         $data['auto_sync'] = $request->boolean('auto_sync');
+        $data['check_streams'] = $request->boolean('check_streams');
+        $data['alert_on_down'] = $request->boolean('alert_on_down');
+        $data['transcode'] = $request->boolean('transcode');
         if ($data['type'] === 'file') {
             $data['url'] = null;
         }
+        if ($data['type'] === 'receiver') {
+            $data['url'] = rtrim($data['relay_url'], '/');
+            // Checking receiver channels would tune the receiver; the relay is checked instead
+            $data['check_streams'] = false;
+            $data['skip_vod'] = false;
+        }
+        if (blank($data['relay_secret'] ?? null) || $data['type'] !== 'receiver') {
+            unset($data['relay_secret']);
+        }
+        unset($data['relay_url']);
 
         return $data;
     }

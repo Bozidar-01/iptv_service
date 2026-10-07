@@ -15,7 +15,7 @@ Docs live in [`docs/`](docs/README.md). **Every change that adds, removes or alt
 Docker is the default way to run the app (see the `run-app` skill):
 
 ```bash
-docker compose up -d --build                       # http://localhost:8000, admin / admin123
+docker compose up -d --build                       # http://localhost:8000, admin / admin123 (or ADMIN_* in .env)
 docker compose exec app php artisan test           # tests; all must pass before finishing a task
 docker compose exec app php artisan <cmd>          # artisan against the Docker MySQL
 docker compose logs -f queue                       # source imports
@@ -26,7 +26,8 @@ Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:wo
 ## Architecture
 
 - **Controllers stay thin; logic lives in `app/Services/`**, injected via the constructor (`protected $xService;`). Long work goes in a queued job (`app/Jobs`) that calls a service.
-- Services: `UserService`, `ChannelService` (channels, categories, bulk actions, `attachToBouquet`), `BouquetService`, `SourceService`, `SourceSyncService`, `M3uParser`, `TokenService` (tokens + M3U output), `StreamService` (access, limits, sessions, logs).
+- Services: `UserService`, `ChannelService` (channels, categories, bulk actions, `attachToBouquet`), `BouquetService`, `SourceService`, `SourceSyncService`, `M3uParser`, `TokenService` (tokens + M3U output), `StreamService` (access, limits, sessions, logs), `StreamCheckService` (stream check, auto-disable, alerts), `ReceiverService` (signed links to the satellite receiver relay).
+- `relay/` is a separate Python 3 program that runs on the Enigma2 receiver (stdlib only). Its link signature must match `ReceiverService::sign()`; run `python3 relay/test_relay.py` after changing either.
 - Inline `$request->validate([...])`. Feedback via `->with('success'|'error', __('...'))`, which the layout renders.
 - Models use `#[Fillable]` / `#[Hidden]` attributes and a `casts()` method.
 - Users have no email: auth is by `username`. `role` = `admin|user`, `status` = `active|disabled`. Only admins can log in.

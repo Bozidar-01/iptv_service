@@ -74,10 +74,52 @@
                         <li>{!! __('Choose :option.', ['option' => '<strong>'.e(__('Add playlist → M3U playlist / URL')).'</strong>']) !!}</li>
                         <li>{{ trans_choice('Paste the link above and save. :count channel will load.|Paste the link above and save. :count channels will load.', $channelCount, ['count' => number_format($channelCount)]) }}</li>
                     </ol>
-                    <p class="help" style="margin-top: 8px">
-                        {{ __('Apps that ask for a username and password instead can use') }}
-                        <code>{{ url('/m3u') }}?username={{ $user->username }}&password=…</code>
-                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>{{ __('Log in with username and password') }}</h2>
+                    <p>{{ __('For apps that ask for a server, username and password (Xtream Codes login).') }}</p>
+                </div>
+            </div>
+            <div class="card-body stack" style="gap: 16px">
+                <div class="login-fields">
+                    <label class="label" for="xtream-url">{{ __('Server URL') }}</label>
+                    <div class="copy-field">
+                        <input class="input mono" id="xtream-url" value="{{ $server['url'] }}" readonly onclick="this.select()">
+                        <button type="button" class="btn btn-secondary" data-copy="#xtream-url"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+                    </div>
+
+                    <label class="label" for="xtream-username">{{ __('Username') }}</label>
+                    <div class="copy-field">
+                        <input class="input mono" id="xtream-username" value="{{ $user->username }}" readonly onclick="this.select()">
+                        <button type="button" class="btn btn-secondary" data-copy="#xtream-username"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+                    </div>
+
+                    <span class="label">{{ __('Password') }}</span>
+                    <div class="login-password">
+                        {{ __('The password you set for this user.') }}
+                        <a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a>
+                    </div>
+                </div>
+
+                <p class="help" style="margin: 0">
+                    {!! __('Apps that ask for host and port separately: host :host, port :port.', [
+                        'host' => '<code>'.e($server['host']).'</code>',
+                        'port' => '<code>'.e($server['port']).'</code>',
+                    ]) !!}
+                </p>
+
+                <div>
+                    <div class="label" style="margin-bottom: 6px">{{ __('Set up on a TV') }}</div>
+                    <ol class="steps">
+                        <li>{!! __('In the app choose :option.', ['option' => '<strong>'.e(__('Add user → Login with Xtream Codes API')).'</strong>']) !!}</li>
+                        <li>{{ __('Enter any name, then the server URL, username and password above.') }}</li>
+                        <li>{{ __('Live TV loads with the same channels, categories and connection limit as the playlist link.') }}</li>
+                    </ol>
                 </div>
             </div>
         </div>

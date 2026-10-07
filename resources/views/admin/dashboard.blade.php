@@ -14,6 +14,26 @@
     </div>
 </div>
 
+@if(!$health['scheduler']['ok'])
+    <div class="alert alert-danger">
+        <x-icon name="alert" />
+        <div class="alert-body">
+            <strong>{{ __('Background tasks are not running.') }}</strong>
+            {{ $health['scheduler']['last_run']
+                ? __('The scheduler last ran :time. Imports, stream checks and alert emails are paused until the cron job runs again.', ['time' => \Illuminate\Support\Carbon::parse($health['scheduler']['last_run'])->diffForHumans()])
+                : __('The scheduler has not run yet. Imports, stream checks and alert emails need the cron job (or the scheduler container) to run every minute.') }}
+        </div>
+    </div>
+@elseif(!$health['queue']['ok'])
+    <div class="alert alert-danger">
+        <x-icon name="alert" />
+        <div class="alert-body">
+            <strong>{{ __('Queued jobs are not being processed.') }}</strong>
+            {{ __('The oldest has waited :minutes minutes. Check that the queue worker runs (QUEUE_SCHEDULED_WORKER=true on shared hosting).', ['minutes' => $health['queue']['oldest_job_minutes']]) }}
+        </div>
+    </div>
+@endif
+
 @if($sources->isEmpty())
     <div class="alert alert-info">
         <x-icon name="alert" />
@@ -33,7 +53,12 @@
     <div class="card stat">
         <div class="stat-label"><x-icon name="tv" /> {{ __('Channels') }}</div>
         <div class="stat-value">{{ number_format($stats['active_channels']) }}</div>
-        <div class="stat-meta">{{ __('enabled of :total total', ['total' => number_format($stats['channels'])]) }}</div>
+        <div class="stat-meta">
+            {{ __('enabled of :total total', ['total' => number_format($stats['channels'])]) }}
+            @if($stats['not_working'] > 0)
+                · <a href="{{ route('admin.channels.index', ['status' => 'offline']) }}">{{ __(':count not working', ['count' => number_format($stats['not_working'])]) }}</a>
+            @endif
+        </div>
     </div>
     <div class="card stat">
         <div class="stat-label"><x-icon name="signal" /> {{ __('Watching now') }}</div>
@@ -87,6 +112,45 @@
     </div>
 
     <div class="stack">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>{{ __('Watched channels') }}</h2>
+                    <p>{{ __('Channels and sources with alerts on') }}</p>
+                </div>
+                @if($downWatched['count'] > 0)
+                    <a href="{{ route('admin.channels.index', ['status' => 'watched']) }}" class="btn btn-ghost btn-sm">{{ __('View all') }}</a>
+                @endif
+            </div>
+            @if($downWatched['count'] === 0 && $downWatched['failed_sources']->isEmpty())
+                <div class="empty" style="padding: 28px 20px">
+                    <p>{{ __('Everything you watch is working.') }}</p>
+                    <a href="{{ route('admin.channels.index', ['status' => 'watched']) }}" class="btn btn-ghost btn-sm">{{ __('See watched channels') }}</a>
+                </div>
+            @else
+                <ul class="list">
+                    @foreach($downWatched['failed_sources'] as $failed)
+                        <li>
+                            <a href="{{ route('admin.sources.edit', $failed) }}" class="cell-main truncate">{{ $failed->name }}</a>
+                            <span class="badge badge-danger badge-dot">{{ __('Import failed') }}</span>
+                        </li>
+                    @endforeach
+                    @foreach($downWatched['channels'] as $channel)
+                        <li>
+                            <div style="min-width: 0">
+                                <a href="{{ route('admin.channels.edit', $channel) }}" class="cell-main truncate">{{ $channel->name }}</a>
+                                <div class="cell-sub">{{ $channel->source->name ?? __('Manual') }} · {{ \App\Services\StreamCheckService::describeError($channel->stream_error) ?? __('Not working') }} · {{ __('checked :time', ['time' => $channel->stream_checked_at?->diffForHumans()]) }}</div>
+                            </div>
+                            <span class="badge badge-danger badge-dot">{{ __('Not working') }}</span>
+                        </li>
+                    @endforeach
+                    @if($downWatched['count'] > $downWatched['channels']->count())
+                        <li class="muted">{{ __('and :count more', ['count' => number_format($downWatched['count'] - $downWatched['channels']->count())]) }}</li>
+                    @endif
+                </ul>
+            @endif
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h2>{{ __('Sources') }}</h2>

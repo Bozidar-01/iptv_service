@@ -10,7 +10,7 @@ Built with Laravel 13 / PHP 8.4 and MySQL.
 docker compose up -d --build
 ```
 
-Then open **http://localhost:8000** and sign in as `admin` / `admin123` (change it under Users).
+Then open **http://localhost:8000** and sign in as `admin` / `admin123`, or the `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env` (change it under Users).
 
 1. **Sources → Add source**: paste your provider's M3U URL or upload a file. Channels import in the background.
 2. **Users → New user**: tick the bouquet the source created.

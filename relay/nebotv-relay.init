@@ -1,0 +1,34 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          nebotv-relay
+# Required-Start:    $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: NeboTV relay for the IPTV panel
+### END INIT INFO
+
+DAEMON=/usr/bin/nebotv-relay.py
+PIDFILE=/var/run/nebotv-relay.pid
+LOG=/tmp/nebotv-relay.log
+
+case "$1" in
+  start)
+    echo "Starting NeboTV relay"
+    start-stop-daemon -S -b -m -p $PIDFILE -x /bin/sh -- -c "exec python3 $DAEMON >> $LOG 2>&1"
+    ;;
+  stop)
+    echo "Stopping NeboTV relay"
+    start-stop-daemon -K -p $PIDFILE
+    rm -f $PIDFILE
+    ;;
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac
+exit 0
