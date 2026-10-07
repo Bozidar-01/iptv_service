@@ -23,3 +23,12 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# IDE helpers / coverage
+_ide_helper_models.php
+.phpstorm.meta.php
+/coverage
+
+# Claude Code: personal settings stay local (CLAUDE.md and .claude/skills/ are shared)
+/.claude/settings.local.json
+CLAUDE.local.md

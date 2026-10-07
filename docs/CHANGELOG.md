@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-07 — .gitignore additions
+- Ignore IDE helper files, `/coverage`, `.claude/settings.local.json` and `CLAUDE.local.md`. `CLAUDE.md` and `.claude/skills/` stay tracked.
+- Files: `.gitignore`
+
 ### 2026-10-07 — Bug fixes and first test suite
 - `/m3u` no longer crashes: added the `User::accessTokens()` relation.
 - Expired accounts now get `403 Account expired` from `/m3u`; disabled accounts get `403 Account disabled`.
