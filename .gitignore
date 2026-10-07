@@ -32,3 +32,6 @@ _ide_helper_models.php
 # Claude Code: personal settings stay local (CLAUDE.md and .claude/skills/ are shared)
 /.claude/settings.local.json
 CLAUDE.local.md
+
+# Filled-in relay settings (secret, box password, DuckDNS token)
+/relay/nebotv-relay.conf
