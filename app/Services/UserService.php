@@ -2,14 +2,37 @@
 
 namespace App\Services;
 
+use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
-    public function getAllUsers()
+    /**
+     * Filters: search (username), status ("active" | "disabled" | "expired").
+     */
+    public function getAllUsers(array $filters = [])
     {
-        return User::with('bouquets')->paginate(20);
+        return User::with('bouquets')
+            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('username', 'like', '%'.$search.'%'))
+            ->when(($filters['status'] ?? null) === 'active', fn ($q) => $q->where('status', 'active')
+                ->where(fn ($q) => $q->whereNull('expiration_date')->orWhere('expiration_date', '>', now())))
+            ->when(($filters['status'] ?? null) === 'disabled', fn ($q) => $q->where('status', 'disabled'))
+            ->when(($filters['status'] ?? null) === 'expired', fn ($q) => $q->where('expiration_date', '<=', now()))
+            ->orderBy('role')
+            ->orderBy('username')
+            ->paginate(25)
+            ->withQueryString();
+    }
+
+    /**
+     * Number of distinct active channels the user's bouquets give access to.
+     */
+    public function channelCount(User $user): int
+    {
+        return Channel::where('is_active', true)
+            ->whereHas('bouquets', fn ($q) => $q->whereIn('bouquets.id', $user->bouquets()->select('bouquets.id')))
+            ->count();
     }
 
     public function createUser(array $data)

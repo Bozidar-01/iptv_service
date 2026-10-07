@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 
 // Delete stale active_sessions rows (see ActiveSession::prunable)
 Schedule::command('model:prune', ['--model' => [ActiveSession::class]])->everyFifteenMinutes();
+
+// Refresh M3U sources that have auto-sync enabled (see Source::isDueForSync)
+Schedule::command('iptv:sync-sources --due')->hourly();

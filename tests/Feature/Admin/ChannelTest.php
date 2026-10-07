@@ -48,11 +48,12 @@ it('renders every admin index page', function (string $route) {
 })->with([
     'admin.dashboard', 'admin.users.index', 'admin.channels.index',
     'admin.categories.index', 'admin.bouquets.index', 'admin.logs.index',
+    'admin.sources.index', 'admin.sources.create', 'admin.users.create', 'admin.bouquets.create', 'admin.channels.create',
 ]);
 
 it('does not register unimplemented resource routes', function (string $name) {
     expect(Route::has($name))->toBeFalse();
 })->with([
-    'admin.channels.show', 'admin.bouquets.show', 'admin.users.show',
+    'admin.channels.show', 'admin.bouquets.show', 'admin.sources.show',
     'admin.categories.show', 'admin.categories.create', 'admin.categories.edit',
 ]);

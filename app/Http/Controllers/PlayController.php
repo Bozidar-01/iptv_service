@@ -6,6 +6,7 @@ use App\Models\Channel;
 use App\Services\StreamService;
 use App\Services\TokenService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PlayController extends Controller
 {
@@ -20,8 +21,8 @@ class PlayController extends Controller
 
     public function play(Request $request, $channel_id, $token)
     {
-        // 1. Validate Token
-        $accessToken = $this->tokenService->validateToken($token);
+        // 1. Validate Token (play URLs may carry a stream extension, e.g. "abc123.m3u8")
+        $accessToken = $this->tokenService->validateToken(Str::before($token, '.'));
         if (!$accessToken) {
             return response('Invalid or expired token', 401);
         }

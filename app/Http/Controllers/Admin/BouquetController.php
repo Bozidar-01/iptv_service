@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bouquet;
-use App\Models\Channel;
+use App\Models\Category;
 use App\Services\BouquetService;
 use Illuminate\Http\Request;
 
@@ -25,16 +25,16 @@ class BouquetController extends Controller
 
     public function create()
     {
-        $channels = Channel::where('is_active', true)->get();
-        return view('admin.bouquets.create', compact('channels'));
+        $categories = $this->categoriesWithCounts();
+        return view('admin.bouquets.create', compact('categories'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:bouquets',
-            'channels' => 'nullable|array',
-            'channels.*' => 'exists:channels,id',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
         ]);
 
         $this->bouquetService->createBouquet($data);
@@ -44,17 +44,17 @@ class BouquetController extends Controller
 
     public function edit(Bouquet $bouquet)
     {
-        $channels = Channel::where('is_active', true)->get();
-        $selectedChannels = $bouquet->channels->pluck('id')->toArray();
-        return view('admin.bouquets.edit', compact('bouquet', 'channels', 'selectedChannels'));
+        $categories = $this->categoriesWithCounts();
+        $bouquet->loadCount(['channels', 'users']);
+        return view('admin.bouquets.edit', compact('bouquet', 'categories'));
     }
 
     public function update(Request $request, Bouquet $bouquet)
     {
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:bouquets,name,' . $bouquet->id,
-            'channels' => 'nullable|array',
-            'channels.*' => 'exists:channels,id',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
         ]);
 
         $this->bouquetService->updateBouquet($bouquet, $data);
@@ -67,5 +67,10 @@ class BouquetController extends Controller
         $this->bouquetService->deleteBouquet($bouquet);
 
         return redirect()->route('admin.bouquets.index')->with('success', 'Bouquet deleted successfully.');
+    }
+
+    private function categoriesWithCounts()
+    {
+        return Category::withCount('channels')->orderBy('name')->get()->where('channels_count', '>', 0)->values();
     }
 }

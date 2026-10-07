@@ -77,3 +77,58 @@ it('rejects expired accounts with a distinct message', function () {
         ->assertStatus(403)
         ->assertSee('Account expired');
 });
+
+it('serves the playlist from the per-user link', function () {
+    $user = User::factory()->create();
+    subscribedChannel($user, ['name' => 'Linked']);
+
+    $this->get(route('playlist', ['token' => $user->playlist_token]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'audio/x-mpegurl')
+        ->assertSee('Linked');
+
+    $this->get(route('playlist', ['token' => 'unknown']))->assertNotFound();
+});
+
+it('refuses the playlist link for disabled users', function () {
+    $user = User::factory()->disabled()->create();
+
+    $this->get(route('playlist', ['token' => $user->playlist_token]))->assertStatus(403);
+});
+
+it('lists a channel once even when it is in several bouquets', function () {
+    $user = User::factory()->create();
+    $channel = subscribedChannel($user);
+    $second = App\Models\Bouquet::create(['name' => 'Second']);
+    $second->channels()->attach($channel);
+    $user->bouquets()->attach($second);
+
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+
+    expect(substr_count($body, '/play/'))->toBe(1);
+});
+
+it('orders channels by category then source order and keeps the stream extension', function () {
+    $user = User::factory()->create();
+    $b = App\Models\Category::create(['name' => 'B group']);
+    $a = App\Models\Category::create(['name' => 'A group']);
+    subscribedChannel($user, ['name' => 'Second', 'category_id' => $b->id, 'stream_url' => 'http://p.test/live/2.ts']);
+    subscribedChannel($user, ['name' => 'First', 'category_id' => $a->id, 'stream_url' => 'http://p.test/hls/1.m3u8']);
+
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+
+    expect(strpos($body, ',First'))->toBeLessThan(strpos($body, ',Second'))
+        ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}\.m3u8\n#')
+        ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}\.ts\n#');
+});
+
+it('issues a fresh playback token when the current one expires within a week', function () {
+    $user = User::factory()->create();
+    subscribedChannel($user);
+    AccessToken::create(['user_id' => $user->id, 'token' => 'almost-expired', 'expires_at' => now()->addDays(2)]);
+
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+
+    expect($body)->not->toContain('almost-expired')
+        ->and(AccessToken::where('user_id', $user->id)->count())->toBe(2);
+});

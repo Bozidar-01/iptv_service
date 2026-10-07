@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bouquet;
 use App\Models\Channel;
+use App\Models\Source;
 use App\Services\ChannelService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ChannelController extends Controller
 {
@@ -16,10 +19,15 @@ class ChannelController extends Controller
         $this->channelService = $channelService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $channels = $this->channelService->getAllChannels();
-        return view('admin.channels.index', compact('channels'));
+        $filters = $request->only(['search', 'category', 'source', 'bouquet', 'status']);
+        $channels = $this->channelService->getAllChannels($filters);
+        $categories = $this->channelService->getAllCategories();
+        $sources = Source::orderBy('name')->get();
+        $bouquets = Bouquet::orderBy('name')->get();
+
+        return view('admin.channels.index', compact('channels', 'filters', 'categories', 'sources', 'bouquets'));
     }
 
     public function create()
@@ -30,13 +38,7 @@ class ChannelController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'stream_url' => 'required|url',
-            'logo_url' => 'nullable|url',
-            'category_id' => 'required|exists:categories,id',
-            'is_active' => 'boolean',
-        ]);
+        $data = $this->validated($request);
 
         $this->channelService->createChannel($data);
 
@@ -51,13 +53,7 @@ class ChannelController extends Controller
 
     public function update(Request $request, Channel $channel)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'stream_url' => 'required|url',
-            'logo_url' => 'nullable|url',
-            'category_id' => 'required|exists:categories,id',
-            'is_active' => 'boolean',
-        ]);
+        $data = $this->validated($request);
 
         $this->channelService->updateChannel($channel, $data);
 
@@ -69,5 +65,53 @@ class ChannelController extends Controller
         $this->channelService->deleteChannel($channel);
 
         return redirect()->route('admin.channels.index')->with('success', 'Channel deleted successfully.');
+    }
+
+    /**
+     * Apply an action to the selected channels, or to every channel matching the current filters.
+     */
+    public function bulk(Request $request)
+    {
+        $data = $request->validate([
+            'action' => ['required', Rule::in(ChannelService::BULK_ACTIONS)],
+            'scope' => ['required', Rule::in(['selected', 'filtered'])],
+            'ids' => ['required_if:scope,selected', 'array'],
+            'ids.*' => ['integer'],
+            'bouquet_id' => ['required_if:action,add_to_bouquet,remove_from_bouquet', 'nullable', 'exists:bouquets,id'],
+            'filters' => ['nullable', 'array'],
+        ], [
+            'ids.required_if' => 'Select at least one channel.',
+            'bouquet_id.required_if' => 'Choose a bouquet.',
+        ]);
+
+        $query = $data['scope'] === 'filtered'
+            ? $this->channelService->filteredQuery($data['filters'] ?? [])
+            : Channel::whereIn('id', $data['ids']);
+
+        $count = $this->channelService->bulkAction($data['action'], $query, $data['bouquet_id'] ?? null);
+
+        $verb = [
+            'enable' => 'enabled',
+            'disable' => 'disabled',
+            'add_to_bouquet' => 'added to the bouquet',
+            'remove_from_bouquet' => 'removed from the bouquet',
+            'delete' => 'deleted',
+        ][$data['action']];
+
+        return back()->with('success', number_format($count).' '.str('channel')->plural($count)." {$verb}.");
+    }
+
+    private function validated(Request $request): array
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'stream_url' => 'required|url|max:2048',
+            'logo_url' => 'nullable|url|max:2048',
+            'category_id' => 'nullable|exists:categories,id',
+            'is_active' => 'boolean',
+        ]);
+        $data['is_active'] = $request->boolean('is_active');
+
+        return $data;
     }
 }

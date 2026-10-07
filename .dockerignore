@@ -1,0 +1,13 @@
+.git
+.idea
+.vscode
+.claude
+node_modules
+vendor
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+.env
+.DS_Store
+docs

@@ -1,0 +1,82 @@
+# Local stack: nginx + PHP-FPM app, queue worker, scheduler and MySQL.
+#   docker compose up -d --build
+#   open http://localhost:8000  (admin / admin123)
+# TVs on your network use http://<this computer's LAN IP>:8000
+
+x-app: &app
+  build: .
+  image: iptv-service
+  restart: unless-stopped
+  volumes:
+    - ./:/var/www/html
+  environment: &app-env
+    DB_CONNECTION: mysql
+    DB_HOST: db
+    DB_PORT: 3306
+    DB_DATABASE: iptv_service
+    DB_USERNAME: iptv
+    DB_PASSWORD: iptv
+    QUEUE_CONNECTION: database
+    # Imports can run up to 10 minutes; must exceed SyncSource::$timeout
+    DB_QUEUE_RETRY_AFTER: 900
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  app:
+    <<: *app
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "true"
+
+  queue:
+    <<: *app
+    command: php artisan queue:work --tries=1 --timeout=600 --sleep=2
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:80"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: iptv_service
+      MYSQL_USER: iptv
+      MYSQL_PASSWORD: iptv
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      # For DB tools on your Mac (TablePlus etc.): 127.0.0.1:3307, user iptv / iptv
+      - "127.0.0.1:${DB_FORWARD_PORT:-3307}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  db-data:

@@ -3,28 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\ActiveSession;
 use App\Models\Channel;
-use App\Models\Bouquet;
+use App\Models\Source;
 use App\Models\StreamLog;
-use Illuminate\Http\Request;
+use App\Models\User;
+use App\Services\StreamService;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        $subscribers = User::where('role', 'user');
+
         $stats = [
-            'total_users' => User::where('role', 'user')->count(),
+            'subscribers' => (clone $subscribers)->count(),
+            'active_subscribers' => (clone $subscribers)->where('status', 'active')
+                ->where(fn ($q) => $q->whereNull('expiration_date')->orWhere('expiration_date', '>', now()))
+                ->count(),
+            'channels' => Channel::count(),
             'active_channels' => Channel::where('is_active', true)->count(),
-            'total_bouquets' => Bouquet::count(),
-            'recent_logs_count' => StreamLog::where('started_at', '>=', now()->subDay())->count(),
+            'watching_now' => ActiveSession::where('last_activity_at', '>', now()->subMinutes(StreamService::SESSION_TIMEOUT_MINUTES))->count(),
+            'plays_today' => StreamLog::where('started_at', '>=', now()->subDay())->count(),
         ];
+
+        $sources = Source::orderBy('name')->get();
+
+        $expiringSoon = (clone $subscribers)
+            ->where('status', 'active')
+            ->whereBetween('expiration_date', [now(), now()->addDays(7)])
+            ->orderBy('expiration_date')
+            ->limit(5)
+            ->get();
 
         $recentLogs = StreamLog::with(['user', 'channel'])
             ->orderBy('started_at', 'desc')
-            ->limit(10)
+            ->limit(8)
             ->get();
 
-        return view('admin.dashboard', compact('stats', 'recentLogs'));
+        return view('admin.dashboard', compact('stats', 'sources', 'expiringSoon', 'recentLogs'));
     }
 }

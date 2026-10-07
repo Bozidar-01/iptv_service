@@ -139,3 +139,10 @@ it('prunes stale active sessions', function () {
 
     expect(ActiveSession::pluck('channel_id')->all())->toBe([$fresh->id]);
 });
+
+it('accepts play URLs with a stream extension', function () {
+    $user = User::factory()->create();
+    $channel = subscribedChannel($user, ['stream_url' => 'http://p.test/live/1.ts']);
+
+    $this->get('/play/'.$channel->id.'/'.tokenFor($user).'.ts')->assertRedirect($channel->stream_url);
+});

@@ -1,37 +1,40 @@
 # Admin Panel
 
-Layout: `resources/views/layouts/admin.blade.php`, a sidebar with navigation and the logged-in user, styled by `public/css/admin.css`.
+**Layout:** `resources/views/layouts/admin.blade.php`. Sidebar navigation (Overview / Content / Subscribers), flash messages and validation errors rendered once for every page (`admin/partials/flash`), and a slide-out menu below 860 px. Styling lives in `public/css/admin.css` (see [architecture.md](../architecture.md#ui-conventions)). Light and dark themes follow the OS setting.
 
-## Dashboard — `admin.dashboard` ("Network Health")
-`DashboardController@index` shows:
-- subscriber count (`role = user`), active channels, bouquets, stream starts in the last 24h
-- the 10 most recent stream logs (user, channel, time)
+Shared behaviours (in the layout script):
+- `<form data-confirm="…">` asks for confirmation before submitting (all deletes).
+- `<button data-copy="#input">` copies an input's value.
 
-The trend texts on the tiles (e.g. "+2.4% vs last week") are hard-coded placeholders.
+## Dashboard (`admin.dashboard`)
+- Stats: active subscribers / total, enabled channels / total, **watching now** (sessions active in the last 5 min), plays in 24 h.
+- A "Get started" hint while there are no sources.
+- Recent activity (8 latest plays), source list with sync status, subscriptions expiring within 7 days.
 
-## Users — `admin.users.*` ("User Accounts")
-- Paginated list (20/page) with bouquets.
-- Create/edit fields: `username` (unique), `password` (min 6; optional on edit, keeping the old one if blank), `status` (`active|disabled`), `role` (`admin|user`), `expiration_date` (nullable), `max_connections` (≥1), `bouquets[]`.
-- Bouquets are synced on save.
-- **Toggle** (`POST users/{user}/toggle`) flips status between active and disabled.
-- Delete cascades tokens, sessions, logs and bouquet links.
+## Sources (`admin.sources.*`, `POST sources/{source}/sync`)
+List with type/host, status badge (Not synced / Queued / Syncing / Synced / Failed with the error), channel counts (linked to the filtered channel list), bouquet, last sync, and Sync / Edit / Delete. See [sources.md](sources.md).
 
-## Channels — `admin.channels.*` ("Stream Channels")
-- Paginated list (20/page) with category and Streaming/Offline chip.
-- Fields: `name`, `stream_url` (url), `logo_url` (url, optional), `category_id` (required), `is_active` (checkbox with a hidden `0` fallback, so unchecking deactivates).
-- Delete cascades pivot rows, sessions and logs.
+## Channels (`admin.channels.*`, `POST channels/bulk`)
+- 50 per page, sorted by name, with logo, upstream host, category, source, bouquet count and status.
+- **Filters** (GET, kept in pagination links): search by name, category (or *Uncategorized*), source (or *Added manually*), bouquet, status.
+- **Bulk actions:** tick rows (or the header box for the whole page). Once a full page is selected, *Select all N matching* applies the action to every channel matching the current filters. Actions: enable, disable, add to bouquet, remove from bouquet, delete. Adding skips channels already in the bouquet.
+- Create/edit form: name, stream URL, optional category and logo, enabled toggle (hidden `0` fallback). Editing an imported channel shows a notice that the next sync overwrites name/URL/logo/category but keeps enabled/disabled.
 
-## Categories — `admin.categories.*` ("Content Groups")
-- Single page: list plus inline create/edit/delete. `name` is unique.
-- Deleting a category sets its channels' `category_id` to null (they show as "General" in M3U).
+## Categories (`admin.categories.*`, only index/store/update/destroy)
+Table with channel and enabled counts, *View channels* (filtered list), rename and create in dialogs, delete (channels keep existing without a category).
 
-## Bouquets — `admin.bouquets.*` ("Subscription Packs")
-- List with channel and user counts.
-- Fields: `name` (unique), `channels[]` (only active channels are offered in the picker).
-- Channels are synced on save.
+## Bouquets (`admin.bouquets.*`)
+- List with channel count (and enabled count when different), user count, and a link to the bouquet's channels.
+- Create/edit: name plus **add channels by category** (filterable tiles with channel counts). Ticked categories' channels are added; nothing is removed. Individual channels are managed with Channels-page bulk actions.
 
-## Validation errors
-All create/edit forms and the categories page show validation errors. Channel and user forms have their own inline block; bouquet forms and categories use `@include('admin.partials.errors')`.
+## Users (`admin.users.*`, `POST users/{user}/toggle`, `POST users/{user}/playlist-token`)
+- List: search by username, status filter (active / expired / disabled), bouquets, expiry, max streams, and quick actions (playlist, enable/disable, edit, delete; you can't delete yourself).
+- Form: username, password (text field, min 6, blank on edit = keep), role (subscriber / admin), status, expiry date with +1 month / +3 months / +1 year / Never shortcuts, simultaneous streams, bouquets (tiles with channel counts). Unticking all bouquets clears them.
+- **User page** (`admin.users.show`; create and update redirect here):
+  - **Playlist link** `/playlist/{token}.m3u` with copy button and *New link* (regenerates the token; the old link stops working).
+  - Warnings when the panel is opened on localhost (link unreachable from a TV), when the account is disabled/expired, or when the playlist would be empty.
+  - TV setup steps (TiviMate, IPTV Smarters, OTT Navigator, VLC) and the username/password URL alternative.
+  - Subscription details (expiry, active/max streams, channel count, bouquets) and the 10 latest plays.
 
-## Activity Logs — `admin.logs.index`
-- `stream_logs`, newest first, 50/page, with user and channel.
+## Activity (`admin.logs.index`)
+Stream starts, newest first, 50 per page, filterable by user (`?user=`), with IP and player user agent.

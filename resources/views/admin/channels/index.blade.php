@@ -1,101 +1,193 @@
 @extends('layouts.admin')
 
-@section('title', 'Stream Directory')
+@section('title', 'Channels')
 
 @section('content')
-<header class="view-header">
+<div class="page-header">
     <div>
-        <h2 class="view-title">Stream<br>Directory</h2>
-        <p class="view-subtitle">Primary broadcasting endpoints and carrier metadata</p>
+        <h1>Channels</h1>
+        <p>Everything users can watch. Disabled channels are hidden from playlists.</p>
     </div>
-    <div style="display: flex; gap: 16px;">
-        <a href="{{ route('admin.channels.create') }}" class="action-btn btn-electric shadow-hard">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0h-3m-9-1h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-            Add New Signal
-        </a>
+    <div class="page-actions">
+        <a href="{{ route('admin.sources.index') }}" class="btn btn-secondary"><x-icon name="source" /> Import from source</a>
+        <a href="{{ route('admin.channels.create') }}" class="btn btn-primary"><x-icon name="plus" /> Add channel</a>
     </div>
-</header>
-
-@if(session('success'))
-    <div class="canvas-card fade-in" style="margin-bottom: 40px; padding: 20px; border-color: rgba(74, 222, 128, 0.3); background: rgba(74, 222, 128, 0.05);">
-        <div style="display: flex; align-items: center; gap: 12px; color: var(--success); font-weight: 700; font-size: 0.9rem;">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            {{ session('success') }}
-        </div>
-    </div>
-@endif
-
-<div class="data-table-wrapper shadow-hard">
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Carrier Branding</th>
-                <th>Content Group</th>
-                <th>Signal Status</th>
-                <th>Relay Endpoint</th>
-                <th style="text-align: right;">System Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($channels as $channel)
-                <tr>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 20px;">
-                            <div style="width: 100px; height: 60px; background: #000; border-radius: var(--radius-md); border: 1px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 8px;">
-                                @if($channel->logo_url)
-                                    <img src="{{ $channel->logo_url }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                                @else
-                                    <span style="font-size: 0.6rem; font-weight: 900; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em;">No Branding</span>
-                                @endif
-                            </div>
-                            <div>
-                                <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-white);">{{ $channel->name }}</div>
-                                <div style="font-size: 0.7rem; color: var(--text-dim); font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;">Node ID: #{{ str_pad($channel->id, 4, '0', STR_PAD_LEFT) }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="chip chip-cyan" style="font-size: 0.65rem;">
-                            {{ $channel->category->name ?? 'Unmapped' }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="chip {{ $channel->is_active ? 'chip-success' : 'chip-danger' }}" style="font-size: 0.65rem;">
-                            ● {{ $channel->is_active ? 'Streaming' : 'Offline' }}
-                        </span>
-                    </td>
-                    <td>
-                        <div style="font-family: monospace; font-size: 0.75rem; color: var(--accent); background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $channel->stream_url }}">
-                            {{ $channel->stream_url }}
-                        </div>
-                    </td>
-                    <td style="text-align: right;">
-                        <div style="display: flex; justify-content: flex-end; gap: 12px;">
-                            <a href="{{ route('admin.channels.edit', $channel) }}" class="btn-outline action-btn" style="padding: 10px; border-radius: 10px;">
-                                <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            </a>
-                            <form action="{{ route('admin.channels.destroy', $channel) }}" method="POST" onsubmit="return confirm('DANGER: Permanent signal termination for channel: {{ $channel->name }}?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="action-btn" style="padding: 10px; border-radius: 10px; background: rgba(248, 113, 113, 0.05); border: 1px solid rgba(248, 113, 113, 0.2); color: var(--danger);">
-                                    <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 80px; color: var(--text-dim); font-style: italic; font-weight: 500;">
-                        No signal endpoints registered in the directory.
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
 </div>
 
-<div style="margin-top: 40px;">
-    {{ $channels->links() }}
+<div class="card">
+    <form method="GET" action="{{ route('admin.channels.index') }}" class="toolbar" id="filters">
+        <div class="input-group">
+            <x-icon name="search" />
+            <input class="input" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search channels…">
+        </div>
+        <select class="select" name="category" onchange="this.form.submit()" aria-label="Category">
+            <option value="">All categories</option>
+            <option value="none" @selected(($filters['category'] ?? '') === 'none')>Uncategorized</option>
+            @foreach($categories as $category)
+                <option value="{{ $category->id }}" @selected(($filters['category'] ?? '') == $category->id)>{{ $category->name }}</option>
+            @endforeach
+        </select>
+        <select class="select" name="source" onchange="this.form.submit()" aria-label="Source">
+            <option value="">All sources</option>
+            <option value="manual" @selected(($filters['source'] ?? '') === 'manual')>Added manually</option>
+            @foreach($sources as $source)
+                <option value="{{ $source->id }}" @selected(($filters['source'] ?? '') == $source->id)>{{ $source->name }}</option>
+            @endforeach
+        </select>
+        <select class="select" name="bouquet" onchange="this.form.submit()" aria-label="Bouquet">
+            <option value="">Any bouquet</option>
+            @foreach($bouquets as $bouquet)
+                <option value="{{ $bouquet->id }}" @selected(($filters['bouquet'] ?? '') == $bouquet->id)>In {{ $bouquet->name }}</option>
+            @endforeach
+        </select>
+        <select class="select" name="status" onchange="this.form.submit()" aria-label="Status">
+            <option value="">Any status</option>
+            <option value="active" @selected(($filters['status'] ?? '') === 'active')>Enabled</option>
+            <option value="inactive" @selected(($filters['status'] ?? '') === 'inactive')>Disabled</option>
+        </select>
+        @if(array_filter($filters))
+            <a href="{{ route('admin.channels.index') }}" class="btn btn-ghost btn-sm"><x-icon name="x" /> Clear</a>
+        @endif
+    </form>
+
+    <form method="POST" action="{{ route('admin.channels.bulk') }}" id="bulk-form" class="bulk-bar" hidden>
+        @csrf
+        <input type="hidden" name="scope" value="selected" id="bulk-scope">
+        @foreach(array_filter($filters) as $key => $value)
+            <input type="hidden" name="filters[{{ $key }}]" value="{{ $value }}">
+        @endforeach
+
+        <strong id="bulk-count">0 selected</strong>
+        @if($channels->total() > $channels->count())
+            <button type="button" class="btn btn-ghost btn-sm" id="bulk-all" hidden>Select all {{ number_format($channels->total()) }} matching</button>
+        @endif
+        <span class="spacer" style="flex: 1"></span>
+        <select class="select" name="action" id="bulk-action" required aria-label="Bulk action">
+            <option value="">Choose action…</option>
+            <option value="enable">Enable</option>
+            <option value="disable">Disable</option>
+            <option value="add_to_bouquet">Add to bouquet</option>
+            <option value="remove_from_bouquet">Remove from bouquet</option>
+            <option value="delete">Delete</option>
+        </select>
+        <select class="select" name="bouquet_id" id="bulk-bouquet" hidden aria-label="Bouquet">
+            <option value="">Choose bouquet…</option>
+            @foreach($bouquets as $bouquet)
+                <option value="{{ $bouquet->id }}">{{ $bouquet->name }}</option>
+            @endforeach
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+    </form>
+
+    @if($channels->isEmpty())
+        <div class="empty">
+            <div class="empty-icon"><x-icon name="tv" /></div>
+            @if(array_filter($filters))
+                <h3>No channels match these filters</h3>
+                <a href="{{ route('admin.channels.index') }}" class="btn btn-secondary">Clear filters</a>
+            @else
+                <h3>No channels yet</h3>
+                <p>Import them from a provider playlist, or add one by hand.</p>
+                <a href="{{ route('admin.sources.create') }}" class="btn btn-primary"><x-icon name="source" /> Add a source</a>
+            @endif
+        </div>
+    @else
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th class="shrink"><input type="checkbox" id="select-page" aria-label="Select all on this page" style="accent-color: var(--primary)"></th>
+                    <th>Channel</th>
+                    <th>Category</th>
+                    <th class="hide-sm">Source</th>
+                    <th class="hide-sm right">Bouquets</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach($channels as $channel)
+                    <tr>
+                        <td><input type="checkbox" name="ids[]" value="{{ $channel->id }}" form="bulk-form" class="row-check" aria-label="Select {{ $channel->name }}" style="accent-color: var(--primary)"></td>
+                        <td>
+                            <div class="cell-flex">
+                                @if($channel->logo_url)
+                                    <img src="{{ $channel->logo_url }}" alt="" class="logo-thumb" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+                                @else
+                                    <span class="logo-fallback">{{ mb_strtoupper(mb_substr($channel->name, 0, 2)) }}</span>
+                                @endif
+                                <div style="min-width: 0">
+                                    <div class="cell-main truncate">{{ $channel->name }}</div>
+                                    <div class="cell-sub truncate mono" style="max-width: 280px">{{ parse_url($channel->stream_url, PHP_URL_HOST) }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{!! $channel->category ? e($channel->category->name) : '<span class="faint">None</span>' !!}</td>
+                        <td class="hide-sm">{!! $channel->source ? e($channel->source->name) : '<span class="faint">Manual</span>' !!}</td>
+                        <td class="hide-sm right">{{ $channel->bouquets_count }}</td>
+                        <td>
+                            @if($channel->is_active)
+                                <span class="badge badge-success badge-dot">Enabled</span>
+                            @else
+                                <span class="badge badge-dot">Disabled</span>
+                            @endif
+                        </td>
+                        <td class="shrink">
+                            <div class="actions">
+                                <a href="{{ route('admin.channels.edit', $channel) }}" class="btn btn-ghost btn-icon" title="Edit" aria-label="Edit {{ $channel->name }}"><x-icon name="edit" /></a>
+                                <form method="POST" action="{{ route('admin.channels.destroy', $channel) }}" class="inline-form" data-confirm="Delete {{ $channel->name }}?">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-danger-ghost btn-icon" title="Delete" aria-label="Delete {{ $channel->name }}"><x-icon name="trash" /></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        {{ $channels->links('admin.partials.pagination') }}
+    @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(() => {
+    const form = document.getElementById('bulk-form');
+    if (!form) return;
+    const rows = [...document.querySelectorAll('.row-check')];
+    const pageBox = document.getElementById('select-page');
+    const count = document.getElementById('bulk-count');
+    const scope = document.getElementById('bulk-scope');
+    const allBtn = document.getElementById('bulk-all');
+    const action = document.getElementById('bulk-action');
+    const bouquet = document.getElementById('bulk-bouquet');
+    const total = {{ $channels->total() }};
+
+    const update = () => {
+        const selected = rows.filter((r) => r.checked).length;
+        const filtered = scope.value === 'filtered';
+        form.hidden = selected === 0 && !filtered;
+        count.textContent = filtered ? `All ${total.toLocaleString()} matching channels selected` : `${selected} selected`;
+        if (pageBox) pageBox.checked = selected === rows.length && rows.length > 0;
+        if (allBtn) allBtn.hidden = filtered || selected !== rows.length;
+    };
+
+    rows.forEach((r) => r.addEventListener('change', () => { scope.value = 'selected'; update(); }));
+    pageBox?.addEventListener('change', () => { rows.forEach((r) => r.checked = pageBox.checked); scope.value = 'selected'; update(); });
+    allBtn?.addEventListener('click', () => { scope.value = 'filtered'; update(); });
+    action.addEventListener('change', () => {
+        const needsBouquet = ['add_to_bouquet', 'remove_from_bouquet'].includes(action.value);
+        bouquet.hidden = !needsBouquet;
+        bouquet.required = needsBouquet;
+    });
+    form.addEventListener('submit', (event) => {
+        const n = scope.value === 'filtered' ? total : rows.filter((r) => r.checked).length;
+        if (action.value === 'delete' && !confirm(`Delete ${n.toLocaleString()} channels? Imported channels come back on the next sync unless you remove them from the source.`)) {
+            event.preventDefault();
+        }
+    });
+})();
+</script>
+@endpush

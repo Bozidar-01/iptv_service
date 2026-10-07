@@ -1,6 +1,6 @@
 # Data Model
 
-Migrations in `database/migrations/`. The custom ones are `2026_04_20_063000_{1..7}_*.php` and must run in that order (foreign keys). The default users migration was modified for this project.
+Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..7}_*.php` (must run in that order: foreign keys). Later changes are `2026_10_07_00000{1..3}_*.php`. The default users migration was modified for this project. All migrations are tested on MySQL 8.4/9.7 (up and down) and SQLite.
 
 ## Tables
 
@@ -14,21 +14,43 @@ Migrations in `database/migrations/`. The custom ones are `2026_04_20_063000_{1.
 | role | enum `admin`,`user` | default `user` |
 | expiration_date | datetime, nullable | null = never expires |
 | max_connections | int | default 1 |
+| playlist_token | string(64), unique, nullable | secret for `/playlist/{token}.m3u`; set on create (`User::booted`), backfilled by migration, hidden from serialization |
 | remember_token, timestamps | | |
 
-Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `isExpired()`.
+Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `isExpired()`, `regeneratePlaylistToken()`. Relations: `bouquets`, `accessTokens`, `activeSessions`, `streamLogs`.
 
 ### categories
 `id`, `name`, timestamps. Has many channels.
 
-### channels
+### sources
 | Column | Type | Notes |
 |---|---|---|
 | name | string | |
-| stream_url | string | upstream URL the player is redirected to |
-| logo_url | string, nullable | used as `tvg-logo` |
+| type | enum `url`,`file` | |
+| url | string(2048), nullable | provider M3U URL (often contains provider credentials) |
+| file_path | string, nullable | path on the default disk, `sources/{uuid}.m3u` |
+| bouquet_id | FK → bouquets, nullable, `ON DELETE SET NULL` | imported channels are added here |
+| skip_vod | bool, default true | |
+| auto_sync | bool, default true | re-sync every 24 h |
+| status | string | `pending`, `queued`, `syncing`, `success`, `failed` (`Source::STATUS_*`) |
+| last_error | text, nullable | |
+| channel_count | uint | after last successful sync |
+| last_synced_at | timestamp, nullable | |
+
+Helpers: `isBusy()` (queued/syncing), `isDueForSync()`.
+
+### channels
+| Column | Type | Notes |
+|---|---|---|
+| source_id | FK → sources, nullable, `ON DELETE CASCADE` | null = added manually |
+| external_key | string(64), nullable | identity within the source (sha1 of group + name); unique with `source_id` |
+| name | string | |
+| stream_url | string(2048) | upstream URL the player is redirected to |
+| logo_url | string(2048), nullable | used as `tvg-logo` |
+| tvg_id | string, nullable | from the playlist; used as `tvg-id` in output (EPG matching) |
+| sort_order | uint, default 0 | position in the source playlist |
 | category_id | FK → categories, nullable, `ON DELETE SET NULL` | |
-| is_active | bool, default true | inactive channels are hidden from M3U and refused on play |
+| is_active | bool, default true | inactive channels are hidden from M3U and refused on play; never changed by re-syncs |
 
 ### bouquets
 `id`, `name` (unique by validation), timestamps. A bouquet is a subscription pack.
@@ -54,6 +76,7 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 ## Relationships
 
 ```
+Source 1─* Channel          Source *─1 Bouquet (auto-add target)
 Category 1─* Channel *─* Bouquet *─* User
 User 1─* AccessToken
 User 1─* ActiveSession *─1 Channel

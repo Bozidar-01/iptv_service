@@ -15,6 +15,9 @@ Docs are the source of truth for what the IPTV service does. Every behaviour cha
    - admin UI / CRUD → `docs/features/admin-panel.md`
    - login/auth → `docs/features/authentication.md`
    - `/m3u`, `/play`, tokens, sessions, limits, logging → `docs/features/playlist-and-streaming.md`
+   - source import, parser, sync rules, `iptv:sync-sources` → `docs/features/sources.md`
+   - Docker, env vars, setup → `docs/getting-started.md` (+ `README.md` quick start) and the `run-app` skill
+   - UI components / CSS classes → "UI conventions" in `docs/architecture.md`
    - new service, layer or convention → `docs/architecture.md` (and `CLAUDE.md` if future work should follow it)
    - setup/commands/seeders/env vars → `docs/getting-started.md`
    - new feature area → new file in `docs/features/`, linked from `docs/README.md`

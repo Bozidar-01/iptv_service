@@ -1,6 +1,6 @@
 # IPTV Service
 
-Laravel 13 (PHP 8.3+) IPTV middleware: an admin panel to manage users, channels, categories and bouquets (subscription packs), plus public endpoints that serve per-user M3U playlists and token-gated stream redirects.
+Laravel 13 (PHP 8.4) IPTV panel. Admins import channels from provider M3U playlists ("sources"), group them into bouquets and create users. Each user gets a playlist link for a TV IPTV app. Playback goes through `/play`, which checks access and connection limits, logs, and redirects to the provider stream.
 
 ## Documentation — always keep it current
 
@@ -12,43 +12,48 @@ Docs live in [`docs/`](docs/README.md). **Every change that adds, removes or alt
 
 ## Commands
 
+Docker is the default way to run the app (see the `run-app` skill):
+
 ```bash
-composer dev                 # serve + queue + pail logs + vite, concurrently
-php artisan serve            # app only, http://localhost:8000
-php artisan migrate:fresh --seed                        # admin / admin123
-php artisan db:seed --class=SampleDataSeeder            # categories, channels, bouquets, user1/user2/expired_user (pass123)
-composer test                # Pest (sqlite :memory:); all tests must pass before finishing a task
-vendor/bin/pint              # code style
+docker compose up -d --build                       # http://localhost:8000, admin / admin123
+docker compose exec app php artisan test           # tests; all must pass before finishing a task
+docker compose exec app php artisan <cmd>          # artisan against the Docker MySQL
+docker compose logs -f queue                       # source imports
 ```
 
-Local DB is MySQL `iptv_service` (see `.env`). Tests use sqlite in-memory (phpunit.xml).
+Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:work`, `composer test`. `vendor/bin/pint` is currently broken locally (missing build).
 
 ## Architecture
 
-- **Controllers stay thin; logic lives in `app/Services/`.** Services are injected via constructor (`protected $xService;` assigned in `__construct`). Follow this pattern.
-  - `UserService`, `ChannelService` (channels **and** categories), `BouquetService`, `TokenService` (access tokens + M3U generation), `StreamService` (access checks, session tracking, logging).
-- Validation is inline `$request->validate([...])` in controllers (no FormRequests yet).
-- Models use PHP attributes for mass assignment: `#[Fillable([...])]`, `#[Hidden([...])]`, and a `casts()` method.
-- Admin routes: `routes/web.php`, group `auth` + prefix `admin` + name `admin.`, `Route::resource(...)`. Redirect back to `admin.<resource>.index` with `->with('success', '...')`.
-- Views: Blade, `@extends('layouts.admin')`, styled by hand-written **`public/css/admin.css`** (dark theme, CSS variables like `--accent`, classes like `canvas-card`, `data-table`, `action-btn btn-electric`, `chip chip-success`, `input-field`). Vite/Tailwind are installed but **not** used by the admin layout. The `*/partials/_form.blade.php` files use Tailwind classes and are currently unused.
-- Users table has no email: auth is by `username`. `role` = `admin|user`, `status` = `active|disabled`. Only admins can log into the panel.
+- **Controllers stay thin; logic lives in `app/Services/`**, injected via the constructor (`protected $xService;`). Long work goes in a queued job (`app/Jobs`) that calls a service.
+- Services: `UserService`, `ChannelService` (channels, categories, bulk actions, `attachToBouquet`), `BouquetService`, `SourceService`, `SourceSyncService`, `M3uParser`, `TokenService` (tokens + M3U output), `StreamService` (access, limits, sessions, logs).
+- Inline `$request->validate([...])`. Feedback via `->with('success'|'error', ...)`, which the layout renders.
+- Models use `#[Fillable]` / `#[Hidden]` attributes and a `casts()` method.
+- Users have no email: auth is by `username`. `role` = `admin|user`, `status` = `active|disabled`. Only admins can log in.
 
-## Domain flow (short)
+## Scale and MySQL rules
 
-1. Client fetches `GET /m3u?username=&password=` → user validated → reuses/creates an `access_tokens` row (1 month) → M3U with one `/play/{channel_id}/{token}` URL per active channel in the user's bouquets.
-2. `GET /play/{channel_id}/{token}` → token check → `StreamService::isAllowed` (active, not expired, channel active, channel in a bouquet, `max_connections` vs `active_sessions` within 5 min) → logs to `stream_logs`, upserts `active_sessions` → 302 to the channel's real `stream_url`.
+- Provider playlists can have 10k–100k entries. Never loop per channel for writes. Use `upsert`, `insertUsing` (`ChannelService::attachToBouquet`) or query-based updates. Never render unbounded channel lists (paginate, or work per category).
+- MySQL forbids `UPDATE/DELETE t ... WHERE id IN (SELECT ... FROM t)`: wrap the subquery in `DB::query()->fromSub(...)`.
+- Check new migrations up **and** down on MySQL (drop FKs before the indexes they use).
 
-Details: [`docs/features/`](docs/features/).
+## UI
+
+- Admin views: `@extends('layouts.admin')`, `.page-header` → `.card` components from `public/css/admin.css`, icons via `<x-icon name="..."/>`, partials in `resources/views/admin/partials/`. Full class list: [docs/architecture.md#ui-conventions](docs/architecture.md#ui-conventions).
+- Colours only via CSS variables (light + dark). No Tailwind classes, no inline colours. Keep pages working at 375 px wide.
+- Use plain, clear wording ("Add source", "Disable"). No jargon.
 
 ## Gotchas
 
+- **Tests must never touch a real DB.** `phpunit.xml` forces SQLite with `<env>` *and* `<server>` (Laravel reads `$_SERVER` first, and Docker sets `DB_*`). `Tests\TestCase::beforeRefreshingDatabase()` throws otherwise. Don't remove either.
+- Imports need a queue worker; without one, sources stay "Queued". `php artisan iptv:sync-sources --now` runs inline.
+- Play/playlist URLs use the request host. TVs need the LAN IP, not `localhost`.
+- `Http::fake` with a static response reuses one body stream. Use `fn () => Http::response(...)` when a test downloads twice.
 - Check `docs/known-issues.md` before debugging.
-- Stale `active_sessions` are pruned by the scheduler (`php artisan schedule:work` locally).
-- `vendor/bin/pint` is currently broken (missing build); run `composer install` to restore it.
-- Migrations are ordered by the `_1_`…`_7_` suffix in their filenames; keep FK order when adding tables.
 
 ## Skills
 
-- `update-docs` — how to update docs/changelog after any change.
-- `add-admin-resource` — scaffold a new admin CRUD (migration → model → service → controller → routes → views → docs).
-- `write-tests` — Pest feature test conventions for this project.
+- `update-docs` — update docs/changelog after any change.
+- `run-app` — start, inspect and debug the Docker stack; verify in the browser.
+- `add-admin-resource` — scaffold a new admin CRUD (migration → model → service → controller → routes → views → tests → docs).
+- `write-tests` — Pest conventions and must-cover scenarios.

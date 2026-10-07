@@ -1,118 +1,136 @@
 @extends('layouts.admin')
 
-@section('title', 'Network Health')
+@section('title', 'Dashboard')
 
 @section('content')
-<header class="view-header">
+<div class="page-header">
     <div>
-        <h2 class="view-title">Network<br>Health</h2>
-        <p class="view-subtitle">Infrastructure status is currently <span style="color: var(--success); font-weight: 800;">OPTIMAL</span></p>
+        <h1>Dashboard</h1>
+        <p>What's happening on your IPTV service right now.</p>
     </div>
-    <div style="display: flex; gap: 16px;">
-        <a href="{{ route('admin.channels.create') }}" class="action-btn btn-electric">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Deploy Node
-        </a>
-    </div>
-</header>
-
-<div class="metric-grid">
-    <div class="canvas-card metric-tile">
-        <span class="metric-label">Managed Entries</span>
-        <div class="metric-value">{{ $stats['total_users'] }}</div>
-        <div class="metric-trend" style="color: var(--success)">
-            <svg style="width: 14px; height: 14px;" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/></svg>
-            +2.4% vs last week
-        </div>
-    </div>
-
-    <div class="canvas-card metric-tile">
-        <span class="metric-label">Active Carriers</span>
-        <div class="metric-value">{{ $stats['active_channels'] }}</div>
-        <div class="metric-trend" style="color: var(--accent)">
-            <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            Live broadcast sync
-        </div>
-    </div>
-
-    <div class="canvas-card metric-tile">
-        <span class="metric-label">Mapped Bundles</span>
-        <div class="metric-value">{{ $stats['total_bouquets'] }}</div>
-        <div class="metric-trend" style="color: var(--secondary)">
-            <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-            Ecosystem structure
-        </div>
-    </div>
-
-    <div class="canvas-card metric-tile">
-        <span class="metric-label">Stream Activity</span>
-        <div class="metric-value">{{ $stats['recent_logs_count'] }}</div>
-        <div class="metric-trend" style="color: var(--warning)">
-            <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Real-time tracking
-        </div>
+    <div class="page-actions">
+        <a href="{{ route('admin.sources.create') }}" class="btn btn-secondary"><x-icon name="source" /> Add source</a>
+        <a href="{{ route('admin.users.create') }}" class="btn btn-primary"><x-icon name="plus" /> New user</a>
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1.8fr 1fr; gap: 40px;">
-    <!-- Recent Logs Visualization -->
-    <div class="canvas-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-            <h3 style="font-size: 1.25rem; font-weight: 800;">Real-Time Activity</h3>
-            <a href="{{ route('admin.logs.index') }}" style="color: var(--accent); font-size: 0.75rem; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: 0.1em;">Inspection Panel →</a>
-        </div>
-        
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-            @forelse($recentLogs as $log)
-                <div style="padding: 16px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; align-items: center; gap: 16px;">
-                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent);"></div>
-                    <div style="flex: 1;">
-                        <span style="font-weight: 800; font-size: 0.85rem; color: var(--text-white);">{{ $log->user->username ?? 'Unknown' }}</span>
-                        <span style="color: var(--text-dim); font-size: 0.85rem; margin: 0 8px;">is streaming</span>
-                        <span style="font-weight: 800; font-size: 0.85rem; color: var(--secondary);">{{ $log->channel->name ?? 'Stream node' }}</span>
-                    </div>
-                    <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">{{ $log->started_at->diffForHumans() }}</div>
-                </div>
-            @empty
-                <div style="text-align: center; padding: 48px; color: var(--text-dim); font-style: italic;">No active signals detected.</div>
-            @endforelse
+@if($sources->isEmpty())
+    <div class="alert alert-info">
+        <x-icon name="alert" />
+        <div class="alert-body">
+            <strong>Get started:</strong> add an M3U source to import channels, put them in a bouquet, then create a user with that bouquet and copy their playlist link into your TV's IPTV app.
+            <a href="{{ route('admin.sources.create') }}">Add your first source →</a>
         </div>
     </div>
+@endif
 
-    <!-- System Control Center -->
-    <div style="display: flex; flex-direction: column; gap: 32px;">
-        <div class="canvas-card">
-            <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 24px;">Core Modals</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                 <a href="{{ route('admin.users.create') }}" class="btn-outline action-btn" style="padding: 16px; border-radius: 12px;">+ User</a>
-                 <a href="{{ route('admin.channels.create') }}" class="btn-outline action-btn" style="padding: 16px; border-radius: 12px;">+ Stream</a>
-                 <a href="{{ route('admin.bouquets.create') }}" class="btn-outline action-btn" style="padding: 16px; border-radius: 12px;">+ Pack</a>
-                 <a href="{{ route('admin.categories.index') }}" class="btn-outline action-btn" style="padding: 16px; border-radius: 12px;">+ Group</a>
+<div class="stats">
+    <div class="card stat">
+        <div class="stat-label"><x-icon name="users" /> Subscribers</div>
+        <div class="stat-value">{{ number_format($stats['active_subscribers']) }}</div>
+        <div class="stat-meta">active of {{ number_format($stats['subscribers']) }} total</div>
+    </div>
+    <div class="card stat">
+        <div class="stat-label"><x-icon name="tv" /> Channels</div>
+        <div class="stat-value">{{ number_format($stats['active_channels']) }}</div>
+        <div class="stat-meta">enabled of {{ number_format($stats['channels']) }} total</div>
+    </div>
+    <div class="card stat">
+        <div class="stat-label"><x-icon name="signal" /> Watching now</div>
+        <div class="stat-value">{{ number_format($stats['watching_now']) }}</div>
+        <div class="stat-meta">streams in the last 5 minutes</div>
+    </div>
+    <div class="card stat">
+        <div class="stat-label"><x-icon name="play" /> Plays</div>
+        <div class="stat-value">{{ number_format($stats['plays_today']) }}</div>
+        <div class="stat-meta">in the last 24 hours</div>
+    </div>
+</div>
+
+<div class="grid-main">
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <h2>Recent activity</h2>
+                <p>Latest channel starts by your users</p>
             </div>
+            <a href="{{ route('admin.logs.index') }}" class="btn btn-ghost btn-sm">View all</a>
+        </div>
+        @if($recentLogs->isEmpty())
+            <div class="empty">
+                <div class="empty-icon"><x-icon name="activity" /></div>
+                <h3>No activity yet</h3>
+                <p>Plays show up here once users start watching.</p>
+            </div>
+        @else
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>User</th><th>Channel</th><th class="right">When</th></tr></thead>
+                    <tbody>
+                    @foreach($recentLogs as $log)
+                        <tr>
+                            <td>
+                                @if($log->user)
+                                    <a href="{{ route('admin.users.show', $log->user) }}" class="cell-main">{{ $log->user->username }}</a>
+                                @else
+                                    <span class="faint">Deleted user</span>
+                                @endif
+                            </td>
+                            <td class="truncate">{{ $log->channel->name ?? 'Deleted channel' }}</td>
+                            <td class="right muted" title="{{ $log->started_at }}">{{ $log->started_at->diffForHumans() }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <div class="card-header">
+                <h2>Sources</h2>
+                <a href="{{ route('admin.sources.index') }}" class="btn btn-ghost btn-sm">Manage</a>
+            </div>
+            @if($sources->isEmpty())
+                <div class="empty" style="padding: 28px 20px">
+                    <p>No sources yet.</p>
+                    <a href="{{ route('admin.sources.create') }}" class="btn btn-secondary btn-sm"><x-icon name="plus" /> Add source</a>
+                </div>
+            @else
+                <ul class="list">
+                    @foreach($sources as $source)
+                        <li>
+                            <div style="min-width: 0">
+                                <div class="cell-main truncate">{{ $source->name }}</div>
+                                <div class="cell-sub">
+                                    {{ number_format($source->channel_count) }} channels
+                                    @if($source->last_synced_at) · synced {{ $source->last_synced_at->diffForHumans() }} @endif
+                                </div>
+                            </div>
+                            @include('admin.partials.source-status', ['source' => $source])
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
 
-        <div class="canvas-card">
-            <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 20px;">System Nodes</h3>
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
-                        <span style="color: var(--text-muted);">Uptime Control</span>
-                        <span style="color: var(--success);">Stable</span>
-                    </div>
-                    <div style="height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;">
-                        <div style="width: 98%; height: 100%; background: var(--success);"></div>
-                    </div>
-                </div>
-                <div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
-                        <span style="color: var(--text-muted);">Database Sync</span>
-                        <span style="color: var(--accent);">Optimal</span>
-                    </div>
-                    <div style="height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;">
-                        <div style="width: 100%; height: 100%; background: var(--accent);"></div>
-                    </div>
-                </div>
+        <div class="card">
+            <div class="card-header">
+                <h2>Expiring within 7 days</h2>
             </div>
+            @if($expiringSoon->isEmpty())
+                <div class="empty" style="padding: 28px 20px"><p>No subscriptions expiring soon.</p></div>
+            @else
+                <ul class="list">
+                    @foreach($expiringSoon as $user)
+                        <li>
+                            <a href="{{ route('admin.users.show', $user) }}" class="cell-main">{{ $user->username }}</a>
+                            <span class="badge badge-warning">{{ $user->expiration_date->diffForHumans() }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
     </div>
 </div>

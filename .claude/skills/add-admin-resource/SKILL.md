@@ -37,16 +37,18 @@ Methods: `getAll<Things>()` (paginate(20) or `withCount`), `create<Thing>(array 
 Inside the `auth` / `admin.` group: `Route::resource('things', ThingController::class)->except(['show']);`
 
 ## 6. Views (`resources/views/admin/things/`)
-- `index`, `create`, `edit`, each with `@extends('layouts.admin')`, `@section('title', ...)`, `@section('content')`.
-- Copy the markup structure from `admin/channels/*`: `view-header` / `view-title`, `canvas-card`, `data-table-wrapper` + `data-table`, `action-btn btn-electric`, `chip chip-success|chip-danger`, `input-label` / `input-field`.
-- Style with `public/css/admin.css` classes and CSS variables. **Do not use Tailwind classes**: Tailwind isn't loaded in the admin layout.
-- Checkboxes: put `<input type="hidden" name="field" value="0">` before the checkbox so unchecking works.
-- Show `session('success')` on the index page like `admin/channels/index`. On create/edit forms, add `@include('admin.partials.errors')` under the header.
-- Add a sidebar link in `resources/views/layouts/admin.blade.php` with `request()->routeIs('admin.things.*')` for the active state.
+- `index`, `create`, `edit` (+ `_form.blade.php` shared by create/edit, taking a `$submit` label). Each `@extends('layouts.admin')`, sets `@section('title', ...)`; forms also set `@section('container', 'container-narrow')`.
+- Copy the structure from `admin/sources/*` or `admin/bouquets/*`: `.page-header` (h1, one-line description, `.page-actions`), `.card` > `.toolbar` (filters) / `.table-wrap` > `.table`, `.empty` state with a call to action, `{{ $things->links('admin.partials.pagination') }}`.
+- Forms: `.card` > `.card-body.form-grid` > `.field` (`.label`, `.input`/`.select`, `.help`), `.card-footer` with Cancel + primary submit. Checkboxes: hidden `value="0"` input before a `.check` checkbox.
+- Deletes: `<form data-confirm="Delete X? What happens to related data.">`. Icons: `<x-icon name="..."/>` (add missing ones to `components/icon.blade.php`).
+- Flash messages and validation errors are rendered by the layout. Don't add them per page.
+- Only `admin.css` classes and CSS variables. **No Tailwind classes**, no inline colours. Check it at 375 px.
+- Add a sidebar entry to the `$nav` array in `resources/views/layouts/admin.blade.php`.
+- If it can hold thousands of rows: paginate, filter server-side, and use set-based bulk writes.
 
 ## 7. Verify
 - `php artisan route:list --path=admin/things`
-- `php artisan migrate`, then load each page in the browser (`php artisan serve`).
+- Migrate and load each page in the browser (see the `run-app` skill). Test the migration's `down()` on MySQL too.
 - Add feature tests (see the `write-tests` skill).
 
 ## 8. Document

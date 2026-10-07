@@ -11,18 +11,19 @@ IPTV middleware built on Laravel 13. Admins manage the catalogue and subscribers
 | [data-model.md](data-model.md) | Tables, columns, relationships |
 | [routes.md](routes.md) | Every HTTP route |
 | [features/authentication.md](features/authentication.md) | Admin login / logout |
-| [features/admin-panel.md](features/admin-panel.md) | Dashboard, users, channels, categories, bouquets, logs |
+| [features/admin-panel.md](features/admin-panel.md) | Every admin page: dashboard, sources, channels, categories, bouquets, users, activity |
+| [features/sources.md](features/sources.md) | Importing provider M3U playlists: sync rules, parser, scheduling |
 | [features/playlist-and-streaming.md](features/playlist-and-streaming.md) | M3U generation, tokens, play endpoint, connection limits |
 | [known-issues.md](known-issues.md) | Bugs and gaps found so far |
 | [CHANGELOG.md](CHANGELOG.md) | History of changes |
 
-## Status (2026-10-07)
+## Status (2026-10-07, v1)
 
-Implemented: admin auth, admin CRUD for users/channels/categories/bouquets, user status toggle, dashboard stats, stream log viewer, M3U playlist endpoint, play/redirect endpoint with access checks and session tracking.
+Working end to end: import a provider M3U (URL or file) → channels, categories and a bouquet are created → create a user with that bouquet → paste their playlist link into a TV IPTV app → playback is authorised, limited and logged, then redirected to the provider stream.
 
-Also: stale-session pruning and a feature test suite (47 tests).
+Implemented: admin panel (redesigned) with dashboard, sources, channels (filters and bulk actions), categories, bouquets, users with playlist page, activity log. Daily auto-refresh of sources, session pruning, Docker stack. 101 tests, passing on SQLite and MySQL.
 
-Not yet implemented: stream proxying (currently a redirect), EPG, Xtream Codes API, rate limiting, admin role middleware.
+Not yet implemented: stream proxying, EPG, Xtream Codes API, rate limiting, admin role middleware. See [known-issues.md](known-issues.md).
 
 ## Keeping docs current
 

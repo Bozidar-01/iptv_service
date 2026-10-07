@@ -9,13 +9,21 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 #[Fillable(['username', 'password', 'status', 'role', 'expiration_date', 'max_connections'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'playlist_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            $user->playlist_token ??= Str::random(32);
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -33,6 +41,25 @@ class User extends Authenticatable
     public function bouquets()
     {
         return $this->belongsToMany(Bouquet::class, 'user_bouquet');
+    }
+
+    public function activeSessions()
+    {
+        return $this->hasMany(ActiveSession::class);
+    }
+
+    public function streamLogs()
+    {
+        return $this->hasMany(StreamLog::class);
+    }
+
+    /**
+     * Invalidate the old playlist link by issuing a new token.
+     */
+    public function regeneratePlaylistToken(): void
+    {
+        $this->playlist_token = Str::random(32);
+        $this->save();
     }
 
     public function accessTokens()
