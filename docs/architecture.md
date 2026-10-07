@@ -31,6 +31,9 @@ routes/web.php, routes/console.php
 | `StreamService` | Authorise playback, connection limit, session upsert, stream log |
 | `StreamPreviewService` | Admin **Watch** player proxy: signed proxied URLs, HLS playlist rewriting (segment lines and `URI="…"`), streaming media through with a VLC user agent |
 | `XtreamService` | Xtream Codes API: authenticate, login/server info, live categories and streams |
+| `EpgImportService` | Download and stream-parse XMLTV guides into `epg_channels` / `epg_programmes` |
+| `EpgService` | Match channels to guides; XMLTV and Xtream EPG output; now playing |
+| `SubscriptionReminderService` | Expiring / expired subscription alerts |
 | `ReceiverService` | Signed relay links for satellite receiver channels, relay status checks and alerts |
 | `HealthService` | Scheduler heartbeat, stuck-queue and failed-job alerts, `/health` status |
 | `StreamCheckService` | Check streams concurrently, switch dead channels off and recovered ones back on, create alerts for watched channels |

@@ -26,14 +26,15 @@ Saving a new source queues a sync immediately. Editing doesn't; use **Sync** to 
 2. Gets the playlist: downloads URL sources to a temp file (user agent `VLC/3.0.20 LibVLC/3.0.20`, 300 s timeout; non-2xx → fails), or reads the stored file.
 3. Streams entries through `M3uParser` (constant memory, works for 100k-line lists).
 4. For each entry (VOD skipped if `skip_vod`):
-   - **Identity:** `external_key = sha1(lower(group) | name)`, with `-2`, `-3`… for duplicates within one playlist. Unique per `(source_id, external_key)`.
+   - **Identity:** `external_key = 'tvg:' + sha1(lower(tvg-id))` when the entry has a `tvg-id`, else `sha1(lower(group) | name)`. Duplicates within one playlist get `-2`, `-3`…. Unique per `(source_id, external_key)`. Channels stored under the old group + name key are moved to their tvg-id key on the next sync (one `CASE` update per chunk), so they keep their id, bouquets and the admin's enabled/disabled choice.
    - **Category:** from `group-title` (or `#EXTGRP`), matched case-insensitively to existing categories, created if missing; empty → no category.
-   - Upserted in chunks of 500. Updates `name`, `stream_url`, `logo_url`, `tvg_id`, `category_id`, `sort_order` (playlist position). **`is_active` is only set for new channels**, so channels you disabled stay disabled.
+   - Upserted in chunks of 500. Updates `name`, `stream_url`, `logo_url`, `tvg_id`, `http_user_agent`, `http_referrer`, `category_id`, `sort_order` (playlist position). **`is_active` is only set for new channels**, so channels you disabled stay disabled.
 5. Deletes the source's channels that weren't in this playlist (`updated_at` older than the sync start).
 6. If the source has a bouquet, adds all its channels that aren't in it yet.
-7. Status → `success`, `channel_count`, `last_synced_at`. On any error: status `failed` and `last_error` (shown in the UI). An empty or invalid playlist fails *without* deleting existing channels.
+7. Matches the source's channels to the TV guide ([epg.md](epg.md)).
+8. Status → `success`, `channel_count`, `last_synced_at`. On any error: status `failed` and `last_error` (shown in the UI). An empty or invalid playlist fails *without* deleting existing channels.
 
-Renaming a channel at the provider creates a new channel and deletes the old one, because the identity is group + name.
+With a `tvg-id`, renaming a channel or moving it to another group keeps the same channel. Without one, a rename creates a new channel and deletes the old one. A provider that drops a channel's `tvg-id` also creates a new channel.
 
 ## Parser (`M3uParser`)
 

@@ -23,6 +23,9 @@ _None currently known._
 - **Provider credentials are stored in plain text** in `sources.url` and `channels.stream_url`.
 - **Credentials in query string** for `/m3u?username=&password=` (standard for IPTV, but they end up in server/proxy logs). Prefer the `/playlist/{token}.m3u` link.
 - **No overall request limit:** wrong passwords are limited (admin sign-in and app logins), but `/playlist/{token}.m3u` and `/play` have no request limit.
+- **No Macedonian guide data:** the free iptv-epg.org Macedonia file only has "No Data" entries, so Macedonian channels show no programmes until a better XMLTV source is added on the TV guide page.
+- **Guide times in the panel are UTC:** apps get exact timestamps, but *On now* on the channel form shows UTC (`APP_TIMEZONE` isn't set).
+- **The receiver's own guide isn't used:** Enigma2 only has guide data for channels it has tuned. A `/epg.xml` relay endpoint could export it once the box collects EPG (e.g. with an EPG import plugin).
 - **Relay links can be shared for 3 hours:** a signed receiver link keeps working until it expires (`RECEIVER_LINK_MINUTES`), so a viewer could pass it on. The tuner limit caps the damage. A shorter time means more failed reconnects.
 - **Relay is wiped by image updates:** flashing OpenATV removes `/usr/bin/nebotv-relay.py` and the init script unless they are in the image backup ([receiver.md](receiver.md#after-an-openatv-image-update)).
 - **Relay uses plain HTTP:** links carry signatures, not passwords, but streams aren't encrypted in transit.

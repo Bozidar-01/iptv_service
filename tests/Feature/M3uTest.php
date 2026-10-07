@@ -17,7 +17,7 @@ it('returns a playlist with a play url per active subscribed channel', function 
     $body = $response->getContent();
     $token = AccessToken::where('user_id', $user->id)->value('token');
 
-    expect($body)->toStartWith("#EXTM3U\n")
+    expect($body)->toStartWith('#EXTM3U x-tvg-url="'.route('xtream.xmltv', ['username' => $user->username, 'password' => 'password']).'"')
         ->toContain('tvg-name="Sport 1" tvg-logo="https://logo.test/1.png" group-title="Sports",Sport 1')
         ->toContain(route('play', ['channel_id' => $active->id, 'token' => $token]))
         ->not->toContain('Hidden')

@@ -18,6 +18,7 @@
         ['route' => 'admin.channels.index', 'match' => 'admin.channels.*', 'icon' => 'tv', 'label' => __('Channels')],
         ['route' => 'admin.categories.index', 'match' => 'admin.categories.*', 'icon' => 'folder', 'label' => __('Categories')],
         ['route' => 'admin.bouquets.index', 'match' => 'admin.bouquets.*', 'icon' => 'package', 'label' => __('Bouquets')],
+        ['route' => 'admin.epg.index', 'match' => 'admin.epg.*', 'icon' => 'clock', 'label' => __('TV guide')],
         ['section' => __('Subscribers')],
         ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => __('Users')],
         ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => __('Activity')],

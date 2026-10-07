@@ -35,11 +35,16 @@ class TokenService
             ?? $this->generateToken($user);
     }
 
-    public function getM3u(User $user, string $tokenValue)
+    /**
+     * @param  ?string  $guideUrl  XMLTV address for the playlist header (x-tvg-url), so apps load the TV guide
+     */
+    public function getM3u(User $user, string $tokenValue, ?string $guideUrl = null)
     {
         $channels = Channel::with('category')->availableTo($user)->playlistOrder();
 
-        $m3u = "#EXTM3U\n";
+        $m3u = $guideUrl
+            ? '#EXTM3U x-tvg-url="'.$this->escapeAttribute($guideUrl).'" url-tvg="'.$this->escapeAttribute($guideUrl)."\"\n"
+            : "#EXTM3U\n";
 
         foreach ($channels->lazy(1000) as $channel) {
             $categoryName = $channel->category ? $channel->category->name : 'General';
@@ -47,7 +52,7 @@ class TokenService
 
             $m3u .= sprintf(
                 "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s%s\n",
-                $this->escapeAttribute($channel->tvg_id ?: (string) $channel->id),
+                $this->escapeAttribute($channel->guideId() ?: (string) $channel->id),
                 $this->escapeAttribute($channel->name),
                 $this->escapeAttribute($channel->logo_url),
                 $this->escapeAttribute($categoryName),

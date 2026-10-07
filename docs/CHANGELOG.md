@@ -4,6 +4,19 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-08 — TV guide, backup streams, stable channel IDs, expiry reminders
+- **TV guide (EPG):**
+  - New **TV guide** page with XMLTV sources (`epg_sources`), stored as `epg_channels` / `epg_programmes`. Imported nightly by `iptv:sync-epg` (`SyncEpgSource`, streaming `XMLReader`, gz, `EPG_DAYS` window, filler titles skipped).
+  - Channels are matched by tvg-id (also without `@SD`) or by normalised name (`EpgService`), or set by hand (**Guide ID** on the channel form, with *On now*).
+  - Apps get the guide through the playlist header (`x-tvg-url`, `/epg/{token}.xml`), `xmltv.php`, and Xtream `get_short_epg` / `get_simple_data_table`. `tvg-id` / `epg_channel_id` is the guide id.
+  - Default guides: iptv-epg.org files for MK, IT, RS, HR, BA and AL (`DefaultEpgSourcesSeeder`).
+- **Backup streams:** a dead channel with a working twin (the admin's **Backup channel**, or the same tvg-id) stays on and plays the twin (`using_backup_id`, `Channel::playbackChannel()`) until it recovers. *Playing a backup* badge and filter.
+- **Stable channel IDs:** imported channels are keyed by tvg-id when they have one, so renames and group moves keep the channel. Existing channels are moved to the new key on the next sync without changing their id.
+- **Expiry reminders:** `iptv:expiry-reminders` (daily 08:00) creates `expiring` (within `EXPIRY_REMINDER_DAYS`) and `expired` alerts, once per user and expiry date. Shown in the panel and in a *Subscriptions* group in the email.
+- Schema: `epg_*` tables; `channels.epg_source_id`, `epg_id`, `epg_manual`, `backup_channel_id`, `using_backup_id`; `stream_alerts.user_id`.
+- Tests: `EpgTest`, `BackupChannelTest`, `ExpiryReminderTest`, stable-id tests in `SourceSyncTest`, `refakeHttp()` helper. 250 tests.
+- Files: `app/Services/{EpgImportService,EpgService,SubscriptionReminderService,StreamCheckService,SourceSyncService,TokenService,XtreamService,StreamService,StreamPreviewService,ChannelService}.php`, `app/Jobs/SyncEpgSource.php`, `app/Console/Commands/{SyncEpgCommand,ExpiryRemindersCommand}.php`, `app/Models/{EpgSource,EpgChannel,EpgProgramme,Channel,StreamAlert}.php`, `app/Http/Controllers/{M3uController,XtreamController}.php`, `app/Http/Controllers/Admin/{EpgSourceController,ChannelController}.php`, `app/Mail/StreamAlertsMail.php`, `database/migrations/2026_10_08_*`, `database/seeders/{DefaultEpgSourcesSeeder,DatabaseSeeder}.php`, `config/iptv.php`, `routes/{web,player,console}.php`, `resources/views/admin/{epg/index,channels/_form,channels/index,partials/alert-item}.blade.php`, `resources/views/layouts/admin.blade.php`, `resources/views/emails/*`, `lang/mk.json`, `lang/mk/validation.php`, `.env.example`, `CLAUDE.md`, `docs/**`, `tests/**`.
+
 ### 2026-10-07 — Satellite receiver through the NeboTV relay
 - New `relay/nebotv-relay.py`, a small Python 3 program that runs on the Enigma2 receiver (Octagon SF8008 / OpenATV). It streams a channel only for links signed by the panel, allows at most `max_streams` channels (tuners), adds the box's stream login, offers the chosen bouquets as M3U (markers become categories, encrypted channels left out with `fta_only`), reports `/status`, serves picons and keeps a DuckDNS name updated. With init script, example settings and `relay/test_relay.py`.
 - New source type **Satellite receiver** (`sources.type = receiver`, `relay_secret` encrypted, `transcode`, `receiver_online`, `receiver_checked_at`). Imports the relay playlist. Never stream-checked.

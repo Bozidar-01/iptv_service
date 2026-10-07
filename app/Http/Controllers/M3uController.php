@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\EpgService;
 use App\Services\TokenService;
 use App\Services\XtreamService;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class M3uController extends Controller
             return response('Invalid credentials', 401);
         }
 
-        return $this->playlistFor($user);
+        return $this->playlistFor($user, route('xtream.xmltv', ['username' => $user->username, 'password' => $request->input('password')]));
     }
 
     /**
@@ -41,10 +42,24 @@ class M3uController extends Controller
             return response('Playlist not found', 404);
         }
 
-        return $this->playlistFor($user);
+        return $this->playlistFor($user, route('epg', ['token' => $token]));
     }
 
-    private function playlistFor(User $user)
+    /**
+     * GET /epg/{token}.xml: TV guide for the playlist link (linked from its header).
+     */
+    public function epg(string $token, EpgService $epg)
+    {
+        $user = User::where('playlist_token', $token)->first();
+
+        if (!$user || !$user->isActive()) {
+            return response('Guide not found', 404);
+        }
+
+        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) { echo $chunk; }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+    }
+
+    private function playlistFor(User $user, ?string $guideUrl = null)
     {
         if ($user->status !== 'active') {
             return response('Account disabled', 403);
@@ -56,7 +71,7 @@ class M3uController extends Controller
 
         $token = $this->tokenService->playbackToken($user);
 
-        return response($this->tokenService->getM3u($user, $token->token))
+        return response($this->tokenService->getM3u($user, $token->token, $guideUrl))
             ->header('Content-Type', 'audio/x-mpegurl')
             ->header('Content-Disposition', 'attachment; filename="playlist.m3u"');
     }

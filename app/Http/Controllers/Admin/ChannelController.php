@@ -7,6 +7,7 @@ use App\Models\Bouquet;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Services\ChannelService;
+use App\Services\EpgService;
 use App\Services\StreamCheckService;
 use App\Services\StreamPreviewService;
 use Illuminate\Http\Request;
@@ -51,8 +52,9 @@ class ChannelController extends Controller
     {
         $categories = $this->channelService->getAllCategories();
         $backupSuggestions = $this->channelService->backupSuggestions($channel);
+        $nowPlaying = app(EpgService::class)->nowPlaying($channel);
 
-        return view('admin.channels.edit', compact('channel', 'categories', 'backupSuggestions'));
+        return view('admin.channels.edit', compact('channel', 'categories', 'backupSuggestions', 'nowPlaying'));
     }
 
     public function update(Request $request, Channel $channel)
@@ -60,6 +62,8 @@ class ChannelController extends Controller
         $data = $this->validated($request);
 
         $this->channelService->updateChannel($channel, $data);
+        // A guide ID typed by the admin is kept; an empty field goes back to automatic matching
+        app(EpgService::class)->matchChannels($channel->source_id);
 
         return redirect()->route('admin.channels.index')->with('success', __('Channel updated successfully.'));
     }
@@ -151,7 +155,10 @@ class ChannelController extends Controller
             'is_active' => 'boolean',
             'alert_on_down' => 'boolean',
             'backup_channel_id' => ['nullable', 'integer', 'exists:channels,id', Rule::notIn([$request->route('channel')?->id])],
+            'epg_id' => ['nullable', 'string', 'max:255'],
         ]);
+        $data['epg_id'] = filled($data['epg_id'] ?? null) ? trim($data['epg_id']) : null;
+        $data['epg_manual'] = $data['epg_id'] !== null;
         $data['is_active'] = $request->boolean('is_active');
         $data['alert_on_down'] = $request->boolean('alert_on_down');
 

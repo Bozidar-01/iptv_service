@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id'])]
+#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id'])]
 class Channel extends Model
 {
     protected function casts(): array
@@ -14,6 +14,7 @@ class Channel extends Model
             'is_active' => 'boolean',
             'auto_disabled' => 'boolean',
             'alert_on_down' => 'boolean',
+            'epg_manual' => 'boolean',
             'stream_checked_at' => 'datetime',
         ];
     }
@@ -44,6 +45,19 @@ class Channel extends Model
         return $query->orderBy(Category::select('name')->whereColumn('categories.id', 'channels.category_id'))
             ->orderBy('sort_order')
             ->orderBy('name');
+    }
+
+    public function epgSource()
+    {
+        return $this->belongsTo(EpgSource::class);
+    }
+
+    /**
+     * Guide ID used in playlists and the Xtream API: the matched XMLTV id, else the playlist's tvg-id.
+     */
+    public function guideId(): ?string
+    {
+        return $this->epg_id ?: $this->tvg_id;
     }
 
     public function backupChannel()

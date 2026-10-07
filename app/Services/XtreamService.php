@@ -143,7 +143,7 @@ class XtreamService
             'stream_type' => 'live',
             'stream_id' => $channel->id,
             'stream_icon' => $channel->logo_url ?? '',
-            'epg_channel_id' => $channel->tvg_id,
+            'epg_channel_id' => $channel->guideId(),
             'added' => (string) $channel->created_at?->timestamp,
             'is_adult' => 0,
             'category_id' => (string) $categoryId,

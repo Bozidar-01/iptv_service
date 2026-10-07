@@ -37,6 +37,20 @@
 
         @isset($backupSuggestions)
             <div class="field full">
+                <label class="label" for="epg_id">{{ __('Guide ID') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                <input class="input mono" id="epg_id" name="epg_id" value="{{ old('epg_id', $channel->epg_manual ? $channel->epg_id : '') }}"
+                       placeholder="{{ !$channel->epg_manual && $channel->epg_id ? __('Automatic: :id', ['id' => $channel->epg_id]) : __('Automatic: no match found') }}">
+                <span class="help">
+                    {{ __('The channel id in a TV guide (XMLTV), e.g. Rai1.it. Leave empty to match automatically by tvg-id and name.') }}
+                    @if($nowPlaying)
+                        <br><strong>{{ __('On now:') }}</strong> {{ $nowPlaying->title }} ({{ $nowPlaying->start->format('H:i') }}–{{ $nowPlaying->stop->format('H:i') }})
+                    @endif
+                </span>
+            </div>
+        @endisset
+
+        @isset($backupSuggestions)
+            <div class="field full">
                 <label class="label" for="backup_channel_id">{{ __('Backup channel') }} <span class="optional">{{ __('(optional)') }}</span></label>
                 <select class="select" id="backup_channel_id" name="backup_channel_id">
                     <option value="">{{ $channel->tvg_id ? __('Automatic: any working channel with the same guide ID') : __('None') }}</option>

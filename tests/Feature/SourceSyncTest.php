@@ -248,10 +248,7 @@ it('keeps the user agent and referrer a stream needs and puts them in the M3U', 
 describe('stable channel ids', function () {
     function playlistWith(string $entries): void
     {
-        // Replace the fake each time: earlier stubs would otherwise keep answering
-        app()->instance(\Illuminate\Http\Client\Factory::class, new \Illuminate\Http\Client\Factory);
-        Http::clearResolvedInstances();
-        Http::fake(['provider.test/*' => fn () => Http::response("#EXTM3U\n".$entries)]);
+        refakeHttp(['provider.test/*' => fn () => Http::response("#EXTM3U\n".$entries)]);
     }
 
     it('keeps the same channel when the provider renames it or moves it to another group', function () {

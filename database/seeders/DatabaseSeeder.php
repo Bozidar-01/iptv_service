@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\EpgSource;
 use App\Models\Source;
 use Illuminate\Database\Seeder;
 
@@ -19,6 +20,10 @@ class DatabaseSeeder extends Seeder
         // Only on a fresh install, so sources an admin deleted don't come back on every deploy
         if (!Source::exists()) {
             $this->call(DefaultSourcesSeeder::class);
+        }
+
+        if (!EpgSource::exists()) {
+            $this->call(DefaultEpgSourcesSeeder::class);
         }
     }
 }

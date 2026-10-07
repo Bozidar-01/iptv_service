@@ -19,10 +19,11 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/health` | `health` | `HealthController` | `200`/`503` JSON for an uptime monitor |
 | GET | `/m3u` | `m3u` | `M3uController@generate` | query: `username`, `password` |
 | GET | `/playlist/{token}.m3u` | `playlist` | `M3uController@playlist` | per-user playlist link |
+| GET | `/epg/{token}.xml` | `epg` | `M3uController@epg` | XMLTV guide for the playlist link |
 | GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream; token may end in `.m3u8`/`.ts`/… |
 | GET, POST | `/player_api.php` | `xtream.api` | `XtreamController@api` | Xtream Codes API: `username`, `password`, optional `action`, `category_id` |
 | GET, POST | `/get.php` | `xtream.playlist` | `M3uController@generate` | Xtream Codes M3U |
-| GET | `/xmltv.php` | `xtream.xmltv` | `XtreamController@xmltv` | empty guide |
+| GET | `/xmltv.php` | `xtream.xmltv` | `XtreamController@xmltv` | XMLTV guide (username + password) |
 | GET | `/live/{username}/{password}/{stream}` | `xtream.live` | `XtreamController@live` | `{stream}` = channel id + optional `.ts`/`.m3u8` |
 
 ## Admin (`auth` + `admin` middleware, prefix `/admin`, name prefix `admin.`)
@@ -41,6 +42,11 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | resource | `/admin/users` | `admin.users.*` | `UserController` (all, `show` is the playlist page) |
 | POST | `/admin/users/{user}/toggle` | `admin.users.toggle` | `UserController@toggleStatus` |
 | POST | `/admin/users/{user}/playlist-token` | `admin.users.playlist-token` | `UserController@regeneratePlaylistToken` |
+| GET | `/admin/epg` | `admin.epg.index` | `EpgSourceController@index` |
+| POST | `/admin/epg` | `admin.epg.store` | `EpgSourceController@store` |
+| POST | `/admin/epg/match` | `admin.epg.match` | `EpgSourceController@match` |
+| POST | `/admin/epg/{epgSource}/sync` | `admin.epg.sync` | `EpgSourceController@sync` |
+| DELETE | `/admin/epg/{epgSource}` | `admin.epg.destroy` | `EpgSourceController@destroy` |
 | GET | `/admin/alerts` | `admin.alerts.index` | `AlertController@index` |
 | POST | `/admin/alerts/read` | `admin.alerts.read` | `AlertController@markAllRead` |
 | GET | `/admin/logs` | `admin.logs.index` | `LogController@index` |
@@ -56,5 +62,7 @@ Admin resource routes are limited with `->only()` / `->except()` so that only im
 | `iptv:send-alerts {--test}` | every 5 minutes, without overlapping |
 | `iptv:heartbeat` | every minute |
 | `iptv:check-receivers` | every 5 minutes |
+| `iptv:sync-epg {--now}` | daily at 03:30 |
+| `iptv:expiry-reminders` | daily at 08:00 |
 | `model:prune --model=App\Models\ActiveSession` | every 15 minutes |
 | `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` | every minute, only when `QUEUE_SCHEDULED_WORKER=true` (shared hosting); `withoutOverlapping(15)`, in the background |

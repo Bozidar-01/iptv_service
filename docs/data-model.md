@@ -49,11 +49,14 @@ Helpers: `isBusy()` (queued/syncing), `isDueForSync()`, `isReceiver()`, `playlis
 | Column | Type | Notes |
 |---|---|---|
 | source_id | FK → sources, nullable, `ON DELETE CASCADE` | null = added manually |
-| external_key | string(64), nullable | identity within the source (sha1 of group + name); unique with `source_id` |
+| external_key | string(64), nullable | identity within the source: `tvg:` + sha1(tvg-id), else sha1(group + name); unique with `source_id` |
 | name | string | |
 | stream_url | string(2048) | upstream URL the player is redirected to |
 | logo_url | string(2048), nullable | used as `tvg-logo` |
 | tvg_id | string, nullable | from the playlist; used as `tvg-id` in output (EPG matching) |
+| epg_source_id | FK → epg_sources, nullable, `ON DELETE SET NULL` | guide this channel is matched to ([epg.md](features/epg.md)) |
+| epg_id | string, nullable | the guide's channel id |
+| epg_manual | bool, default false | `epg_id` was set by the admin; matching leaves it |
 | http_user_agent | string(512), nullable | player identity the stream needs (`#EXTVLCOPT:http-user-agent`) |
 | http_referrer | string(1024), nullable | referring page the stream needs (`#EXTVLCOPT:http-referrer`) |
 | sort_order | uint, default 0 | position in the source playlist |
@@ -64,21 +67,33 @@ Helpers: `isBusy()` (queued/syncing), `isDueForSync()`, `isReceiver()`, `playlis
 | stream_error | string(20), nullable | why the last check failed: `http:{code}`, `timeout`, `connect`, `html`, `empty` |
 | auto_disabled | bool, default false | the stream check switched it off (and will switch it back on); cleared when an admin enables/disables it |
 | alert_on_down | bool, default false | alert when it stops or starts working |
+| backup_channel_id | FK → channels, nullable, `ON DELETE SET NULL` | admin's chosen backup |
+| using_backup_id | FK → channels, nullable, `ON DELETE SET NULL` | backup playing now (set by the stream check) |
 
 Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isWatched()`.
 
 ### stream_alerts
 | Column | Type | Notes |
 |---|---|---|
-| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up` (`StreamAlert::TYPE_*`) |
+| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up`, `expiring`, `expired` (`StreamAlert::TYPE_*`) |
 | channel_id | FK → channels, nullable, `ON DELETE SET NULL` | |
 | source_id | FK → sources, nullable, `ON DELETE SET NULL` | |
+| user_id | FK → users, nullable, `ON DELETE SET NULL` | subscription reminders |
 | name | string | channel or source name when the alert was made |
 | detail | string(50), nullable | `down`: the `stream_error`; `queue_stuck`: minutes waited; `jobs_failed`: count |
 | read_at | timestamp, nullable, indexed | shared by all admins |
 | mailed_at | timestamp, nullable, indexed | set by `iptv:send-alerts` |
 
 Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem()`, `isSystem()`.
+
+### epg_sources
+`name`, `url`, `status` (as sources), `last_error`, `channel_count`, `programme_count`, `last_synced_at`, timestamps.
+
+### epg_channels
+`epg_source_id` FK cascade, `xmltv_id` (unique per source), `name`, `name_key` (indexed, `EpgService::nameKey`). No timestamps.
+
+### epg_programmes
+`epg_source_id` FK cascade, `xmltv_id`, `start`, `stop` (UTC), `title` (500), `description` (nullable). Index `(epg_source_id, xmltv_id, start)`. No timestamps.
 
 ### bouquets
 `id`, `name` (unique by validation), timestamps. A bouquet is a subscription pack.

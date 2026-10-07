@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BouquetController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChannelController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\EpgSourceController;
 use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\UserController;
@@ -45,6 +46,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
     Route::resource('users', UserController::class);
 
+    Route::get('epg', [EpgSourceController::class, 'index'])->name('epg.index');
+    Route::post('epg', [EpgSourceController::class, 'store'])->name('epg.store');
+    Route::post('epg/match', [EpgSourceController::class, 'match'])->name('epg.match');
+    Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
+    Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');

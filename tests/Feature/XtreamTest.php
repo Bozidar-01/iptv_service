@@ -88,7 +88,7 @@ it('answers VOD, series and EPG actions with empty data', function () {
         api(['action' => $action])->assertExactJson([]);
     }
     api(['action' => 'get_short_epg', 'stream_id' => $this->kanal5->id])->assertExactJson(['epg_listings' => []]);
-    $this->get('/xmltv.php?username=tv1&password=secret')->assertOk()->assertSee('<tv', false);
+    expect($this->get('/xmltv.php?username=tv1&password=secret')->assertOk()->streamedContent())->toContain('<tv');
 });
 
 it('serves the M3U playlist from get.php', function () {

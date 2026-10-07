@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Channel;
+use App\Services\EpgService;
 use App\Services\StreamService;
 use App\Services\XtreamService;
 use Illuminate\Http\Request;
@@ -47,7 +48,8 @@ class XtreamController extends Controller
         return match ($action) {
             'get_live_categories' => response()->json($this->xtreamService->liveCategories($user)),
             'get_live_streams' => $this->streamLiveStreams($user, $request->input('category_id')),
-            'get_short_epg', 'get_simple_data_table' => response()->json(['epg_listings' => []]),
+            'get_short_epg' => $this->epgListings($user, $request, false),
+            'get_simple_data_table' => $this->epgListings($user, $request, true),
             // Live TV only for now: VOD, series and anything else are empty
             default => response()->json([]),
         };
@@ -76,12 +78,33 @@ class XtreamController extends Controller
     }
 
     /**
-     * GET /xmltv.php: apps ask for it after login. No EPG yet, so an empty guide.
+     * GET /xmltv.php?username=&password=: the TV guide for the user's channels.
      */
-    public function xmltv()
+    public function xmltv(Request $request, EpgService $epg)
     {
-        return response("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<tv generator-info-name=\"".e(config('app.name'))."\"></tv>\n")
-            ->header('Content-Type', 'application/xml');
+        $user = $this->xtreamService->authenticate($request->input('username'), $request->input('password'));
+
+        if (!$user || $this->xtreamService->status($user) !== 'Active') {
+            return response("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<tv></tv>\n")->header('Content-Type', 'application/xml');
+        }
+
+        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) { echo $chunk; }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+    }
+
+    /**
+     * get_short_epg (next few programmes, &limit=) and get_simple_data_table (today onwards) for &stream_id=.
+     */
+    private function epgListings($user, Request $request, bool $fullDay)
+    {
+        $channel = Channel::availableTo($user)->find((int) $request->input('stream_id'));
+
+        if (!$channel) {
+            return response()->json(['epg_listings' => []]);
+        }
+
+        $limit = $fullDay ? null : max(1, min(50, (int) ($request->input('limit') ?: 4)));
+
+        return response()->json(['epg_listings' => app(EpgService::class)->xtreamListings($channel, $limit, $fullDay)]);
     }
 
     /**

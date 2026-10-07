@@ -20,4 +20,9 @@ return [
     */
     'expiry_reminder_days' => (int) env('EXPIRY_REMINDER_DAYS', 3),
 
+    /*
+    | Days of TV guide kept and sent to apps (EpgImportService, EpgService).
+    */
+    'epg_days' => (int) env('EPG_DAYS', 3),
+
 ];

@@ -30,6 +30,8 @@ Then, for both:
 - Play URLs use the host the playlist was requested from. TVs must request it via a LAN address, not `localhost`.
 - Escaping: inside quoted attributes, `"` becomes `'`. Line breaks become spaces everywhere.
 - Channels with `http_user_agent` / `http_referrer` get `#EXTVLCOPT:http-user-agent=…` / `#EXTVLCOPT:http-referrer=…` lines before their URL. TiviMate, OTT Navigator, VLC and Kodi send these on the play request and keep them through the redirect. The Xtream API has no way to pass them, so those channels may not play with a username/password login.
+- The header carries the TV guide address (`x-tvg-url`), and `tvg-id` is the matched guide id ([epg.md](epg.md)).
+- Channels whose stream is down but have a working backup redirect to the backup's stream (`Channel::playbackChannel()`).
 - Satellite receiver channels redirect to a signed, expiring relay link instead of their stored URL (`ReceiverService::playUrl`, [receiver.md](receiver.md)).
 - Headers: `Content-Type: audio/x-mpegurl`, `Content-Disposition: attachment; filename="playlist.m3u"`.
 
@@ -57,9 +59,9 @@ Lets apps like IPTV Smarters, TiviMate and XCIPTV log in with **server URL** (`s
 | `…&action=get_live_categories` | Categories with at least one channel the user can watch, by name. Uncategorized channels → `category_id` `"0"`, "General" |
 | `…&action=get_live_streams[&category_id=]` | The user's channels (`Channel::availableTo()`, playlist order), streamed as JSON: `num`, `name`, `stream_type` `live`, `stream_id` = channel id, `stream_icon`, `epg_channel_id` = `tvg_id`, `category_id`, … |
 | `…&action=get_vod_*`, `get_series*`, anything else | `[]` |
-| `…&action=get_short_epg` / `get_simple_data_table` | `{"epg_listings":[]}` |
+| `…&action=get_short_epg` / `get_simple_data_table` | The channel's programmes ([epg.md](epg.md)) |
 | `GET /live/{username}/{password}/{id}.{ts\|m3u8}` (`xtream.live`) | Same as `/play`: `401` wrong credentials, `404` unknown channel, `403` no access / disabled / expired / connection limit, otherwise logs, updates the session and `302` to the upstream |
-| `GET /xmltv.php` (`xtream.xmltv`) | An empty XMLTV guide (no EPG yet) |
+| `GET /xmltv.php` (`xtream.xmltv`) | The user's TV guide as XMLTV ([epg.md](epg.md)) |
 
 Disabled and expired accounts can still log in, so the app shows the status, but every action returns `[]`.
 

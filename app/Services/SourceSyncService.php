@@ -161,6 +161,9 @@ class SourceSyncService
             $this->attachToBouquet($source);
         }
 
+        // New and renamed channels get their TV guide right away
+        app(EpgService::class)->matchChannels($source->id);
+
         return Channel::where('source_id', $source->id)->count();
     }
 

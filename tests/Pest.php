@@ -61,3 +61,14 @@ function subscribedChannel(App\Models\User $user, array $attributes = []): App\M
 
     return $channel;
 }
+
+/**
+ * Http::fake() again with new stubs. A plain second Http::fake() call keeps the earlier stubs
+ * answering first, so tests that change a fake response mid-test use this instead.
+ */
+function refakeHttp(array $stubs): void
+{
+    app()->instance(Illuminate\Http\Client\Factory::class, new Illuminate\Http\Client\Factory);
+    Illuminate\Support\Facades\Http::clearResolvedInstances();
+    Illuminate\Support\Facades\Http::fake($stubs);
+}

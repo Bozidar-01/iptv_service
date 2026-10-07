@@ -24,6 +24,9 @@ Schedule::command('iptv:check-receivers')->everyFiveMinutes();
 // Remind admins about subscriptions ending soon / just ended (SubscriptionReminderService)
 Schedule::command('iptv:expiry-reminders')->dailyAt('08:00');
 
+// Refresh the TV guides daily and match channels to them (EpgImportService, EpgService)
+Schedule::command('iptv:sync-epg')->dailyAt('03:30');
+
 // Switch dead streams off and recovered ones back on (see StreamCheckService)
 Schedule::command('iptv:check-streams')->dailyAt('04:00');
 Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();
