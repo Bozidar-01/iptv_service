@@ -53,6 +53,7 @@
             <option value="inactive" @selected(($filters['status'] ?? '') === 'inactive')>{{ __('Disabled') }}</option>
             <option value="offline" @selected(($filters['status'] ?? '') === 'offline')>{{ __('Not working') }}</option>
             <option value="watched" @selected(($filters['status'] ?? '') === 'watched')>{{ __('Alerts on') }}</option>
+            <option value="backup" @selected(($filters['status'] ?? '') === 'backup')>{{ __('Playing a backup') }}</option>
         </select>
         @if(array_filter($filters))
             <a href="{{ route('admin.channels.index') }}" class="btn btn-ghost btn-sm"><x-icon name="x" /> {{ __('Clear') }}</a>
@@ -137,7 +138,9 @@
                         <td class="hide-sm">{!! $channel->source ? e($channel->source->name) : '<span class="faint">'.e(__('Manual')).'</span>' !!}</td>
                         <td class="hide-sm right">{{ $channel->bouquets_count }}</td>
                         <td>
-                            @if($channel->is_active)
+                            @if($channel->is_active && $channel->usingBackup)
+                                <span class="badge badge-warning badge-dot" title="{{ \App\Services\StreamCheckService::describeError($channel->stream_error) }} · {{ __('Playing :name instead until this stream works again.', ['name' => $channel->usingBackup->name]) }}">{{ __('Playing a backup') }}</span>
+                            @elseif($channel->is_active)
                                 <span class="badge badge-success badge-dot">{{ __('Enabled') }}</span>
                             @elseif($channel->auto_disabled)
                                 <span class="badge badge-danger badge-dot" title="{{ \App\Services\StreamCheckService::describeError($channel->stream_error) }} · {{ __('Disabled by the stream check on :date. It turns back on when the stream works again.', ['date' => $channel->stream_checked_at?->translatedFormat('j M Y H:i')]) }}">{{ __('Not working') }}</span>

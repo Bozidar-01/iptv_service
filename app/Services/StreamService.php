@@ -38,7 +38,7 @@ class StreamService
         $this->updateSession($user, $channel);
 
         // 3. Return target URL: the stream itself, or a signed link for receiver channels
-        return $this->receiverService->playUrl($channel);
+        return $this->receiverService->playUrl($channel->playbackChannel());
     }
 
     /**

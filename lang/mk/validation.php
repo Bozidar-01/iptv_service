@@ -166,6 +166,7 @@ return [
         'action' => 'дејство',
         'alert_on_down' => 'известувања',
         'auto_sync' => 'автоматско освежување',
+        'backup_channel_id' => 'резервен канал',
         'bouquet_id' => 'пакет',
         'bouquets' => 'пакети',
         'categories' => 'категории',

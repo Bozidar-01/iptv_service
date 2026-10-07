@@ -50,7 +50,9 @@ class ChannelController extends Controller
     public function edit(Channel $channel)
     {
         $categories = $this->channelService->getAllCategories();
-        return view('admin.channels.edit', compact('channel', 'categories'));
+        $backupSuggestions = $this->channelService->backupSuggestions($channel);
+
+        return view('admin.channels.edit', compact('channel', 'categories', 'backupSuggestions'));
     }
 
     public function update(Request $request, Channel $channel)
@@ -148,6 +150,7 @@ class ChannelController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'is_active' => 'boolean',
             'alert_on_down' => 'boolean',
+            'backup_channel_id' => ['nullable', 'integer', 'exists:channels,id', Rule::notIn([$request->route('channel')?->id])],
         ]);
         $data['is_active'] = $request->boolean('is_active');
         $data['alert_on_down'] = $request->boolean('alert_on_down');

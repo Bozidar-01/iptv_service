@@ -12,6 +12,7 @@ use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Throwable;
@@ -24,6 +25,10 @@ use Throwable;
  * Failed streams are tried a second time before they count as offline, and the reason is
  * kept in stream_error (see describeError()).
  * For watched channels (see Channel::scopeWatched) a change of state also creates a StreamAlert.
+ *
+ * Backups: when a stream is down but another working channel shows the same programme (the
+ * admin's chosen backup_channel_id, or a channel with the same tvg-id), the channel stays on
+ * and plays that stream instead (using_backup_id) until its own stream works again.
  */
 class StreamCheckService
 {
@@ -115,7 +120,7 @@ class StreamCheckService
     {
         $channels = $this->checkableQuery()->whereIn('id', $ids)
             ->with('source:id,alert_on_down')
-            ->get(['id', 'name', 'source_id', 'stream_url', 'http_user_agent', 'http_referrer', 'stream_status', 'alert_on_down']);
+            ->get(['id', 'name', 'source_id', 'stream_url', 'http_user_agent', 'http_referrer', 'stream_status', 'alert_on_down', 'tvg_id', 'backup_channel_id']);
 
         $errors = $this->probe($channels);
 
@@ -130,12 +135,17 @@ class StreamCheckService
 
         $online = array_keys(array_filter($errors, fn ($error) => $error === null));
         $offline = array_keys(array_filter($errors, fn ($error) => $error !== null));
+        $backups = $this->findBackups($channels->whereIn('id', $offline), $online);
+        $withoutBackup = array_values(array_diff($offline, array_keys($backups)));
         $now = now();
 
-        // Only flip channels the check owns: switch off enabled dead ones, switch back on recovered ones
-        Channel::whereIn('id', $offline)->where('is_active', true)->update(['is_active' => false, 'auto_disabled' => true]);
-        Channel::whereIn('id', $online)->where('auto_disabled', true)->update(['is_active' => true, 'auto_disabled' => false]);
-        Channel::whereIn('id', $online)->update(['stream_status' => self::STATUS_ONLINE, 'stream_error' => null, 'stream_checked_at' => $now]);
+        // Only flip channels the check owns: switch off enabled dead ones without a backup,
+        // switch back on recovered ones and ones that now have a backup
+        Channel::whereIn('id', $withoutBackup)->where('is_active', true)->update(['is_active' => false, 'auto_disabled' => true]);
+        Channel::whereIn('id', [...$online, ...array_keys($backups)])->where('auto_disabled', true)->update(['is_active' => true, 'auto_disabled' => false]);
+        Channel::whereIn('id', $online)->update(['stream_status' => self::STATUS_ONLINE, 'stream_error' => null, 'stream_checked_at' => $now, 'using_backup_id' => null]);
+        Channel::whereIn('id', $withoutBackup)->update(['using_backup_id' => null]);
+        $this->setBackups($backups);
 
         // One update per distinct reason (a handful), not per channel
         collect($errors)->reject(fn ($error) => $error === null)
@@ -144,6 +154,76 @@ class StreamCheckService
                 ->update(['stream_status' => self::STATUS_OFFLINE, 'stream_error' => $error, 'stream_checked_at' => $now]));
 
         return ['online' => count($online), 'offline' => count($offline)];
+    }
+
+    /**
+     * A working channel to play instead of each dead one, if there is one: the admin's chosen
+     * backup first, then another channel with the same tvg-id. A backup must be enabled, not
+     * itself playing a backup, and working (in this check, or in its last check).
+     *
+     * @param  Collection<int, Channel>  $dead
+     * @param  array<int>  $workingNow  ids found working in this check
+     * @return array<int, int> dead channel id => backup channel id
+     */
+    private function findBackups(Collection $dead, array $workingNow): array
+    {
+        if ($dead->isEmpty()) {
+            return [];
+        }
+
+        $deadIds = $dead->pluck('id')->all();
+        $tvgIds = $dead->pluck('tvg_id')->filter()->unique()->values()->all();
+        $chosenIds = $dead->pluck('backup_channel_id')->filter()->unique()->values()->all();
+
+        if ($tvgIds === [] && $chosenIds === []) {
+            return [];
+        }
+
+        $candidates = Channel::query()
+            ->where(fn ($q) => $q->whereIn('id', $chosenIds)->orWhereIn('tvg_id', $tvgIds))
+            ->whereNotIn('id', $deadIds)
+            ->where('is_active', true)
+            ->whereNull('using_backup_id')
+            ->where(fn ($q) => $q->where('stream_status', self::STATUS_ONLINE)->orWhereIn('id', $workingNow))
+            ->orderBy('id')
+            ->get(['id', 'tvg_id']);
+
+        $byId = $candidates->keyBy('id');
+        $byTvg = $candidates->filter(fn ($c) => $c->tvg_id)->groupBy(fn ($c) => mb_strtolower($c->tvg_id));
+
+        $backups = [];
+        foreach ($dead as $channel) {
+            $backup = ($channel->backup_channel_id ? $byId->get($channel->backup_channel_id) : null)
+                ?? ($channel->tvg_id ? $byTvg->get(mb_strtolower($channel->tvg_id))?->first() : null);
+
+            if ($backup) {
+                $backups[$channel->id] = $backup->id;
+            }
+        }
+
+        return $backups;
+    }
+
+    /**
+     * @param  array<int, int>  $backups  channel id => backup id; one query for all
+     */
+    private function setBackups(array $backups): void
+    {
+        if ($backups === []) {
+            return;
+        }
+
+        $cases = implode(' ', array_fill(0, count($backups), 'WHEN ? THEN ?'));
+        $placeholders = implode(',', array_fill(0, count($backups), '?'));
+        $bindings = [];
+        foreach ($backups as $id => $backupId) {
+            array_push($bindings, $id, $backupId);
+        }
+
+        DB::update(
+            "UPDATE channels SET using_backup_id = CASE id {$cases} END WHERE id IN ({$placeholders})",
+            [...$bindings, ...array_keys($backups)]
+        );
     }
 
     /**

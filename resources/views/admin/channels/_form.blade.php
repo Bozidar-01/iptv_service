@@ -35,6 +35,21 @@
             <input class="input" id="logo_url" name="logo_url" type="url" value="{{ old('logo_url', $channel->logo_url ?? '') }}" placeholder="https://…/logo.png">
         </div>
 
+        @isset($backupSuggestions)
+            <div class="field full">
+                <label class="label" for="backup_channel_id">{{ __('Backup channel') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                <select class="select" id="backup_channel_id" name="backup_channel_id">
+                    <option value="">{{ $channel->tvg_id ? __('Automatic: any working channel with the same guide ID') : __('None') }}</option>
+                    @foreach($backupSuggestions as $suggestion)
+                        <option value="{{ $suggestion->id }}" @selected((string) old('backup_channel_id', $channel->backup_channel_id) === (string) $suggestion->id)>
+                            {{ $suggestion->name }} · {{ $suggestion->source->name ?? __('Manual') }}{{ $suggestion->stream_status === 'offline' ? ' · '.__('Not working') : '' }}{{ $suggestion->is_active ? '' : ' · '.__('Disabled') }}
+                        </option>
+                    @endforeach
+                </select>
+                <span class="help">{{ __('When this stream stops working, viewers get the backup instead of a dead channel, until it works again. Listed: channels with the same name or guide ID.') }}</span>
+            </div>
+        @endisset
+
         <div class="field full">
             <input type="hidden" name="is_active" value="0">
             <label class="check">

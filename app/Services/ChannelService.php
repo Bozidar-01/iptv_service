@@ -15,7 +15,7 @@ class ChannelService
      * Channels matching the admin list filters.
      *
      * Filters: search, category (id or "none"), source (id or "manual"), bouquet (id),
-     * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on).
+     * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on|"backup" = playing a backup).
      */
     public function filteredQuery(array $filters): Builder
     {
@@ -31,6 +31,7 @@ class ChannelService
             ->when($filters['status'] ?? null, fn ($q, $status) => match ($status) {
                 'offline' => $q->where('auto_disabled', true),
                 'watched' => $q->watched(),
+                'backup' => $q->whereNotNull('using_backup_id'),
                 default => $q->where('is_active', $status === 'active'),
             });
     }
@@ -38,7 +39,7 @@ class ChannelService
     public function getAllChannels(array $filters = [])
     {
         return $this->filteredQuery($filters)
-            ->with(['category', 'source'])
+            ->with(['category', 'source', 'usingBackup:id,name'])
             ->withCount('bouquets')
             ->orderBy('name')
             ->paginate(50)
@@ -98,6 +99,23 @@ class ChannelService
             'channels',
             'channels as active_channels_count' => fn ($q) => $q->where('is_active', true),
         ])->orderBy('name')->get();
+    }
+
+    /**
+     * Channels that probably show the same programme, offered as backups on the edit form:
+     * same tvg-id or same name, from any source.
+     */
+    public function backupSuggestions(Channel $channel)
+    {
+        return Channel::with('source:id,name')
+            ->whereKeyNot($channel->id)
+            ->where(fn ($q) => $q->where('name', $channel->name)
+                ->when($channel->tvg_id, fn ($q) => $q->orWhere('tvg_id', $channel->tvg_id))
+                ->when($channel->backup_channel_id, fn ($q) => $q->orWhere('id', $channel->backup_channel_id)))
+            ->orderByDesc('is_active')
+            ->orderBy('name')
+            ->limit(25)
+            ->get(['id', 'name', 'source_id', 'is_active', 'stream_status']);
     }
 
     public function createChannel(array $data)

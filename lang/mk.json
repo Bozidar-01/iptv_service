@@ -376,5 +376,10 @@
     "Receiver :name is back online": "Ресиверот :name повторно е достапен",
     "Subscriptions": "Претплати",
     "Subscription of :name ends on :date": "Претплатата на :name истекува на :date",
-    "Subscription of :name ended on :date": "Претплатата на :name истече на :date"
+    "Subscription of :name ended on :date": "Претплатата на :name истече на :date",
+    "Backup channel": "Резервен канал",
+    "Automatic: any working channel with the same guide ID": "Автоматски: било кој канал што работи со истиот ID за водичот",
+    "When this stream stops working, viewers get the backup instead of a dead channel, until it works again. Listed: channels with the same name or guide ID.": "Кога овој стрим ќе престане да работи, гледачите добиваат резервен наместо мртов канал, сè додека повторно не проработи. Наведени се канали со исто име или ID за водичот.",
+    "Playing a backup": "Пушта резервен",
+    "Playing :name instead until this stream works again.": "Наместо него се пушта :name додека овој стрим повторно не проработи."
 }

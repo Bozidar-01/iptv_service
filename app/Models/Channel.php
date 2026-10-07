@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down'])]
+#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id'])]
 class Channel extends Model
 {
     protected function casts(): array
@@ -44,6 +44,27 @@ class Channel extends Model
         return $query->orderBy(Category::select('name')->whereColumn('categories.id', 'channels.category_id'))
             ->orderBy('sort_order')
             ->orderBy('name');
+    }
+
+    public function backupChannel()
+    {
+        return $this->belongsTo(Channel::class, 'backup_channel_id');
+    }
+
+    public function usingBackup()
+    {
+        return $this->belongsTo(Channel::class, 'using_backup_id');
+    }
+
+    /**
+     * The channel whose stream is actually played: the backup while the stream check has
+     * found ours down and switched to one (StreamCheckService), otherwise this channel.
+     */
+    public function playbackChannel(): Channel
+    {
+        $backup = $this->using_backup_id ? $this->usingBackup : null;
+
+        return $backup && $backup->is_active ? $backup : $this;
     }
 
     public function isWatched(): bool
