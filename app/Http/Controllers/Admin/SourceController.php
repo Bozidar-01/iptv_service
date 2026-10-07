@@ -38,7 +38,7 @@ class SourceController extends Controller
 
         $this->sourceService->createSource($data, $request->file('file'));
 
-        return redirect()->route('admin.sources.index')->with('success', 'Source added. Channels are being imported in the background.');
+        return redirect()->route('admin.sources.index')->with('success', __('Source added. Channels are being imported in the background.'));
     }
 
     public function edit(Source $source)
@@ -54,23 +54,23 @@ class SourceController extends Controller
 
         $this->sourceService->updateSource($source, $data, $request->file('file'));
 
-        return redirect()->route('admin.sources.index')->with('success', 'Source updated. Sync it to apply changes to its channels.');
+        return redirect()->route('admin.sources.index')->with('success', __('Source updated. Sync it to apply changes to its channels.'));
     }
 
     public function destroy(Source $source)
     {
         $this->sourceService->deleteSource($source);
 
-        return redirect()->route('admin.sources.index')->with('success', 'Source and its channels deleted.');
+        return redirect()->route('admin.sources.index')->with('success', __('Source and its channels deleted.'));
     }
 
     public function sync(Source $source)
     {
         if (!$this->sourceService->queueSync($source)) {
-            return back()->with('error', 'A sync for this source is already in progress.');
+            return back()->with('error', __('A sync for this source is already in progress.'));
         }
 
-        return back()->with('success', "Sync started for {$source->name}.");
+        return back()->with('success', __('Sync started for :name.', ['name' => $source->name]));
     }
 
     private function validated(Request $request, ?Source $source): array
@@ -86,7 +86,7 @@ class SourceController extends Controller
             ],
             'bouquet_id' => ['nullable', function ($attribute, $value, $fail) {
                 if ($value !== 'new' && !Bouquet::whereKey($value)->exists()) {
-                    $fail('The selected bouquet is invalid.');
+                    $fail(__('The selected bouquet is invalid.'));
                 }
             }],
             'skip_vod' => ['boolean'],

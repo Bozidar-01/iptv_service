@@ -39,7 +39,7 @@ class BouquetController extends Controller
 
         $this->bouquetService->createBouquet($data);
 
-        return redirect()->route('admin.bouquets.index')->with('success', 'Bouquet created successfully.');
+        return redirect()->route('admin.bouquets.index')->with('success', __('Bouquet created successfully.'));
     }
 
     public function edit(Bouquet $bouquet)
@@ -59,14 +59,14 @@ class BouquetController extends Controller
 
         $this->bouquetService->updateBouquet($bouquet, $data);
 
-        return redirect()->route('admin.bouquets.index')->with('success', 'Bouquet updated successfully.');
+        return redirect()->route('admin.bouquets.index')->with('success', __('Bouquet updated successfully.'));
     }
 
     public function destroy(Bouquet $bouquet)
     {
         $this->bouquetService->deleteBouquet($bouquet);
 
-        return redirect()->route('admin.bouquets.index')->with('success', 'Bouquet deleted successfully.');
+        return redirect()->route('admin.bouquets.index')->with('success', __('Bouquet deleted successfully.'));
     }
 
     private function categoriesWithCounts()

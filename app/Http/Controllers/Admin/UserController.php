@@ -39,7 +39,7 @@ class UserController extends Controller
     {
         $user->regeneratePlaylistToken();
 
-        return back()->with('success', 'New playlist link generated. The old link no longer works.');
+        return back()->with('success', __('New playlist link generated. The old link no longer works.'));
     }
 
     public function create()
@@ -63,7 +63,7 @@ class UserController extends Controller
 
         $user = $this->userService->createUser($data);
 
-        return redirect()->route('admin.users.show', $user)->with('success', 'User created. Share the playlist link below.');
+        return redirect()->route('admin.users.show', $user)->with('success', __('User created. Share the playlist link below.'));
     }
 
     public function edit(User $user)
@@ -89,23 +89,23 @@ class UserController extends Controller
         $data['bouquets'] = $data['bouquets'] ?? []; // unchecking every bouquet must clear them
         $this->userService->updateUser($user, $data);
 
-        return redirect()->route('admin.users.show', $user)->with('success', 'User updated successfully.');
+        return redirect()->route('admin.users.show', $user)->with('success', __('User updated successfully.'));
     }
 
     public function destroy(User $user)
     {
         if ($user->is(auth()->user())) {
-            return back()->with('error', "You can't delete your own account.");
+            return back()->with('error', __("You can't delete your own account."));
         }
 
         $this->userService->deleteUser($user);
 
-        return redirect()->route('admin.users.index')->with('success', 'User deleted successfully.');
+        return redirect()->route('admin.users.index')->with('success', __('User deleted successfully.'));
     }
 
     public function toggleStatus(User $user)
     {
         $this->userService->toggleStatus($user);
-        return back()->with('success', 'User status updated.');
+        return back()->with('success', __('User status updated.'));
     }
 }

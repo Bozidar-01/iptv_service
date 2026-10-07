@@ -23,5 +23,6 @@ _None currently known._
 - **No EPG:** `tvg-id` is passed through, but there is no `url-tvg` / XMLTV support.
 - **No Xtream Codes API** (`player_api.php`). Apps that only support Xtream logins can't use the service.
 - **Docker setup is development-grade:** code is bind-mounted, `APP_DEBUG` comes from `.env`, MySQL passwords are fixed in `docker-compose.yml`, and there's no HTTPS.
+- **Partly translated:** `/m3u`, `/playlist` and `/play` error bodies and `sources.last_error` are always English; numbers use English separators (`1,234`) in Macedonian too. Laravel's Macedonian plural rule treats 11 like 1 ("11 канал").
 - **Unused:** Vite/Tailwind setup (`resources/css`, `resources/js`, `vite.config.js`).
 - **Not covered by tests:** category CRUD, the user status toggle, and any browser-level JS (bulk selection, dialogs, copy button). Verified manually.

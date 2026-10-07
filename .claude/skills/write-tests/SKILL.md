@@ -26,8 +26,9 @@ Pest 4 + `pestphp/pest-plugin-laravel`. Tests run on sqlite `:memory:` (see `php
 - Name tests after behaviour: `it('refuses play when connection limit is reached')`.
 - For `/play`, assert a redirect to the channel URL: `->assertRedirect($channel->stream_url)`. Assert status codes 401/403/404 for the failure branches.
 - For `/m3u`, assert `Content-Type` `audio/x-mpegurl`, `#EXTM3U` header, one `/play/` line per active channel in the user's bouquets, and no inactive channels.
+- Translated UI: tests assert the English text (default locale). To test Macedonian, send the cookie: `$this->withCookie('locale', 'mk')->get(...)`, or call `app()->setLocale('mk')` for unit-level checks. The `theme` cookie is unencrypted: use `withUnencryptedCookie('theme', 'dark')` and `assertPlainCookie('theme', 'dark')` (see `ThemeTest`).
 - Use `$this->travel(6)->minutes()` to test the 5-minute session window; `$this->freezeSecond()` when comparing timestamps.
-- Existing suites to extend: `AuthTest`, `M3uTest`, `PlayTest`, `SeederTest`, `SourceSyncTest`, `Unit/M3uParserTest`, `Admin/ChannelTest`, `Admin/ChannelBulkTest`, `Admin/SourceTest`, `Admin/UserTest`, `Admin/ValidationErrorsTest`.
+- Existing suites to extend: `AuthTest`, `M3uTest`, `PlayTest`, `SeederTest`, `SourceSyncTest`, `Unit/M3uParserTest`, `Admin/ChannelTest`, `Admin/ChannelBulkTest`, `Admin/SourceTest`, `Admin/UserTest`, `Admin/ValidationErrorsTest`, `LocaleTest` (language switching; also checks every `__()` key in code exists in `lang/mk.json` with matching placeholders, so it fails when you add untranslated text).
 
 ## Must-cover scenarios for import changes
 new channels · update on re-sync · admin's is_active kept · vanished channels deleted · other sources/manual channels untouched · duplicates in one list · VOD skipping · bouquet attach without duplicates · download failure → status failed · empty playlist doesn't delete.

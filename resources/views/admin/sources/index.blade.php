@@ -1,15 +1,15 @@
 @extends('layouts.admin')
 
-@section('title', 'Sources')
+@section('title', __('Sources'))
 
 @section('content')
 <div class="page-header">
     <div>
-        <h1>Sources</h1>
-        <p>M3U playlists from your providers. Their channels are imported and kept up to date.</p>
+        <h1>{{ __('Sources') }}</h1>
+        <p>{{ __('M3U playlists from your providers. Their channels are imported and kept up to date.') }}</p>
     </div>
     <div class="page-actions">
-        <a href="{{ route('admin.sources.create') }}" class="btn btn-primary"><x-icon name="plus" /> Add source</a>
+        <a href="{{ route('admin.sources.create') }}" class="btn btn-primary"><x-icon name="plus" /> {{ __('Add source') }}</a>
     </div>
 </div>
 
@@ -17,8 +17,7 @@
     <div class="alert alert-warning">
         <x-icon name="alert" />
         <div class="alert-body">
-            A sync has been queued for over 2 minutes. Make sure the queue worker is running:
-            <code>php artisan queue:work</code> (or <code>composer dev</code>).
+            {!! __('A sync has been queued for over 2 minutes. Make sure the queue worker is running: :command (or :alt).', ['command' => '<code>php artisan queue:work</code>', 'alt' => '<code>composer dev</code>']) !!}
         </div>
     </div>
 @endif
@@ -27,20 +26,20 @@
     @if($sources->isEmpty())
         <div class="empty">
             <div class="empty-icon"><x-icon name="source" /></div>
-            <h3>No sources yet</h3>
-            <p>Add a provider's M3U URL or upload a playlist file to import channels.</p>
-            <a href="{{ route('admin.sources.create') }}" class="btn btn-primary"><x-icon name="plus" /> Add source</a>
+            <h3>{{ __('No sources yet') }}</h3>
+            <p>{{ __("Add a provider's M3U URL or upload a playlist file to import channels.") }}</p>
+            <a href="{{ route('admin.sources.create') }}" class="btn btn-primary"><x-icon name="plus" /> {{ __('Add source') }}</a>
         </div>
     @else
         <div class="table-wrap">
             <table class="table">
                 <thead>
                 <tr>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th class="right">Channels</th>
-                    <th class="hide-sm">Bouquet</th>
-                    <th class="hide-sm">Last sync</th>
+                    <th>{{ __('Source') }}</th>
+                    <th>{{ __('Status') }}</th>
+                    <th class="right">{{ __('Channels') }}</th>
+                    <th class="hide-sm">{{ __('Bouquet') }}</th>
+                    <th class="hide-sm">{{ __('Last sync') }}</th>
                     <th></th>
                 </tr>
                 </thead>
@@ -53,9 +52,9 @@
                                 <div style="min-width: 0">
                                     <div class="cell-main">{{ $source->name }}</div>
                                     <div class="cell-sub truncate">
-                                        {{ $source->type === 'url' ? parse_url($source->url, PHP_URL_HOST) : 'Uploaded file' }}
-                                        @if($source->skip_vod) · live only @endif
-                                        @if($source->auto_sync) · auto-refresh daily @endif
+                                        {{ $source->type === 'url' ? parse_url($source->url, PHP_URL_HOST) : __('Uploaded file') }}
+                                        @if($source->skip_vod) · {{ __('live only') }} @endif
+                                        @if($source->auto_sync) · {{ __('auto-refresh daily') }} @endif
                                     </div>
                                 </div>
                             </div>
@@ -68,27 +67,27 @@
                         </td>
                         <td class="right">
                             <a href="{{ route('admin.channels.index', ['source' => $source->id]) }}" class="cell-main">{{ number_format($source->channel_count) }}</a>
-                            <div class="cell-sub">{{ number_format($source->active_channels_count) }} enabled</div>
+                            <div class="cell-sub">{{ __(':count enabled', ['count' => number_format($source->active_channels_count)]) }}</div>
                         </td>
                         <td class="hide-sm">
                             @if($source->bouquet)
                                 <span class="badge badge-primary">{{ $source->bouquet->name }}</span>
                             @else
-                                <span class="faint">None</span>
+                                <span class="faint">{{ __('None') }}</span>
                             @endif
                         </td>
-                        <td class="hide-sm muted">{{ $source->last_synced_at?->diffForHumans() ?? 'Never' }}</td>
+                        <td class="hide-sm muted">{{ $source->last_synced_at?->diffForHumans() ?? __('Never') }}</td>
                         <td class="shrink">
                             <div class="actions">
                                 <form method="POST" action="{{ route('admin.sources.sync', $source) }}" class="inline-form">
                                     @csrf
-                                    <button class="btn btn-secondary btn-sm" @disabled($source->isBusy())><x-icon name="refresh" /> Sync</button>
+                                    <button class="btn btn-secondary btn-sm" @disabled($source->isBusy())><x-icon name="refresh" /> {{ __('Sync') }}</button>
                                 </form>
-                                <a href="{{ route('admin.sources.edit', $source) }}" class="btn btn-ghost btn-icon" title="Edit" aria-label="Edit {{ $source->name }}"><x-icon name="edit" /></a>
+                                <a href="{{ route('admin.sources.edit', $source) }}" class="btn btn-ghost btn-icon" title="{{ __('Edit') }}" aria-label="{{ __('Edit :name', ['name' => $source->name]) }}"><x-icon name="edit" /></a>
                                 <form method="POST" action="{{ route('admin.sources.destroy', $source) }}" class="inline-form"
-                                      data-confirm="Delete {{ $source->name }} and its {{ number_format($source->channel_count) }} channels? This can't be undone.">
+                                      data-confirm="{{ __("Delete :name and its :count channels? This can't be undone.", ['name' => $source->name, 'count' => number_format($source->channel_count)]) }}">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-danger-ghost btn-icon" title="Delete" aria-label="Delete {{ $source->name }}"><x-icon name="trash" /></button>
+                                    <button class="btn btn-danger-ghost btn-icon" title="{{ __('Delete') }}" aria-label="{{ __('Delete :name', ['name' => $source->name]) }}"><x-icon name="trash" /></button>
                                 </form>
                             </div>
                         </td>

@@ -1,10 +1,13 @@
 <?php
 
+use App\Jobs\SyncSource;
 use App\Models\Bouquet;
 use App\Models\Category;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Services\SourceSyncService;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -179,4 +182,41 @@ it('only picks up due auto-sync sources with --due', function () {
     expect($stale->fresh()->status)->toBe(Source::STATUS_SUCCESS)
         ->and($fresh->fresh()->status)->toBe(Source::STATUS_PENDING)
         ->and($manual->fresh()->status)->toBe(Source::STATUS_PENDING);
+});
+
+it('marks a source as failed when its import job is stopped before finishing', function () {
+    $source = urlSource(['status' => Source::STATUS_SYNCING]);
+
+    (new SyncSource($source))->failed(new RuntimeException('SyncSource has been attempted too many times.'));
+
+    expect($source->fresh())
+        ->status->toBe(Source::STATUS_FAILED)
+        ->last_error->toBe('The import was stopped before it finished.');
+});
+
+it('keeps the import error when a failed job is reported', function () {
+    $source = urlSource(['status' => Source::STATUS_FAILED, 'last_error' => 'Download failed with HTTP 500.']);
+
+    (new SyncSource($source))->failed(new RuntimeException('Download failed with HTTP 500.'));
+
+    expect($source->fresh()->last_error)->toBe('Download failed with HTTP 500.');
+});
+
+function scheduledQueueWorker(): ?Event
+{
+    return collect(app(Schedule::class)->events())
+        ->first(fn (Event $event) => str_contains($event->command, 'queue:work'));
+}
+
+it('runs the queue worker from the scheduler only when enabled', function () {
+    $worker = scheduledQueueWorker();
+
+    expect($worker)->not->toBeNull()
+        ->and($worker->command)->toContain('--stop-when-empty')
+        ->and($worker->withoutOverlapping)->toBeTrue()
+        ->and($worker->filtersPass(app()))->toBeFalse();
+
+    config(['queue.scheduled_worker' => true]);
+
+    expect($worker->filtersPass(app()))->toBeTrue();
 });

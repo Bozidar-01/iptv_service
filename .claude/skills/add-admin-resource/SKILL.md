@@ -30,7 +30,7 @@ Methods: `getAll<Things>()` (paginate(20) or `withCount`), `create<Thing>(array 
 ## 4. Controller (`app/Http/Controllers/Admin/<Thing>Controller.php`)
 - Constructor injection: `protected $thingService;` set in `__construct(ThingService $thingService)`.
 - Inline `$request->validate([...])`; for unique fields on update use `'unique:things,name,' . $thing->id`.
-- After a write: `return redirect()->route('admin.things.index')->with('success', 'Thing created successfully.');`
+- After a write: `return redirect()->route('admin.things.index')->with('success', __('Thing created successfully.'));`
 - Implement every method the resource route registers, or limit the route with `->except(['show'])`. Don't leave dangling routes (see known-issues).
 
 ## 5. Routes (`routes/web.php`)
@@ -42,14 +42,21 @@ Inside the `auth` / `admin.` group: `Route::resource('things', ThingController::
 - Forms: `.card` > `.card-body.form-grid` > `.field` (`.label`, `.input`/`.select`, `.help`), `.card-footer` with Cancel + primary submit. Checkboxes: hidden `value="0"` input before a `.check` checkbox.
 - Deletes: `<form data-confirm="Delete X? What happens to related data.">`. Icons: `<x-icon name="..."/>` (add missing ones to `components/icon.blade.php`).
 - Flash messages and validation errors are rendered by the layout. Don't add them per page.
+- **Translate everything:** every label, heading, button, `title`, `placeholder`, `aria-label`, `data-confirm` and `@section('title', __('Things'))` goes through `__()`; counts use `trans_choice(':count thing|:count things', $n, ['count' => number_format($n)])`; dynamic values via placeholders (`__('Delete :name?', ['name' => $thing->name])`), never concatenation. Dates: `translatedFormat()`.
 - Only `admin.css` classes and CSS variables. **No Tailwind classes**, no inline colours. Check it at 375 px.
-- Add a sidebar entry to the `$nav` array in `resources/views/layouts/admin.blade.php`.
+- Add a sidebar entry to the `$nav` array in `resources/views/layouts/admin.blade.php` (`'label' => __('Things')`).
 - If it can hold thousands of rows: paginate, filter server-side, and use set-based bulk writes.
 
-## 7. Verify
+## 7. Macedonian translations
+- Add every new English string to `lang/mk.json` with its Macedonian text (keep the `:placeholders`; Macedonian plurals have two forms, e.g. `":count канал|:count канали"`).
+- Add each new form field name to `attributes` in `lang/mk/validation.php` so validation errors read naturally.
+- See `docs/features/localization.md` for the full rules.
+
+## 8. Verify
 - `php artisan route:list --path=admin/things`
 - Migrate and load each page in the browser (see the `run-app` skill). Test the migration's `down()` on MySQL too.
-- Add feature tests (see the `write-tests` skill).
+- Switch the panel to Македонски and check the pages, including at 375 px (Macedonian text is longer). Check light and dark mode too (sun/moon buttons in the sidebar).
+- Add feature tests (see the `write-tests` skill). `LocaleTest` must still pass.
 
-## 8. Document
+## 9. Document
 Run the `update-docs` skill: data-model, routes, admin-panel feature doc, CHANGELOG.

@@ -32,3 +32,18 @@ it('rejects wrong credentials', function () {
 it('redirects guests away from the admin panel', function () {
     $this->get('/admin/dashboard')->assertRedirect(route('login'));
 });
+
+it('shows the NeboTV name and icons on the sign-in page and panel', function () {
+    $this->get('/login')
+        ->assertOk()
+        ->assertSee('<title>Sign in · NeboTV</title>', false)
+        ->assertSee('Nebo<span class="brand-accent">TV</span>', false)
+        ->assertSee('favicon.svg')
+        ->assertSee('site.webmanifest');
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertSee('· NeboTV</title>', false)
+        ->assertSee('apple-touch-icon.png');
+});

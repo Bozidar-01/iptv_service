@@ -7,6 +7,7 @@
 - On success the session is regenerated and the user goes to `intended()` or `admin.dashboard`.
 - `GET /login` sends an already-logged-in admin straight to the dashboard.
 - Logout invalidates the session and regenerates the CSRF token.
+- The sign-in page has the language menu and the theme switch under the card. The `locale` and `theme` cookies outlive the session, so the chosen language and theme stay after sign-out ([localization.md](localization.md)). Login error messages are translated.
 
 The admin route group only applies `auth`, not an admin-role check. That's fine today because non-admins can't keep a session, but add a role middleware if that changes.
 

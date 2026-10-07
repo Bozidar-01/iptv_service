@@ -29,7 +29,7 @@ class AuthController extends Controller
             if ($user->role !== 'admin') {
                 Auth::logout();
                 return back()->withErrors([
-                    'username' => 'Unauthorized access.',
+                    'username' => __('Unauthorized access.'),
                 ]);
             }
 
@@ -39,7 +39,7 @@ class AuthController extends Controller
         }
 
         return back()->withErrors([
-            'username' => 'The provided credentials do not match our records.',
+            'username' => __('The provided credentials do not match our records.'),
         ])->onlyInput('username');
     }
 

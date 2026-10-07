@@ -1,4 +1,4 @@
-# IPTV Service
+# NeboTV
 
 A self-hosted IPTV panel. Import channels from your providers' M3U playlists, organise them into bouquets, create users, and give each user one playlist link to paste into an IPTV app on their TV (TiviMate, IPTV Smarters, OTT Navigator, VLC…).
 
@@ -17,6 +17,8 @@ Then open **http://localhost:8000** and sign in as `admin` / `admin123` (change 
 3. Copy the user's **playlist link** into the IPTV app on your TV. Open the panel via your computer's network IP (e.g. `http://192.168.1.20:8000`) so the link is reachable from the TV.
 
 Docker runs the web server, PHP, MySQL, the queue worker (imports) and the scheduler (daily refresh, session cleanup).
+
+Shared hosting (e.g. Hostinger) works too, with a single cron job: see [docs/deployment.md](docs/deployment.md).
 
 ## Documentation
 

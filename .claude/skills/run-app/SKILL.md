@@ -36,6 +36,8 @@ docker compose restart queue        # after changing job/service code: workers k
 ## Verifying in the browser
 1. Open http://localhost:8000/login in the built-in browser and sign in with the seeded admin.
 2. Check desktop (~1366 px) **and** mobile (375 px) widths. Reset the viewport afterwards.
+   For UI text changes, also switch to **Македонски** with the language menu (flag) at the bottom of the sidebar (sets the `locale` cookie) and check the page; switch back to English when done.
+   For styling changes, check **light and dark** with the sun/moon buttons next to it (sets the `theme` cookie); set it back to the monitor icon (system) when done.
 3. Import test: add a source with a small public playlist, e.g. `https://iptv-org.github.io/iptv/countries/mk.m3u`, and check the queue log and the Sources page.
 4. Playlist test: create a user with the bouquet, then `curl` their `/playlist/{token}.m3u` and one `/play/...` URL (expect `302`).
 

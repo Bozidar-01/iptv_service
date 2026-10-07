@@ -41,7 +41,8 @@ routes/web.php, routes/console.php
 - Controller → service via constructor injection (`protected $xService;`).
 - Many-to-many assignments arrive as arrays (`channels[]`, `bouquets[]`, `categories[]`). Bulk inserts into `bouquet_channel` use `ChannelService::attachToBouquet()` (one `INSERT … SELECT`), never per-row loops, because provider lists can have tens of thousands of channels.
 - MySQL can't `UPDATE`/`DELETE` a table using a subquery on the same table (error 1093). Wrap such subqueries in a derived table (`DB::query()->fromSub(...)`), as `ChannelService::bulkAction` does.
-- Success/error feedback: `redirect()->...->with('success'|'error', '…')`. The layout renders it.
+- Success/error feedback: `redirect()->...->with('success'|'error', __('…'))`. The layout renders it.
+- **All user-visible text goes through `__()` / `trans_choice()`** with the English text as key, and gets a Macedonian entry in `lang/mk.json`. See [features/localization.md](features/localization.md).
 - Models declare `#[Fillable]` / `#[Hidden]` attributes and a `casts()` method.
 - Pivot tables: `bouquet_channel`, `user_bouquet` (always pass the table name to `belongsToMany`).
 
@@ -50,9 +51,10 @@ routes/web.php, routes/console.php
 - Pages `@extends('layouts.admin')`, set `@section('title')`, and optionally `@section('container', 'container-narrow')` for forms. Page-specific JS goes in `@push('scripts')`.
 - Structure: `.page-header` (h1, p, `.page-actions`) → `.card` (`.card-header`, `.card-body`, `.card-footer`, `.toolbar` for filters, `.table-wrap` > `.table`) → `.empty` for empty states → `{{ $paginator->links('admin.partials.pagination') }}`.
 - Components: `.btn` + `.btn-primary|secondary|ghost|danger|danger-ghost`, `.btn-sm`, `.btn-icon`; `.badge` + `-success|warning|danger|info|primary`, `.badge-dot`; `.alert-*`; form `.form-grid` > `.field` > `.label` / `.input|.select` / `.help`; `.check`, `.check-list` > `.check-tile`, `.segmented`; `.stats` > `.stat`; `.list`, `.dl`, `.copy-field`; `<dialog class="modal">`.
-- Icons: `<x-icon name="tv" />` (`resources/views/components/icon.blade.php`). Add new icons there.
-- Partials: `admin.partials.flash` (in the layout), `errors`, `pagination`, `source-status`, `user-status`.
-- Colours only through CSS variables (`--primary`, `--surface`, `--text-muted`…). Each has light and dark values. No inline colours, no Tailwind classes.
+- Icons: `<x-icon name="tv" />` (`resources/views/components/icon.blade.php`). Add new icons there. The NeboTV logo is `<x-icon name="nebotv" />`; if you change it, update `public/favicon.svg` too and re-export the PNG/ICO icons from it. The app name is rendered with `<x-brand-name />`; brand gradient colours are `--brand-from`/`--brand-to` (`--sidebar-brand-from`/`-to` on the dark sidebar).
+- Partials: `admin.partials.flash` (in the layout), `errors`, `pagination`, `source-status`, `user-status`; `partials.preferences` (language menu with flags + theme switch, in the sidebar and on the sign-in page; `.prefs`, `.lang-menu`, `.theme-switch`).
+- Text: wrap everything in `__()` (also `title`, `placeholder`, `aria-label`, `data-confirm`), use `:placeholders` instead of concatenation, `translatedFormat()` for dates. Macedonian strings are often longer, so check them at 375 px too.
+- Colours only through CSS variables (`--primary`, `--surface`, `--text-muted`…). Each has a light value on `:root` and a dark value in **both** dark blocks (OS dark via media query, and `[data-theme="dark"]`; see [features/theme.md](features/theme.md)). No inline colours, no Tailwind classes. Check pages in light and dark mode.
 - Breakpoints: 1100 px (grids collapse), 860 px (sidebar becomes a drawer, `.hide-sm` columns hide), 520 px.
 
 ## Request flows

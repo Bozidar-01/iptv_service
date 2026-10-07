@@ -1,10 +1,10 @@
 @php
     $map = [
-        'pending' => ['', 'Not synced'],
-        'queued' => ['badge-info', 'Queued'],
-        'syncing' => ['badge-info', 'Syncing'],
-        'success' => ['badge-success', 'Synced'],
-        'failed' => ['badge-danger', 'Failed'],
+        'pending' => ['', __('Not synced')],
+        'queued' => ['badge-info', __('Queued')],
+        'syncing' => ['badge-info', __('Syncing')],
+        'success' => ['badge-success', __('Synced')],
+        'failed' => ['badge-danger', __('Failed')],
     ];
     [$class, $label] = $map[$source->status] ?? ['', ucfirst($source->status)];
 @endphp

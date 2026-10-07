@@ -8,8 +8,10 @@ use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\M3uController;
 use App\Http\Controllers\PlayController;
+use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -20,6 +22,10 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Panel language and light/dark mode (cookies), available before and after sign-in
+Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
+Route::post('/theme', [ThemeController::class, 'update'])->name('theme.update');
 
 // Admin Routes
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {

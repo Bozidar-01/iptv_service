@@ -42,7 +42,7 @@ class ChannelController extends Controller
 
         $this->channelService->createChannel($data);
 
-        return redirect()->route('admin.channels.index')->with('success', 'Channel created successfully.');
+        return redirect()->route('admin.channels.index')->with('success', __('Channel created successfully.'));
     }
 
     public function edit(Channel $channel)
@@ -57,14 +57,14 @@ class ChannelController extends Controller
 
         $this->channelService->updateChannel($channel, $data);
 
-        return redirect()->route('admin.channels.index')->with('success', 'Channel updated successfully.');
+        return redirect()->route('admin.channels.index')->with('success', __('Channel updated successfully.'));
     }
 
     public function destroy(Channel $channel)
     {
         $this->channelService->deleteChannel($channel);
 
-        return redirect()->route('admin.channels.index')->with('success', 'Channel deleted successfully.');
+        return redirect()->route('admin.channels.index')->with('success', __('Channel deleted successfully.'));
     }
 
     /**
@@ -80,8 +80,8 @@ class ChannelController extends Controller
             'bouquet_id' => ['required_if:action,add_to_bouquet,remove_from_bouquet', 'nullable', 'exists:bouquets,id'],
             'filters' => ['nullable', 'array'],
         ], [
-            'ids.required_if' => 'Select at least one channel.',
-            'bouquet_id.required_if' => 'Choose a bouquet.',
+            'ids.required_if' => __('Select at least one channel.'),
+            'bouquet_id.required_if' => __('Choose a bouquet.'),
         ]);
 
         $query = $data['scope'] === 'filtered'
@@ -90,15 +90,15 @@ class ChannelController extends Controller
 
         $count = $this->channelService->bulkAction($data['action'], $query, $data['bouquet_id'] ?? null);
 
-        $verb = [
-            'enable' => 'enabled',
-            'disable' => 'disabled',
-            'add_to_bouquet' => 'added to the bouquet',
-            'remove_from_bouquet' => 'removed from the bouquet',
-            'delete' => 'deleted',
+        $message = [
+            'enable' => ':count channel enabled.|:count channels enabled.',
+            'disable' => ':count channel disabled.|:count channels disabled.',
+            'add_to_bouquet' => ':count channel added to the bouquet.|:count channels added to the bouquet.',
+            'remove_from_bouquet' => ':count channel removed from the bouquet.|:count channels removed from the bouquet.',
+            'delete' => ':count channel deleted.|:count channels deleted.',
         ][$data['action']];
 
-        return back()->with('success', number_format($count).' '.str('channel')->plural($count)." {$verb}.");
+        return back()->with('success', trans_choice($message, $count, ['count' => number_format($count)]));
     }
 
     private function validated(Request $request): array

@@ -4,6 +4,38 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-07 — Language flags and light/dark mode switch
+- The language picker is now a menu with flag images (`public/images/flags/{gb,mk}.svg`) instead of a plain select. `config('app.locales')` entries are now `['name' => …, 'flag' => …]`.
+- New light / dark / system switch next to it (sidebar and sign-in page). The choice is stored in an unencrypted `theme` cookie, rendered as `<html data-theme>` by `App\Support\Theme`, applied instantly by JS, with `POST /theme` (`ThemeController`) as the no-JS fallback. The dark CSS tokens now apply for OS dark mode (unless light is forced) and for `data-theme="dark"`.
+- Both controls live in the new `partials/preferences` partial (replaces `partials/locale-switcher`). New icons: `sun`, `moon`, `monitor`, `chevron-down`. Macedonian strings: Theme, Light, Dark, System.
+- Tests: `ThemeTest` (default, cookie set/cleared, rendering, invalid values) and a flag test in `LocaleTest`. 120 tests.
+- Docs: new `docs/features/theme.md`; localization, routes, architecture, admin-panel, authentication, getting-started; CLAUDE.md and skills mention checking both themes.
+- Files: `config/app.php`, `bootstrap/app.php`, `routes/web.php`, `app/Support/Theme.php`, `app/Http/Controllers/ThemeController.php`, `resources/views/partials/preferences.blade.php`, `resources/views/{layouts/admin,auth/login}.blade.php`, `resources/views/components/icon.blade.php`, `public/css/admin.css`, `public/images/flags/*`, `lang/mk.json`, `tests/Feature/{ThemeTest,LocaleTest}.php`, `docs/**`, `CLAUDE.md`, `.claude/skills/*`.
+
+### 2026-10-07 — Shared hosting support
+- New `QUEUE_SCHEDULED_WORKER` env var (`config('queue.scheduled_worker')`, default `false`). When `true`, the scheduler runs `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` every minute (in the background, never overlapping, 15-minute lock), so one `schedule:run` cron job is enough on hosting without a long-running worker. Docker keeps its `queue` container and leaves it off.
+- `SyncSource::failed()`: a source whose import job was killed or timed out is now marked **Failed** ("The import was stopped before it finished.") instead of staying **Syncing**.
+- Docs: new `docs/deployment.md` (Hostinger / shared hosting guide).
+- Tests: scheduled worker on/off, job failure handling. 114 tests.
+- Files: `config/queue.php`, `routes/console.php`, `app/Jobs/SyncSource.php`, `.env.example`, `tests/Feature/SourceSyncTest.php`, `README.md`, `CLAUDE.md`, `docs/{deployment,README,getting-started,routes,CHANGELOG}.md`, `docs/features/sources.md`.
+
+### 2026-10-07 — NeboTV name, logo and favicons
+- The panel is now called **NeboTV**: sidebar, mobile top bar, sign-in page and page titles use `config('app.name')` (`APP_NAME=NeboTV`, also the default in `config/app.php`) instead of the translated "IPTV Panel" string, which was removed from `lang/mk.json`.
+- New logo: `nebotv` icon (TV with a star, "nebo" = sky) in the brand mark. Favicons (`favicon.svg`, `favicon.ico`), `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` and `site.webmanifest` so it can be added to a phone home screen; linked via the new `admin/partials/favicons` partial.
+- Wordmark: `<x-brand-name />` shows "Nebo" + gradient "TV" in the sidebar, top bar and sign-in page (new CSS variables `--brand-from`, `--brand-to`, `--sidebar-brand-from`, `--sidebar-brand-to`). Full logo files `public/logo{,-dark}.{svg,png}` for use outside the panel.
+- Changing `APP_NAME` changes the session cookie name, so admins are signed out once after updating `.env`.
+- Tests: branding check in `AuthTest`. 111 tests.
+- Files: `config/app.php`, `.env.example`, `resources/views/layouts/admin.blade.php`, `resources/views/auth/login.blade.php`, `resources/views/components/{icon,brand-name}.blade.php`, `public/css/admin.css`, `public/logo{,-dark}.{svg,png}`, `resources/views/admin/partials/favicons.blade.php`, `public/{favicon.svg,favicon.ico,apple-touch-icon.png,icon-192.png,icon-512.png,site.webmanifest}`, `lang/mk.json`, `tests/Feature/AuthTest.php`, `README.md`, `CLAUDE.md`, `docs/**`.
+
+### 2026-10-07 — English and Macedonian translations
+- Panel and sign-in page are translatable; English (default) and Macedonian ship. A language switcher (sidebar + sign-in page) posts to the new `POST /locale` route, which stores a `locale` cookie; `SetLocale` middleware (web group) applies it, falling back to `APP_LOCALE`. Supported languages are listed in `config('app.locales')`.
+- Every view string, flash message and custom validation message now goes through `__()` / `trans_choice()` (English text as key). Dates with month names use `translatedFormat()`; relative dates follow the locale through Carbon.
+- Macedonian strings in `lang/mk.json`; Laravel's validation/auth/pagination/password messages and form field names in `lang/mk/*.php`.
+- Bulk-action flash messages and channel/user counts use proper plural forms instead of `str()->plural()`.
+- Tests: `LocaleTest` (switching, cookie fallback, translated pages, flash and validation messages, plurals, every code string has a Macedonian entry with the same placeholders). 110 tests.
+- Docs: new `docs/features/localization.md`; CLAUDE.md and the `update-docs`, `add-admin-resource`, `write-tests`, `run-app` skills now require translated strings.
+- Files: `config/app.php`, `bootstrap/app.php`, `routes/web.php`, `app/Http/Middleware/SetLocale.php`, `app/Http/Controllers/LocaleController.php`, `app/Http/Controllers/{Admin/*,Auth/AuthController}.php`, `resources/views/**`, `public/css/admin.css`, `lang/**`, `tests/Feature/LocaleTest.php`, `docs/**`, `CLAUDE.md`, `.claude/skills/*`.
+
 ### 2026-10-07 — v1: M3U sources, admin redesign, Docker
 - **Sources:** import provider playlists by URL or upload (`sources` table, `Source` model, `SourceService`, `SourceSyncService`, `M3uParser`, `SyncSource` job, `iptv:sync-sources` command scheduled hourly with `--due`). Channels are upserted by `(source_id, external_key)`, keep the admin's enabled/disabled choice, vanished ones are deleted. Optional VOD skipping, auto-add to a (new) bouquet, daily auto-refresh.
 - **Channels:** new columns `source_id`, `external_key`, `tvg_id`, `sort_order`; URLs up to 2048 chars. List with search/filters and bulk enable/disable/add to bouquet/remove from bouquet/delete, including "all matching".

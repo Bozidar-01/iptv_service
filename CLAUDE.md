@@ -1,4 +1,4 @@
-# IPTV Service
+# NeboTV (IPTV Service)
 
 Laravel 13 (PHP 8.4) IPTV panel. Admins import channels from provider M3U playlists ("sources"), group them into bouquets and create users. Each user gets a playlist link for a TV IPTV app. Playback goes through `/play`, which checks access and connection limits, logs, and redirects to the provider stream.
 
@@ -21,13 +21,13 @@ docker compose exec app php artisan <cmd>          # artisan against the Docker 
 docker compose logs -f queue                       # source imports
 ```
 
-Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:work`, `composer test`. `vendor/bin/pint` is currently broken locally (missing build).
+Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:work`, `composer test`. Shared hosting (Hostinger): one `schedule:run` cron + `QUEUE_SCHEDULED_WORKER=true`, see [docs/deployment.md](docs/deployment.md). `vendor/bin/pint` is currently broken locally (missing build).
 
 ## Architecture
 
 - **Controllers stay thin; logic lives in `app/Services/`**, injected via the constructor (`protected $xService;`). Long work goes in a queued job (`app/Jobs`) that calls a service.
 - Services: `UserService`, `ChannelService` (channels, categories, bulk actions, `attachToBouquet`), `BouquetService`, `SourceService`, `SourceSyncService`, `M3uParser`, `TokenService` (tokens + M3U output), `StreamService` (access, limits, sessions, logs).
-- Inline `$request->validate([...])`. Feedback via `->with('success'|'error', ...)`, which the layout renders.
+- Inline `$request->validate([...])`. Feedback via `->with('success'|'error', __('...'))`, which the layout renders.
 - Models use `#[Fillable]` / `#[Hidden]` attributes and a `casts()` method.
 - Users have no email: auth is by `username`. `role` = `admin|user`, `status` = `active|disabled`. Only admins can log in.
 
@@ -40,8 +40,14 @@ Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:wo
 ## UI
 
 - Admin views: `@extends('layouts.admin')`, `.page-header` → `.card` components from `public/css/admin.css`, icons via `<x-icon name="..."/>`, partials in `resources/views/admin/partials/`. Full class list: [docs/architecture.md#ui-conventions](docs/architecture.md#ui-conventions).
-- Colours only via CSS variables (light + dark). No Tailwind classes, no inline colours. Keep pages working at 375 px wide.
+- Colours only via CSS variables. A new token needs its light value and the same dark value in **both** dark blocks of `admin.css` (OS dark + `[data-theme="dark"]`, see [docs/features/theme.md](docs/features/theme.md)). No Tailwind classes, no inline colours. Check light and dark mode (sun/moon buttons) and 375 px wide.
 - Use plain, clear wording ("Add source", "Disable"). No jargon.
+
+## Translations (English + Macedonian)
+
+- **Every user-visible string goes through `__()` / `trans_choice()`** (views, `title`/`placeholder`/`aria-label`/`data-confirm`, flash and custom validation messages). The English text is the key.
+- **Add the Macedonian text to `lang/mk.json` in the same task**; new form fields also go in `attributes` in `lang/mk/validation.php`. `LocaleTest` fails on any missing key or mismatched `:placeholder`.
+- Placeholders, not concatenation; links/`<code>` inside sentences via a placeholder + `{!! !!}` with `e()`; `translatedFormat()` for dates. Details: [docs/features/localization.md](docs/features/localization.md).
 
 ## Gotchas
 

@@ -13,6 +13,8 @@
     --text-muted: #5d6679;
     --text-faint: #8a93a6;
 
+    --brand-from: #6366f1;
+    --brand-to: #8b5cf6;
     --primary: #4f46e5;
     --primary-hover: #4338ca;
     --primary-soft: #eef0ff;
@@ -30,6 +32,8 @@
     --sidebar-bg: #111827;
     --sidebar-text: #aab2c3;
     --sidebar-text-active: #ffffff;
+    --sidebar-brand-from: #a5a8ff;
+    --sidebar-brand-to: #c4b5fd;
     --sidebar-hover: rgba(255, 255, 255, 0.06);
     --sidebar-active: rgba(255, 255, 255, 0.1);
 
@@ -45,8 +49,10 @@
     --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
 }
 
+/* Dark theme. data-theme on <html> (switcher, App\Support\Theme): "system" follows the OS,
+   "light"/"dark" force a mode. The two blocks below must stay identical. */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         color-scheme: dark;
         --bg: #0b0d12;
         --surface: #12151c;
@@ -78,6 +84,39 @@
         --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
         --focus: 0 0 0 3px rgba(99, 102, 241, 0.35);
     }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b0d12;
+    --surface: #12151c;
+    --surface-2: #181c25;
+    --surface-hover: #161a22;
+    --border: #232835;
+    --border-strong: #2f3646;
+    --text: #eceef3;
+    --text-muted: #9aa3b5;
+    --text-faint: #6b7385;
+
+    --primary: #6366f1;
+    --primary-hover: #7c7ff5;
+    --primary-soft: rgba(99, 102, 241, 0.14);
+    --primary-text: #a5a8ff;
+
+    --success: #3ccb7f;
+    --success-soft: rgba(60, 203, 127, 0.12);
+    --warning: #f5a524;
+    --warning-soft: rgba(245, 165, 36, 0.12);
+    --danger: #f97066;
+    --danger-soft: rgba(249, 112, 102, 0.12);
+    --info: #53a8f5;
+    --info-soft: rgba(83, 168, 245, 0.12);
+
+    --sidebar-bg: #0e1117;
+    --shadow-sm: none;
+    --shadow: 0 0 0 1px rgba(255, 255, 255, 0.02);
+    --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
+    --focus: 0 0 0 3px rgba(99, 102, 241, 0.35);
 }
 
 /* ---------- Base ---------- */
@@ -139,9 +178,19 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
     width: 32px;
     height: 32px;
     border-radius: 9px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, var(--brand-from), var(--brand-to));
     color: #fff;
 }
+
+/* "Nebo" + gradient "TV" wordmark (x-brand-name) */
+.brand-name { font-weight: 800; letter-spacing: -0.02em; }
+.brand-accent {
+    background: linear-gradient(135deg, var(--brand-from), var(--brand-to));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.sidebar .brand-accent { background-image: linear-gradient(135deg, var(--sidebar-brand-from), var(--sidebar-brand-to)); }
 
 .nav-section {
     padding: 18px 10px 6px;
@@ -642,6 +691,58 @@ dialog.modal form { margin: 0; }
 .auth-brand .brand-mark { width: 44px; height: 44px; border-radius: 12px; }
 .auth-brand h1 { font-size: 20px; font-weight: 700; }
 .auth-brand p { color: var(--text-muted); }
+
+/* ---------- Preferences: language menu + theme switch (partials/preferences) ---------- */
+.prefs { display: flex; align-items: center; gap: 6px; }
+.lang-menu { position: relative; flex: 1; min-width: 0; }
+.lang-current {
+    display: flex; align-items: center; gap: 7px;
+    height: 32px; padding: 0 8px;
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    background: var(--surface); color: var(--text);
+    font-size: 13px; font-weight: 500; cursor: pointer; list-style: none; user-select: none;
+}
+.lang-current::-webkit-details-marker { display: none; }
+.lang-current:focus-visible { outline: none; box-shadow: var(--focus); }
+.lang-current .chevron { width: 13px; height: 13px; margin-left: auto; color: var(--text-faint); transition: transform 0.15s; }
+.lang-menu[open] .chevron { transform: rotate(180deg); }
+.flag { width: 20px; height: 14px; border-radius: 2px; object-fit: cover; flex-shrink: 0; box-shadow: 0 0 0 1px var(--border); }
+.lang-options {
+    position: absolute; z-index: 30; left: 0; top: calc(100% + 6px);
+    min-width: 100%; margin: 0; padding: 4px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+}
+.lang-option {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 10px; border: 0; border-radius: var(--radius-sm);
+    background: none; color: var(--text); font: inherit; font-size: 13px; text-align: left; white-space: nowrap; cursor: pointer;
+}
+.lang-option:hover, .lang-option:focus-visible { background: var(--surface-hover); outline: none; }
+.lang-option[aria-current] { font-weight: 600; }
+.lang-check { width: 15px; height: 15px; margin-left: auto; color: var(--primary); }
+
+.theme-switch { display: flex; gap: 1px; margin: 0; padding: 2px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); flex-shrink: 0; }
+.theme-switch button {
+    display: grid; place-items: center; width: 24px; height: 26px;
+    border: 0; border-radius: 6px; background: none; color: var(--text-faint); cursor: pointer;
+}
+.theme-switch button svg { width: 15px; height: 15px; }
+.theme-switch button:hover { color: var(--text); }
+.theme-switch button:focus-visible { outline: none; box-shadow: var(--focus); }
+.theme-switch button[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary-text); }
+
+/* In the (always dark) sidebar: open upwards, sidebar colours */
+.sidebar .prefs { margin: auto 0 12px; }
+.sidebar .prefs ~ .sidebar-footer { margin-top: 0; }
+.sidebar .lang-current, .sidebar .theme-switch { background: var(--sidebar-hover); border-color: transparent; color: var(--sidebar-text); }
+.sidebar .lang-current .chevron, .sidebar .theme-switch button { color: var(--sidebar-text); }
+.sidebar .theme-switch button:hover { color: var(--sidebar-text-active); }
+.sidebar .theme-switch button[aria-pressed="true"] { background: var(--sidebar-active); color: var(--sidebar-text-active); }
+.sidebar .flag { box-shadow: none; }
+.sidebar .lang-options { top: auto; bottom: calc(100% + 6px); }
+
+.auth .prefs { justify-content: center; margin-top: 16px; }
+.auth .lang-menu { flex: 0 1 170px; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {

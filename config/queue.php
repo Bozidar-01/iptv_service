@@ -93,6 +93,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Worker From The Scheduler
+    |--------------------------------------------------------------------------
+    |
+    | For hosting without a long-running queue worker (shared hosting): when
+    | true, the every-minute `schedule:run` cron also processes queued jobs
+    | (source imports). Leave false when a real worker runs (Docker `queue`).
+    |
+    */
+
+    'scheduled_worker' => (bool) env('QUEUE_SCHEDULED_WORKER', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Job Batching
     |--------------------------------------------------------------------------
     |

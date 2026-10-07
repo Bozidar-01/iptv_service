@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'NeboTV'),
 
     /*
     |--------------------------------------------------------------------------
@@ -83,6 +83,17 @@ return [
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+
+    /*
+    | Languages offered in the panel's language switcher: code => native name
+    | and flag (public/images/flags/<flag>.svg). Each non-English code needs
+    | lang/<code>.json and lang/<code>/*.php.
+    */
+
+    'locales' => [
+        'en' => ['name' => 'English', 'flag' => 'gb'],
+        'mk' => ['name' => 'Македонски', 'flag' => 'mk'],
+    ],
 
     /*
     |--------------------------------------------------------------------------

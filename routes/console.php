@@ -14,3 +14,12 @@ Schedule::command('model:prune', ['--model' => [ActiveSession::class]])->everyFi
 
 // Refresh M3U sources that have auto-sync enabled (see Source::isDueForSync)
 Schedule::command('iptv:sync-sources --due')->hourly();
+
+// Shared hosting has no long-running worker: let the schedule:run cron process queued
+// imports (QUEUE_SCHEDULED_WORKER=true, see docs/deployment.md). Worst case is 240 s of
+// polling + one 600 s job, under the 15-minute lock, which also frees a killed worker.
+Schedule::command('queue:work', ['--stop-when-empty', '--tries=1', '--timeout=600', '--max-time=240'])
+    ->everyMinute()
+    ->withoutOverlapping(15)
+    ->runInBackground()
+    ->when(fn () => config('queue.scheduled_worker'));

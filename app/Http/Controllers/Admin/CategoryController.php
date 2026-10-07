@@ -30,7 +30,7 @@ class CategoryController extends Controller
 
         $this->channelService->createCategory($data);
 
-        return redirect()->route('admin.categories.index')->with('success', 'Category created successfully.');
+        return redirect()->route('admin.categories.index')->with('success', __('Category created successfully.'));
     }
 
     public function update(Request $request, Category $category)
@@ -41,13 +41,13 @@ class CategoryController extends Controller
 
         $this->channelService->updateCategory($category, $data);
 
-        return redirect()->route('admin.categories.index')->with('success', 'Category updated successfully.');
+        return redirect()->route('admin.categories.index')->with('success', __('Category updated successfully.'));
     }
 
     public function destroy(Category $category)
     {
         $this->channelService->deleteCategory($category);
 
-        return redirect()->route('admin.categories.index')->with('success', 'Category deleted successfully.');
+        return redirect()->route('admin.categories.index')->with('success', __('Category deleted successfully.'));
     }
 }

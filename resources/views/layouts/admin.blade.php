@@ -1,32 +1,33 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="{{ \App\Support\Theme::current() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') · IPTV Panel</title>
+    <title>@yield('title', __('Dashboard')) · {{ config('app.name') }}</title>
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ filemtime(public_path('css/admin.css')) }}">
+    @include('admin.partials.favicons')
 </head>
 <body>
 @php
     $nav = [
-        ['section' => 'Overview'],
-        ['route' => 'admin.dashboard', 'match' => 'admin.dashboard', 'icon' => 'dashboard', 'label' => 'Dashboard'],
-        ['section' => 'Content'],
-        ['route' => 'admin.sources.index', 'match' => 'admin.sources.*', 'icon' => 'source', 'label' => 'Sources'],
-        ['route' => 'admin.channels.index', 'match' => 'admin.channels.*', 'icon' => 'tv', 'label' => 'Channels'],
-        ['route' => 'admin.categories.index', 'match' => 'admin.categories.*', 'icon' => 'folder', 'label' => 'Categories'],
-        ['route' => 'admin.bouquets.index', 'match' => 'admin.bouquets.*', 'icon' => 'package', 'label' => 'Bouquets'],
-        ['section' => 'Subscribers'],
-        ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => 'Users'],
-        ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => 'Activity'],
+        ['section' => __('Overview')],
+        ['route' => 'admin.dashboard', 'match' => 'admin.dashboard', 'icon' => 'dashboard', 'label' => __('Dashboard')],
+        ['section' => __('Content')],
+        ['route' => 'admin.sources.index', 'match' => 'admin.sources.*', 'icon' => 'source', 'label' => __('Sources')],
+        ['route' => 'admin.channels.index', 'match' => 'admin.channels.*', 'icon' => 'tv', 'label' => __('Channels')],
+        ['route' => 'admin.categories.index', 'match' => 'admin.categories.*', 'icon' => 'folder', 'label' => __('Categories')],
+        ['route' => 'admin.bouquets.index', 'match' => 'admin.bouquets.*', 'icon' => 'package', 'label' => __('Bouquets')],
+        ['section' => __('Subscribers')],
+        ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => __('Users')],
+        ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => __('Activity')],
     ];
 @endphp
 <div class="shell">
     <aside class="sidebar" id="sidebar">
         <a href="{{ route('admin.dashboard') }}" class="brand">
-            <span class="brand-mark"><x-icon name="tv" /></span>
-            IPTV Panel
+            <span class="brand-mark"><x-icon name="nebotv" /></span>
+            <x-brand-name />
         </a>
 
         <nav>
@@ -42,15 +43,17 @@
             @endforeach
         </nav>
 
+        @include('partials.preferences')
+
         <div class="sidebar-footer">
             <span class="avatar">{{ strtoupper(substr(Auth::user()->username, 0, 1)) }}</span>
             <div class="sidebar-user">
                 <strong>{{ Auth::user()->username }}</strong>
-                <span>Administrator</span>
+                <span>{{ __('Administrator') }}</span>
             </div>
             <form method="POST" action="{{ route('logout') }}" class="inline-form">
                 @csrf
-                <button type="submit" class="btn btn-ghost btn-icon" title="Sign out" aria-label="Sign out" style="color: var(--sidebar-text)">
+                <button type="submit" class="btn btn-ghost btn-icon" title="{{ __('Sign out') }}" aria-label="{{ __('Sign out') }}" style="color: var(--sidebar-text)">
                     <x-icon name="logout" />
                 </button>
             </form>
@@ -60,10 +63,10 @@
 
     <div>
         <header class="topbar">
-            <button type="button" class="btn btn-ghost btn-icon" aria-label="Open menu" onclick="document.body.classList.add('nav-open')">
+            <button type="button" class="btn btn-ghost btn-icon" aria-label="{{ __('Open menu') }}" onclick="document.body.classList.add('nav-open')">
                 <x-icon name="menu" />
             </button>
-            IPTV Panel
+            <x-brand-name />
         </header>
 
         <main class="main">
@@ -90,7 +93,7 @@
         const label = button.querySelector('[data-copy-label]');
         if (label) {
             const original = label.textContent;
-            label.textContent = 'Copied';
+            label.textContent = @json(__('Copied'));
             setTimeout(() => label.textContent = original, 1500);
         }
     });

@@ -1,6 +1,6 @@
 # Routes
 
-Defined in `routes/web.php`. Health check at `/up` (from `bootstrap/app.php`).
+Defined in `routes/web.php`. Health check at `/up` (from `bootstrap/app.php`). Every web route runs `SetLocale` (see [features/localization.md](features/localization.md)).
 
 ## Public
 
@@ -10,6 +10,8 @@ Defined in `routes/web.php`. Health check at `/up` (from `bootstrap/app.php`).
 | GET | `/login` | `login` | `AuthController@showLogin` | redirects admins to dashboard |
 | POST | `/login` | – | `AuthController@login` | admins only |
 | POST | `/logout` | `logout` | `AuthController@logout` | |
+| POST | `/locale` | `locale.update` | `LocaleController@update` | body: `locale` (`en`/`mk`); sets the `locale` cookie, redirects back |
+| POST | `/theme` | `theme.update` | `ThemeController@update` | body: `theme` (`light`/`dark`/`system`); sets or clears the unencrypted `theme` cookie, redirects back. Only used without JS |
 | GET | `/m3u` | `m3u` | `M3uController@generate` | query: `username`, `password` |
 | GET | `/playlist/{token}.m3u` | `playlist` | `M3uController@playlist` | per-user playlist link |
 | GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream; token may end in `.m3u8`/`.ts`/… |
@@ -38,3 +40,4 @@ Admin resource routes are limited with `->only()` / `->except()` so that only im
 |---|---|
 | `iptv:sync-sources {source?} {--due} {--now}` | `--due` hourly |
 | `model:prune --model=App\Models\ActiveSession` | every 15 minutes |
+| `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` | every minute, only when `QUEUE_SCHEDULED_WORKER=true` (shared hosting); `withoutOverlapping(15)`, in the background |

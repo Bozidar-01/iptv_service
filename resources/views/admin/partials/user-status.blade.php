@@ -1,7 +1,7 @@
 @if($user->status !== 'active')
-    <span class="badge badge-danger badge-dot">Disabled</span>
+    <span class="badge badge-danger badge-dot">{{ __('Disabled') }}</span>
 @elseif($user->isExpired())
-    <span class="badge badge-warning badge-dot">Expired</span>
+    <span class="badge badge-warning badge-dot">{{ __('Expired') }}</span>
 @else
-    <span class="badge badge-success badge-dot">Active</span>
+    <span class="badge badge-success badge-dot">{{ __('Active') }}</span>
 @endif

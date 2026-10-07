@@ -37,7 +37,7 @@ Requirements: PHP 8.3+ with `pdo_mysql`, Composer, MySQL/MariaDB with database `
 
 ```bash
 composer install
-cp .env.example .env
+cp .env.example .env           # APP_NAME=NeboTV is the name shown in the panel
 php artisan key:generate
 php artisan migrate
 php artisan db:seed            # admin / admin123 (safe to re-run)
@@ -47,7 +47,7 @@ php artisan schedule:work      # in another terminal: auto-refresh + session pru
 
 `php artisan serve` only listens on localhost. For TVs on your network, use `php artisan serve --host=0.0.0.0`.
 
-Without a queue worker, source imports stay **Queued** (the Sources page warns about this). Run one with `php artisan queue:work`, or import inline with `php artisan iptv:sync-sources --now`.
+Without a queue worker, source imports stay **Queued** (the Sources page warns about this). Run one with `php artisan queue:work`, or import inline with `php artisan iptv:sync-sources --now`. Where no worker can run (shared hosting), set `QUEUE_SCHEDULED_WORKER=true` and the scheduler processes the queue: see [deployment.md](deployment.md).
 
 ## Watching on a TV
 
@@ -57,6 +57,10 @@ Without a queue worker, source imports stay **Queued** (the Sources page warns a
 4. In the TV's IPTV app choose *Add playlist → M3U URL* and paste it.
 
 The link is built from the address you used to open the panel. If you're on `http://localhost:8000`, the page warns you; open the panel via your computer's LAN IP (e.g. `http://192.168.1.20:8000`) instead.
+
+## Language
+
+The panel defaults to `APP_LOCALE` (`en`). Each admin can switch to Macedonian with the language menu (flags) in the sidebar or on the sign-in page; the choice is kept in a browser cookie. Set `APP_LOCALE=mk` in `.env` to make Macedonian the default. Details: [features/localization.md](features/localization.md). Next to it, the sun / moon / monitor buttons choose light, dark or system mode ([features/theme.md](features/theme.md)).
 
 ## Sample data
 

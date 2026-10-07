@@ -43,9 +43,10 @@ Renaming a channel at the provider creates a new channel and deletes the old one
 
 ## Running syncs
 
-- Queue worker required (`queue` container in Docker, or `php artisan queue:work`). The Sources page warns when a sync has been queued for more than 2 minutes, and auto-refreshes every 5 s while any sync is running.
+- Queue worker required (`queue` container in Docker, or `php artisan queue:work`). On shared hosting, `QUEUE_SCHEDULED_WORKER=true` runs `queue:work --stop-when-empty` from the scheduler every minute instead ([deployment.md](../deployment.md)). The Sources page warns when a sync has been queued for more than 2 minutes, and auto-refreshes every 5 s while any sync is running.
 - `php artisan iptv:sync-sources [source-id] [--due] [--now]`: queue all (or one) source; `--due` only the ones due for auto-refresh; `--now` runs inline without the queue.
 - Scheduler: `iptv:sync-sources --due` hourly (`routes/console.php`).
+- If the job dies without `SourceSyncService` recording an error (worker killed by a host limit, timeout), `SyncSource::failed()` marks the source **Failed** with "The import was stopped before it finished." once the job comes back after `DB_QUEUE_RETRY_AFTER`. Channels already written are kept.
 
 ## Deleting
 
