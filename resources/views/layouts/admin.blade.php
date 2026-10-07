@@ -21,6 +21,7 @@
         ['section' => __('Subscribers')],
         ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => __('Users')],
         ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => __('Activity')],
+        ['route' => 'admin.alerts.index', 'match' => 'admin.alerts.*', 'icon' => 'bell', 'label' => __('Alerts')],
     ];
 @endphp
 <div class="shell">
@@ -67,7 +68,9 @@
                 <x-icon name="menu" />
             </button>
             <x-brand-name />
+            <div class="topbar-end">@include('admin.partials.notifications')</div>
         </header>
+        <div class="header-bar">@include('admin.partials.notifications')</div>
 
         <main class="main">
             <div class="@yield('container', 'container')">

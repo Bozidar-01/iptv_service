@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
 
-#[Fillable(['user_id', 'channel_id', 'started_at', 'last_activity_at'])]
+#[Fillable(['user_id', 'channel_id', 'ip', 'user_agent', 'started_at', 'last_activity_at'])]
 class ActiveSession extends Model
 {
     use Prunable;

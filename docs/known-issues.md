@@ -12,16 +12,26 @@ _None currently known._
 
 ## Design gaps / risks
 
+- **Stream check is from the server's location:** `StreamCheckService` treats geo-blocked streams (403) as offline. A channel that plays in the viewer's country but not the server's is switched off (884 channels on 2026-10-07). Suggested fix: a per-source "don't auto-disable" option, or proxying through a server in the right country.
+- **Xtream logins can't send stream headers:** channels that need `http_user_agent` / `http_referrer` play through the M3U link but may fail through the Xtream API, which has no field for them. Fix: proxy those streams.
+- **Bundled Macedonian lists go stale:** `database/seeders/playlists/*.m3u` are static. The stream check switches dead entries off, but new links have to be added by hand.
+- **Check streams can be queued twice:** pressing the button again before the jobs finish queues a second set. Harmless, but wasted work. Suggested fix: a cache lock in `StreamCheckService::queueCheck()`.
+- **Watch player ties up a PHP worker:** a live MPEG-TS preview keeps one PHP-FPM worker busy while it plays (up to 30 minutes). On shared hosting with few workers, several open players can slow the panel down. HLS previews only use a worker per segment request. Suggested fix: lower `StreamPreviewService::MAX_SECONDS` there.
+- **Some streams don't play in the browser:** HEVC, AC-3 audio, RTMP/UDP links and YouTube/Twitch pages work in VLC but not in the Watch player. The dialog says so and shows the address to copy.
+- **Multi-genre categories:** iptv-org lists use `group-title` values like `General;News`, which become separate categories. Suggested fix: an option per source to keep only the first group.
+
 - **Upstream URLs are exposed:** `/play` redirects (302) to the provider URL, which often contains the provider username/password. Anyone with a playlist can see it. Fixing this needs a stream proxy.
 - **Provider credentials are stored in plain text** in `sources.url` and `channels.stream_url`.
 - **Credentials in query string** for `/m3u?username=&password=` (standard for IPTV, but they end up in server/proxy logs). Prefer the `/playlist/{token}.m3u` link.
-- **No rate limiting** on `/login`, `/m3u`, `/playlist`, `/play`.
+- **No overall request limit:** wrong passwords are limited (admin sign-in and app logins), but `/playlist/{token}.m3u` and `/play` have no request limit.
 - **Admin group only checks `auth`**, with no role middleware. Safe today only because non-admins are logged out at login.
+- **Devices are told apart by IP + user agent:** two identical TVs with the same app version behind one router look like one device and share a slot. Suggested fix: a per-device token or a stream proxy.
 - **No heartbeat:** a session only stays "active" for 5 minutes after the last `/play` request, so long viewing frees the slot.
 - **Channel identity is group + name:** if a provider renames a channel or moves it to another group, it is re-created (new ID, bouquet membership only restored via the source's bouquet).
 - **Bulk-deleted imported channels come back** on the next sync. Disable them instead.
 - **No EPG:** `tvg-id` is passed through, but there is no `url-tvg` / XMLTV support.
-- **No Xtream Codes API** (`player_api.php`). Apps that only support Xtream logins can't use the service.
+- **Xtream Codes API is live TV only:** VOD, series, catch-up and EPG actions return empty data.
+- **Xtream password checks are not cached:** every `player_api.php` and `/live` request runs `Hash::check` (bcrypt). Fine for a few users. With many, cache the result briefly or lower the bcrypt cost.
 - **Docker setup is development-grade:** code is bind-mounted, `APP_DEBUG` comes from `.env`, MySQL passwords are fixed in `docker-compose.yml`, and there's no HTTPS.
 - **Partly translated:** `/m3u`, `/playlist` and `/play` error bodies and `sources.last_error` are always English; numbers use English separators (`1,234`) in Macedonian too. Laravel's Macedonian plural rule treats 11 like 1 ("11 канал").
 - **Unused:** Vite/Tailwind setup (`resources/css`, `resources/js`, `vite.config.js`).

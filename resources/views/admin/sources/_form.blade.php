@@ -55,6 +55,11 @@
                 <input type="checkbox" name="auto_sync" value="1" @checked(old('auto_sync', $source->auto_sync ?? true))>
                 <div><strong>{{ __('Refresh automatically') }}</strong><span>{{ __('Re-import once a day to pick up new channels and changed stream links.') }}</span></div>
             </label>
+            <input type="hidden" name="alert_on_down" value="0">
+            <label class="check">
+                <input type="checkbox" name="alert_on_down" value="1" @checked(old('alert_on_down', $source->alert_on_down ?? false))>
+                <div><strong>{{ __('Send me alerts') }}</strong><span>{{ __('Get an alert in the panel and by email when an import fails or any of its channels stops working. Channels are checked every 15 minutes.') }}</span></div>
+            </label>
         </div>
     </div>
     <div class="card-footer">

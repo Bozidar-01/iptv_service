@@ -91,11 +91,13 @@ class SourceController extends Controller
             }],
             'skip_vod' => ['boolean'],
             'auto_sync' => ['boolean'],
+            'alert_on_down' => ['boolean'],
         ]);
 
         unset($data['file']);
         $data['skip_vod'] = $request->boolean('skip_vod');
         $data['auto_sync'] = $request->boolean('auto_sync');
+        $data['alert_on_down'] = $request->boolean('alert_on_down');
         if ($data['type'] === 'file') {
             $data['url'] = null;
         }

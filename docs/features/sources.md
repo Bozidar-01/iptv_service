@@ -39,6 +39,7 @@ Renaming a channel at the provider creates a new channel and deletes the old one
 
 - Handles `#EXTM3U`, `#EXTINF` with any `key="value"` attributes (`tvg-id`, `tvg-name`, `tvg-logo`, `group-title`), commas inside quoted attributes, `#EXTGRP`, UTF-8 BOM, bare URL lines, and ignores other `#` lines (`#EXTVLCOPT`, `#KODIPROP`…).
 - Name: text after the last comma outside attributes → `tvg-name` → URL filename.
+- **Player identity / referring page:** `http-user-agent` and `http-referrer` (or `http-referer`), from `#EXTINF` attributes or `#EXTVLCOPT:` lines, are stored as `channels.http_user_agent` / `http_referrer`. Some streams refuse requests without them. Other `#EXTVLCOPT` options are ignored.
 - **VOD detection** (`isVod`): path contains `/movie/` or `/series/` (Xtream Codes style), or the extension is mp4/mkv/avi/mov/wmv/flv/m4v.
 
 ## Running syncs
@@ -47,6 +48,21 @@ Renaming a channel at the provider creates a new channel and deletes the old one
 - `php artisan iptv:sync-sources [source-id] [--due] [--now]`: queue all (or one) source; `--due` only the ones due for auto-refresh; `--now` runs inline without the queue.
 - Scheduler: `iptv:sync-sources --due` hourly (`routes/console.php`).
 - If the job dies without `SourceSyncService` recording an error (worker killed by a host limit, timeout), `SyncSource::failed()` marks the source **Failed** with "The import was stopped before it finished." once the job comes back after `DB_QUEUE_RETRY_AFTER`. Channels already written are kept.
+
+## Default sources (`DefaultSourcesSeeder`)
+
+A fresh install gets nine sources, each with its own bouquet, so there is something to watch right away. `DatabaseSeeder` calls the seeder only while the `sources` table is empty, so sources an admin deletes don't come back on the next deploy. `php artisan db:seed --class=DefaultSourcesSeeder --force` re-adds any default whose **name** is missing. Every source is created through `SourceService::createSource()`, so its import is queued like a manual one.
+
+| Source | Type | Bouquet | Categories |
+|---|---|---|---|
+| Macedonia – TV | file (`database/seeders/playlists/macedonia-tv.m3u`), 8 channels | Macedonia TV | `MK \| National`, `MK \| Regional` |
+| Macedonia – Music | file (`database/seeders/playlists/macedonia-music.m3u`), 6 channels | Macedonia Music | `MK \| Music` |
+| Free-TV (world, by country) | URL, `github.com/Free-TV/IPTV` | World | one per country |
+| iptv-org – News / Sports / Movies / Kids / Music / Documentary | URL, `iptv-org.github.io/iptv/categories/*.m3u` | News / Sports / Movies / Kids / Music / Documentary | the list's `group-title` (e.g. `News`, `General;News`) |
+
+- The Macedonian files are copied to `storage/app/private/sources/default-*.m3u`. They list only streams that worked from North Macedonia on 2026-10-07. MRT, M-Net, Alsat, MTM and TV ERA were left out: their public streams are offline, geo-blocked or use links that expire. Edit the `.m3u` files to add or fix channels, then **Sync** the source (or re-upload the file).
+- The URL sources have `auto_sync` on and refresh daily. They hold about 5,800 channels together. On 2026-10-07 the stream check found 2,220 of them not working, and switched those off ([alerts.md](alerts.md)).
+- All sources use `skip_vod`.
 
 ## Deleting
 

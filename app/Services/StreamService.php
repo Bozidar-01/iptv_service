@@ -55,19 +55,15 @@ class StreamService
             return false;
         }
 
-        // Check max connections
-        $activeSessions = ActiveSession::where('user_id', $user->id)
-            ->where('last_activity_at', '>', now()->subMinutes(self::SESSION_TIMEOUT_MINUTES));
+        // Check max connections: one slot per device (IP + user agent). The device's own session
+        // doesn't count, so it can switch channels; any other device needs a free slot.
+        $otherDevices = ActiveSession::where('user_id', $user->id)
+            ->where('last_activity_at', '>', now()->subMinutes(self::SESSION_TIMEOUT_MINUTES))
+            ->whereNot(fn ($query) => $this->whereDevice($query))
+            ->count();
 
-        if ((clone $activeSessions)->count() >= $user->max_connections) {
-            // Re-requesting a channel the user is already actively watching doesn't use a new slot
-            $isSameStream = (clone $activeSessions)
-                ->where('channel_id', $channel->id)
-                ->exists();
-
-            if (!$isSameStream) {
-                return false;
-            }
+        if ($otherDevices >= $user->max_connections) {
+            return false;
         }
 
         return true;
@@ -75,14 +71,31 @@ class StreamService
 
     private function updateSession(User $user, Channel $channel)
     {
-        $session = ActiveSession::firstOrNew(['user_id' => $user->id, 'channel_id' => $channel->id]);
+        // One row per device: switching channels updates it
+        $session = $this->whereDevice(ActiveSession::where('user_id', $user->id))->first()
+            ?? new ActiveSession(['user_id' => $user->id, 'ip' => Request::ip(), 'user_agent' => $this->userAgent()]);
 
-        // A session that went stale counts as a new viewing, so restart it
-        if (!$session->exists || $session->last_activity_at <= now()->subMinutes(self::SESSION_TIMEOUT_MINUTES)) {
+        // A new channel or a session that went stale counts as a new viewing, so restart it
+        if (!$session->exists || $session->channel_id != $channel->id
+            || $session->last_activity_at <= now()->subMinutes(self::SESSION_TIMEOUT_MINUTES)) {
             $session->started_at = now();
         }
 
+        $session->channel_id = $channel->id;
         $session->last_activity_at = now();
         $session->save();
+    }
+
+    /**
+     * Limit a session query to the requesting device.
+     */
+    private function whereDevice($query)
+    {
+        return $query->where('ip', Request::ip())->where('user_agent', $this->userAgent());
+    }
+
+    private function userAgent(): string
+    {
+        return mb_substr((string) Request::userAgent(), 0, 255);
     }
 }

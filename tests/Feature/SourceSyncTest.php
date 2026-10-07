@@ -220,3 +220,27 @@ it('runs the queue worker from the scheduler only when enabled', function () {
 
     expect($worker->filtersPass(app()))->toBeTrue();
 });
+
+it('keeps the user agent and referrer a stream needs and puts them in the M3U', function () {
+    Http::fake(['provider.test/*' => fn () => Http::response(<<<'M3U'
+        #EXTM3U
+        #EXTINF:-1 group-title="News",Picky
+        #EXTVLCOPT:http-user-agent=Mozilla/5.0 Picky
+        #EXTVLCOPT:http-referrer=https://picky.test/
+        http://provider.test/live/picky.m3u8
+        M3U)]);
+    $source = urlSource();
+    syncSource($source);
+
+    $channel = Channel::where('name', 'Picky')->sole();
+    expect($channel)->http_user_agent->toBe('Mozilla/5.0 Picky')->http_referrer->toBe('https://picky.test/');
+
+    $user = \App\Models\User::factory()->create();
+    $bouquet = Bouquet::create(['name' => 'B']);
+    $bouquet->channels()->attach($channel);
+    $user->bouquets()->attach($bouquet);
+
+    $this->get(route('playlist', ['token' => $user->playlist_token]))
+        ->assertOk()
+        ->assertSee("#EXTVLCOPT:http-user-agent=Mozilla/5.0 Picky\n#EXTVLCOPT:http-referrer=https://picky.test/\nhttp", false);
+});

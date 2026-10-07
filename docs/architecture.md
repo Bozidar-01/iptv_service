@@ -29,6 +29,10 @@ routes/web.php, routes/console.php
 | `M3uParser` | Streaming M3U parser and VOD detection |
 | `TokenService` | Access tokens, playback token reuse, M3U output |
 | `StreamService` | Authorise playback, connection limit, session upsert, stream log |
+| `StreamPreviewService` | Admin **Watch** player proxy: signed proxied URLs, HLS playlist rewriting (segment lines and `URI="…"`), streaming media through with a VLC user agent |
+| `XtreamService` | Xtream Codes API: authenticate, login/server info, live categories and streams |
+| `HealthService` | Scheduler heartbeat, stuck-queue and failed-job alerts, `/health` status |
+| `StreamCheckService` | Check streams concurrently, switch dead channels off and recovered ones back on, create alerts for watched channels |
 
 | Job / command | |
 |---|---|
@@ -50,7 +54,7 @@ routes/web.php, routes/console.php
 
 - Pages `@extends('layouts.admin')`, set `@section('title')`, and optionally `@section('container', 'container-narrow')` for forms. Page-specific JS goes in `@push('scripts')`.
 - Structure: `.page-header` (h1, p, `.page-actions`) → `.card` (`.card-header`, `.card-body`, `.card-footer`, `.toolbar` for filters, `.table-wrap` > `.table`) → `.empty` for empty states → `{{ $paginator->links('admin.partials.pagination') }}`.
-- Components: `.btn` + `.btn-primary|secondary|ghost|danger|danger-ghost`, `.btn-sm`, `.btn-icon`; `.badge` + `-success|warning|danger|info|primary`, `.badge-dot`; `.alert-*`; form `.form-grid` > `.field` > `.label` / `.input|.select` / `.help`; `.check`, `.check-list` > `.check-tile`, `.segmented`; `.stats` > `.stat`; `.list`, `.dl`, `.copy-field`; `<dialog class="modal">`.
+- Components: `.btn` + `.btn-primary|secondary|ghost|danger|danger-ghost`, `.btn-sm`, `.btn-icon`; `.badge` + `-success|warning|danger|info|primary`, `.badge-dot`; `.alert-*`; form `.form-grid` > `.field` > `.label` / `.input|.select` / `.help`; `.check`, `.check-list` > `.check-tile`, `.segmented`; `.stats` > `.stat`; `.list`, `.dl`, `.copy-field`; `<dialog class="modal">` (`.modal-wide` for the player), `.player` > `video` + `.player-status`.
 - Icons: `<x-icon name="tv" />` (`resources/views/components/icon.blade.php`). Add new icons there. The NeboTV logo is `<x-icon name="nebotv" />`; if you change it, update `public/favicon.svg` too and re-export the PNG/ICO icons from it. The app name is rendered with `<x-brand-name />`; brand gradient colours are `--brand-from`/`--brand-to` (`--sidebar-brand-from`/`-to` on the dark sidebar).
 - Partials: `admin.partials.flash` (in the layout), `errors`, `pagination`, `source-status`, `user-status`; `partials.preferences` (language menu with flags + theme switch, in the sidebar and on the sign-in page; `.prefs`, `.lang-menu`, `.theme-switch`).
 - Text: wrap everything in `__()` (also `title`, `placeholder`, `aria-label`, `data-confirm`), use `:placeholders` instead of concatenation, `translatedFormat()` for dates. Macedonian strings are often longer, so check them at 375 px too.

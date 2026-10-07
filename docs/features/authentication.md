@@ -4,6 +4,7 @@
 
 - Session-based login with the default `web` guard, using `username` + `password` (optional "remember").
 - After `Auth::attempt` succeeds, users whose `role` is not `admin` are logged out immediately and shown "Unauthorized access." Subscribers can't use the panel; they only use `/m3u` and `/play`.
+- **Login limit:** after `AuthController::MAX_ATTEMPTS` (5) wrong passwords for one username from one IP, sign-in is refused for a minute ("Too many sign-in attempts. Try again in N seconds."). A successful sign-in clears the count.
 - On success the session is regenerated and the user goes to `intended()` or `admin.dashboard`.
 - `GET /login` sends an already-logged-in admin straight to the dashboard.
 - Logout invalidates the session and regenerates the CSRF token.

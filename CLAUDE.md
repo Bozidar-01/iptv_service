@@ -26,7 +26,7 @@ Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:wo
 ## Architecture
 
 - **Controllers stay thin; logic lives in `app/Services/`**, injected via the constructor (`protected $xService;`). Long work goes in a queued job (`app/Jobs`) that calls a service.
-- Services: `UserService`, `ChannelService` (channels, categories, bulk actions, `attachToBouquet`), `BouquetService`, `SourceService`, `SourceSyncService`, `M3uParser`, `TokenService` (tokens + M3U output), `StreamService` (access, limits, sessions, logs).
+- Services: `UserService`, `ChannelService` (channels, categories, bulk actions, `attachToBouquet`), `BouquetService`, `SourceService`, `SourceSyncService`, `M3uParser`, `TokenService` (tokens + M3U output), `StreamService` (access, limits, sessions, logs), `StreamCheckService` (stream check, auto-disable, alerts).
 - Inline `$request->validate([...])`. Feedback via `->with('success'|'error', __('...'))`, which the layout renders.
 - Models use `#[Fillable]` / `#[Hidden]` attributes and a `casts()` method.
 - Users have no email: auth is by `username`. `role` = `admin|user`, `status` = `active|disabled`. Only admins can log in.

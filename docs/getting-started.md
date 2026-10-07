@@ -11,7 +11,7 @@ docker compose up -d --build
 | Service | What it does |
 |---|---|
 | `web` | nginx on port **8000** (`APP_PORT` to change), reachable from your LAN |
-| `app` | PHP 8.4-FPM. On start: `composer install` if `vendor/` is missing, creates `.env`/`APP_KEY` if missing, waits for MySQL, runs `migrate` and `db:seed` (admin user) |
+| `app` | PHP 8.4-FPM. On start: `composer install` if `vendor/` is missing, creates `.env`/`APP_KEY` if missing, waits for MySQL, runs `migrate` and `db:seed` (admin user, plus the [default sources](features/sources.md#default-sources-defaultsourcesseeder) on a fresh install) |
 | `queue` | `php artisan queue:work --timeout=600`: runs source imports |
 | `scheduler` | `php artisan schedule:work`: hourly auto-refresh of sources, pruning of stale sessions |
 | `db` | MySQL 8.4, data in the `db-data` volume. From your Mac: `127.0.0.1:3307`, user `iptv` / `iptv`, database `iptv_service` |
@@ -61,6 +61,14 @@ The link is built from the address you used to open the panel. If you're on `htt
 ## Language
 
 The panel defaults to `APP_LOCALE` (`en`). Each admin can switch to Macedonian with the language menu (flags) in the sidebar or on the sign-in page; the choice is kept in a browser cookie. Set `APP_LOCALE=mk` in `.env` to make Macedonian the default. Details: [features/localization.md](features/localization.md). Next to it, the sun / moon / monitor buttons choose light, dark or system mode ([features/theme.md](features/theme.md)).
+
+## Default sources
+
+On an empty database, `db:seed` also adds nine sources: two hand-checked Macedonian lists (bouquets **Macedonia TV** and **Macedonia Music**) and public free-to-air lists (World, News, Sports, Movies, Kids, Music, Documentary). They are imported by the queue worker. See [features/sources.md](features/sources.md#default-sources-defaultsourcesseeder).
+
+## Alerts by email
+
+Set `ALERT_MAIL_TO` and the `MAIL_*` variables (Brevo SMTP) in `.env`, then run `php artisan iptv:send-alerts --test`. Details: [features/alerts.md](features/alerts.md#email-with-brevo).
 
 ## Sample data
 

@@ -7,6 +7,8 @@ use App\Models\Bouquet;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Services\ChannelService;
+use App\Services\StreamCheckService;
+use App\Services\StreamPreviewService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -96,9 +98,41 @@ class ChannelController extends Controller
             'add_to_bouquet' => ':count channel added to the bouquet.|:count channels added to the bouquet.',
             'remove_from_bouquet' => ':count channel removed from the bouquet.|:count channels removed from the bouquet.',
             'delete' => ':count channel deleted.|:count channels deleted.',
+            'alerts_on' => 'Alerts turned on for :count channel.|Alerts turned on for :count channels.',
+            'alerts_off' => 'Alerts turned off for :count channel.|Alerts turned off for :count channels.',
         ][$data['action']];
 
         return back()->with('success', trans_choice($message, $count, ['count' => number_format($count)]));
+    }
+
+    /**
+     * Queue a stream check of all channels, or of one source's channels.
+     */
+    public function checkStreams(Request $request, StreamCheckService $checker)
+    {
+        $data = $request->validate(['source_id' => 'nullable|integer|exists:sources,id']);
+
+        $count = $checker->queueCheck($data['source_id'] ?? null);
+
+        return back()->with('success', trans_choice(
+            'Checking :count channel. If it does not work, it will be disabled.|Checking :count channels. The ones that do not work will be disabled.',
+            $count,
+            ['count' => number_format($count)]
+        ));
+    }
+
+    /**
+     * Play a channel's stream (or a signed part of it) through the panel, for the preview player.
+     */
+    public function preview(Request $request, Channel $channel, StreamPreviewService $preview)
+    {
+        $target = $preview->target($channel, $request->query('u'), $request->query('s'));
+
+        if ($target === null) {
+            abort(403);
+        }
+
+        return $preview->proxy($channel, $target);
     }
 
     private function validated(Request $request): array
@@ -109,8 +143,10 @@ class ChannelController extends Controller
             'logo_url' => 'nullable|url|max:2048',
             'category_id' => 'nullable|exists:categories,id',
             'is_active' => 'boolean',
+            'alert_on_down' => 'boolean',
         ]);
         $data['is_active'] = $request->boolean('is_active');
+        $data['alert_on_down'] = $request->boolean('alert_on_down');
 
         return $data;
     }

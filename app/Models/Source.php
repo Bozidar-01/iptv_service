@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'type', 'url', 'file_path', 'bouquet_id', 'skip_vod', 'auto_sync', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
+#[Fillable(['name', 'type', 'url', 'file_path', 'bouquet_id', 'skip_vod', 'auto_sync', 'alert_on_down', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
 class Source extends Model
 {
     public const STATUS_PENDING = 'pending';
@@ -24,6 +24,7 @@ class Source extends Model
         return [
             'skip_vod' => 'boolean',
             'auto_sync' => 'boolean',
+            'alert_on_down' => 'boolean',
             'channel_count' => 'integer',
             'last_synced_at' => 'datetime',
         ];

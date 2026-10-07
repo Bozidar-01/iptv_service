@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\AccessToken;
-use App\Models\Category;
 use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -38,12 +37,7 @@ class TokenService
 
     public function getM3u(User $user, string $tokenValue)
     {
-        $channels = Channel::with('category')
-            ->where('is_active', true)
-            ->whereHas('bouquets', fn ($query) => $query->whereIn('bouquets.id', $user->bouquets()->select('bouquets.id')))
-            ->orderBy(Category::select('name')->whereColumn('categories.id', 'channels.category_id'))
-            ->orderBy('sort_order')
-            ->orderBy('name');
+        $channels = Channel::with('category')->availableTo($user)->playlistOrder();
 
         $m3u = "#EXTM3U\n";
 
@@ -52,17 +46,37 @@ class TokenService
             $playUrl = route('play', ['channel_id' => $channel->id, 'token' => $tokenValue.$this->streamExtension($channel->stream_url)]);
 
             $m3u .= sprintf(
-                "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s\n",
+                "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s%s\n",
                 $this->escapeAttribute($channel->tvg_id ?: (string) $channel->id),
                 $this->escapeAttribute($channel->name),
                 $this->escapeAttribute($channel->logo_url),
                 $this->escapeAttribute($categoryName),
                 $this->stripLineBreaks($channel->name),
+                $this->vlcOptions($channel),
                 $playUrl
             );
         }
 
         return $m3u;
+    }
+
+    /**
+     * Player identity / referring page the upstream needs. TiviMate, OTT Navigator, VLC and
+     * Kodi send them on the play request and keep them through the redirect.
+     */
+    private function vlcOptions(Channel $channel): string
+    {
+        $options = '';
+
+        if ($channel->http_user_agent) {
+            $options .= '#EXTVLCOPT:http-user-agent='.$this->stripLineBreaks($channel->http_user_agent)."\n";
+        }
+
+        if ($channel->http_referrer) {
+            $options .= '#EXTVLCOPT:http-referrer='.$this->stripLineBreaks($channel->http_referrer)."\n";
+        }
+
+        return $options;
     }
 
     /**

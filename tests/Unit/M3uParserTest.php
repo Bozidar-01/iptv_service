@@ -19,6 +19,8 @@ it('parses extended M3U entries with attributes', function () {
         'logo' => 'http://logo.test/bbc1.png',
         'group' => 'UK | General',
         'tvg_id' => 'bbc1.uk',
+        'user_agent' => null,
+        'referrer' => null,
         'url' => 'http://provider.test/live/u/p/101.ts',
     ]]);
 });
@@ -59,3 +61,22 @@ it('detects VOD entries', function (string $url, bool $vod) {
     ['http://p.test/u/p/101', false],
     ['http://p.test/hls/stream.m3u8', false],
 ]);
+
+it('keeps the user agent and referrer a stream needs', function () {
+    $entries = parse(<<<'M3U'
+        #EXTM3U
+        #EXTINF:-1 http-user-agent="Agent/1" group-title="News",One
+        http://x.test/1
+        #EXTINF:-1 group-title="News",Two
+        #EXTVLCOPT:http-user-agent=Mozilla/5.0 (Windows NT 10.0)
+        #EXTVLCOPT:http-referrer=https://site.test/
+        #EXTVLCOPT:network-caching=1000
+        http://x.test/2
+        #EXTINF:-1 http-referrer="https://a.test/",Three
+        http://x.test/3
+        M3U);
+
+    expect($entries[0])->user_agent->toBe('Agent/1')->referrer->toBeNull()
+        ->and($entries[1])->user_agent->toBe('Mozilla/5.0 (Windows NT 10.0)')->referrer->toBe('https://site.test/')
+        ->and($entries[2])->referrer->toBe('https://a.test/');
+});

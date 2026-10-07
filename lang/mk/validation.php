@@ -164,6 +164,7 @@ return [
     // Field names as shown in messages ("Полето корисничко име е задолжително.")
     'attributes' => [
         'action' => 'дејство',
+        'alert_on_down' => 'известувања',
         'auto_sync' => 'автоматско освежување',
         'bouquet_id' => 'пакет',
         'bouquets' => 'пакети',
@@ -180,6 +181,7 @@ return [
         'password' => 'лозинка',
         'role' => 'улога',
         'skip_vod' => 'само ТВ во живо',
+        'source_id' => 'извор',
         'status' => 'статус',
         'stream_url' => 'URL на стримот',
         'type' => 'тип',

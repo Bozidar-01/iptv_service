@@ -51,13 +51,21 @@ DB_PASSWORD=...
 QUEUE_CONNECTION=database
 DB_QUEUE_RETRY_AFTER=900
 QUEUE_SCHEDULED_WORKER=true
+# Alert emails via Brevo: see features/alerts.md#email-with-brevo
+MAIL_MAILER=smtp
+MAIL_HOST=smtp-relay.brevo.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS=...
+ALERT_MAIL_TO=you@example.com
 ```
 
 Then:
 
 ```bash
 php artisan migrate --force
-php artisan db:seed --force      # creates admin / admin123: change the password right away
+php artisan db:seed --force      # creates the admin and, on an empty database, the default sources
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 
@@ -79,9 +87,14 @@ This runs everything in `routes/console.php`:
 |---|---|
 | `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` (only with `QUEUE_SCHEDULED_WORKER=true`) | every minute, never two at once (15-minute lock), in the background |
 | `iptv:sync-sources --due` | hourly |
+| `iptv:check-streams` / `iptv:check-streams --watched` | daily at 04:00 / every 15 minutes (queued) |
+| `iptv:send-alerts` | every 5 minutes |
+| `iptv:heartbeat` | every minute (feeds `/health` and the dashboard warning) |
 | `model:prune` for `ActiveSession` | every 15 minutes |
 
 A newly added source starts importing within about a minute.
+
+**Monitoring:** add a free monitor (e.g. UptimeRobot, HTTP(s) type, every 5 minutes) for `https://yourdomain.com/health`. It returns `503` when the cron job or the queue stops, so you get an email even though the app itself can't send one then.
 
 ## 5. Updating
 

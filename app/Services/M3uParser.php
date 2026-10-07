@@ -13,7 +13,7 @@ class M3uParser
     private const VOD_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v'];
 
     /**
-     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string}>
+     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string}>
      */
     public function parseFile(string $path): Generator
     {
@@ -35,7 +35,7 @@ class M3uParser
 
     /**
      * @param iterable<string> $lines
-     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string}>
+     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string}>
      */
     public function parseLines(iterable $lines): Generator
     {
@@ -64,12 +64,22 @@ class M3uParser
                 continue;
             }
 
+            // VLC options the stream needs, e.g. #EXTVLCOPT:http-user-agent=Mozilla/5.0
+            if (str_starts_with($line, '#EXTVLCOPT:') && $current !== null) {
+                [$key, $value] = array_pad(explode('=', substr($line, 11), 2), 2, '');
+                $key = $this->headerKey($key);
+                if ($key && trim($value) !== '') {
+                    $current[$key] = trim($value);
+                }
+                continue;
+            }
+
             if (str_starts_with($line, '#')) {
-                continue; // #EXTM3U, #EXTVLCOPT, #KODIPROP, ...
+                continue; // #EXTM3U, #KODIPROP, ...
             }
 
             // A URL line: belongs to the preceding #EXTINF, or is a bare URL entry
-            $entry = $current ?? ['name' => null, 'logo' => null, 'group' => null, 'tvg_id' => null];
+            $entry = $current ?? ['name' => null, 'logo' => null, 'group' => null, 'tvg_id' => null, 'user_agent' => null, 'referrer' => null];
             $entry['url'] = $line;
             $entry['name'] = $entry['name'] ?: $this->nameFromUrl($line);
             $current = null;
@@ -110,7 +120,21 @@ class M3uParser
             'logo' => ($attributes['tvg-logo'] ?? '') ?: null,
             'group' => ($attributes['group-title'] ?? '') ?: null,
             'tvg_id' => ($attributes['tvg-id'] ?? '') ?: null,
+            'user_agent' => ($attributes['http-user-agent'] ?? '') ?: null,
+            'referrer' => ($attributes['http-referrer'] ?? $attributes['http-referer'] ?? '') ?: null,
         ];
+    }
+
+    /**
+     * Map a VLC option name to the entry key it fills, or null for options we don't keep.
+     */
+    private function headerKey(string $option): ?string
+    {
+        return match (strtolower(trim($option))) {
+            'http-user-agent' => 'user_agent',
+            'http-referrer', 'http-referer' => 'referrer',
+            default => null,
+        };
     }
 
     private function nameFromUrl(string $url): string

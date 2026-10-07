@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\TokenService;
+use App\Services\XtreamService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class M3uController extends Controller
 {
@@ -17,18 +17,13 @@ class M3uController extends Controller
     }
 
     /**
-     * GET /m3u?username=&password=
+     * GET /m3u?username=&password=, and the Xtream Codes /get.php?username=&password=&type=m3u_plus
      */
-    public function generate(Request $request)
+    public function generate(Request $request, XtreamService $xtream)
     {
-        $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
-        ]);
+        $user = $xtream->authenticate($request->input('username'), $request->input('password'));
 
-        $user = User::where('username', $request->username)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
             return response('Invalid credentials', 401);
         }
 

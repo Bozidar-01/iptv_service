@@ -31,8 +31,14 @@ class UserController extends Controller
         $isLocalHost = in_array($request->getHost(), ['localhost', '127.0.0.1', '::1'], true);
         $channelCount = $this->userService->channelCount($user);
         $recentLogs = $user->streamLogs()->with('channel')->orderByDesc('started_at')->limit(10)->get();
+        // Xtream Codes login: apps want the server address without a path
+        $server = [
+            'url' => $request->getSchemeAndHttpHost(),
+            'host' => $request->getHost(),
+            'port' => $request->getPort(),
+        ];
 
-        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs'));
+        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server'));
     }
 
     public function regeneratePlaylistToken(User $user)
