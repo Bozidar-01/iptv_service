@@ -5,12 +5,14 @@
     $recovered = $alerts->count() - $problems;
     $styles = [
         'system' => ['#d92d20', '#fef3f2', __('Problem')],
+        'subscriptions' => ['#b54708', '#fffaeb', __('Subscription')],
         'sync_failed' => ['#b54708', '#fef6ee', __('Import failed')],
         'down' => ['#d92d20', '#fef3f2', __('Not working')],
         'up' => ['#079455', '#ecfdf3', __('Working again')],
     ];
     $headings = [
         'system' => __('Background tasks'),
+        'subscriptions' => __('Subscriptions'),
         'sync_failed' => trans_choice(':count source failed to import|:count sources failed to import', count($groups['sync_failed'] ?? []), ['count' => count($groups['sync_failed'] ?? [])]),
         'down' => trans_choice(':count channel stopped working|:count channels stopped working', count($groups['down'] ?? []), ['count' => count($groups['down'] ?? [])]),
         'up' => trans_choice(':count channel is working again|:count channels are working again', count($groups['up'] ?? []), ['count' => count($groups['up'] ?? [])]),

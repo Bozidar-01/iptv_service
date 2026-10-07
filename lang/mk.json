@@ -373,5 +373,8 @@
     "receiver online": "ресиверот е вклучен",
     "receiver not checked yet": "ресиверот сè уште не е проверен",
     "Receiver :name is offline": "Ресиверот :name не е достапен",
-    "Receiver :name is back online": "Ресиверот :name повторно е достапен"
+    "Receiver :name is back online": "Ресиверот :name повторно е достапен",
+    "Subscriptions": "Претплати",
+    "Subscription of :name ends on :date": "Претплатата на :name истекува на :date",
+    "Subscription of :name ended on :date": "Претплатата на :name истече на :date"
 }

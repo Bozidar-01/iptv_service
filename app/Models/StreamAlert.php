@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * Something an admin asked to be told about: a watched channel stopped or started working,
  * a watched source failed to import, or background jobs stopped running. Shared by all admins.
  */
-#[Fillable(['type', 'channel_id', 'source_id', 'name', 'detail', 'read_at', 'mailed_at'])]
+#[Fillable(['type', 'channel_id', 'source_id', 'user_id', 'name', 'detail', 'read_at', 'mailed_at'])]
 class StreamAlert extends Model
 {
     public const TYPE_DOWN = 'down';
@@ -24,6 +24,12 @@ class StreamAlert extends Model
     /** A satellite receiver's relay stopped / started answering (ReceiverService). */
     public const TYPE_RECEIVER_DOWN = 'receiver_down';
     public const TYPE_RECEIVER_UP = 'receiver_up';
+
+    /** A subscription ends within iptv.expiry_reminder_days / has ended. detail = expiry date (Y-m-d) */
+    public const TYPE_EXPIRING = 'expiring';
+    public const TYPE_EXPIRED = 'expired';
+
+    public const SUBSCRIPTION_TYPES = [self::TYPE_EXPIRING, self::TYPE_EXPIRED];
 
     public const SYSTEM_TYPES = [self::TYPE_QUEUE_STUCK, self::TYPE_JOBS_FAILED, self::TYPE_RECEIVER_DOWN];
 
@@ -45,6 +51,11 @@ class StreamAlert extends Model
         return $this->belongsTo(Source::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function scopeUnread($query)
     {
         return $query->whereNull('read_at');
@@ -59,6 +70,8 @@ class StreamAlert extends Model
             self::TYPE_UP => __(':name is working again', ['name' => $this->name]),
             self::TYPE_SYNC_FAILED => __('Import of :name failed', ['name' => $this->name]),
             self::TYPE_QUEUE_STUCK => __('Background jobs are not running: the oldest has waited :minutes minutes', ['minutes' => (int) $this->detail]),
+            self::TYPE_EXPIRING => __('Subscription of :name ends on :date', ['name' => $this->name, 'date' => $this->expiryDate()]),
+            self::TYPE_EXPIRED => __('Subscription of :name ended on :date', ['name' => $this->name, 'date' => $this->expiryDate()]),
             self::TYPE_RECEIVER_DOWN => __('Receiver :name is offline', ['name' => $this->name]),
             self::TYPE_RECEIVER_UP => __('Receiver :name is back online', ['name' => $this->name]),
             self::TYPE_JOBS_FAILED => trans_choice(':count background job failed|:count background jobs failed', (int) $this->detail, ['count' => (int) $this->detail]),
@@ -86,6 +99,11 @@ class StreamAlert extends Model
     public function title(): string
     {
         return in_array($this->type, [self::TYPE_DOWN, self::TYPE_UP, self::TYPE_SYNC_FAILED], true) ? $this->name : $this->message();
+    }
+
+    private function expiryDate(): string
+    {
+        return \Illuminate\Support\Carbon::parse($this->detail)->translatedFormat('j M Y');
     }
 
     public function isSystem(): bool

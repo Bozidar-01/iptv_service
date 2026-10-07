@@ -21,6 +21,9 @@ Schedule::command('iptv:heartbeat')->everyMinute();
 // Alert when a satellite receiver's relay stops answering (see ReceiverService)
 Schedule::command('iptv:check-receivers')->everyFiveMinutes();
 
+// Remind admins about subscriptions ending soon / just ended (SubscriptionReminderService)
+Schedule::command('iptv:expiry-reminders')->dailyAt('08:00');
+
 // Switch dead streams off and recovered ones back on (see StreamCheckService)
 Schedule::command('iptv:check-streams')->dailyAt('04:00');
 Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();

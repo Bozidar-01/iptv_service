@@ -5,6 +5,8 @@
         <div class="cell-main truncate">
             @if($alert->channel_id)
                 <a href="{{ route('admin.channels.edit', $alert->channel_id) }}">{{ $alert->message() }}</a>
+            @elseif($alert->user_id)
+                <a href="{{ route('admin.users.show', $alert->user_id) }}">{{ $alert->message() }}</a>
             @elseif($alert->source_id)
                 <a href="{{ route('admin.sources.edit', $alert->source_id) }}">{{ $alert->message() }}</a>
             @else

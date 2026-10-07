@@ -9,6 +9,7 @@
 @foreach($groups as $type => $items)
 {!! match ($type) {
     'system' => __('Background tasks'),
+    'subscriptions' => __('Subscriptions'),
     'sync_failed' => trans_choice(':count source failed to import|:count sources failed to import', count($items), ['count' => count($items)]),
     'down' => trans_choice(':count channel stopped working|:count channels stopped working', count($items), ['count' => count($items)]),
     default => trans_choice(':count channel is working again|:count channels are working again', count($items), ['count' => count($items)]),

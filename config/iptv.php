@@ -15,4 +15,9 @@ return [
     */
     'receiver_link_minutes' => (int) env('RECEIVER_LINK_MINUTES', 180),
 
+    /*
+    | Days before a subscription's expiry date that admins get a reminder (iptv:expiry-reminders).
+    */
+    'expiry_reminder_days' => (int) env('EXPIRY_REMINDER_DAYS', 3),
+
 ];
