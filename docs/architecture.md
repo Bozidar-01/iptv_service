@@ -31,6 +31,7 @@ routes/web.php, routes/console.php
 | `StreamService` | Authorise playback, connection limit, session upsert, stream log |
 | `StreamPreviewService` | Admin **Watch** player proxy: signed proxied URLs, HLS playlist rewriting (segment lines and `URI="…"`), streaming media through with a VLC user agent |
 | `XtreamService` | Xtream Codes API: authenticate, login/server info, live categories and streams |
+| `ReceiverService` | Signed relay links for satellite receiver channels, relay status checks and alerts |
 | `HealthService` | Scheduler heartbeat, stuck-queue and failed-job alerts, `/health` status |
 | `StreamCheckService` | Check streams concurrently, switch dead channels off and recovered ones back on, create alerts for watched channels |
 

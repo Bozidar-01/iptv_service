@@ -92,6 +92,7 @@ This runs everything in `routes/console.php`:
 | `iptv:check-streams` / `iptv:check-streams --watched` | daily at 04:00 / every 15 minutes (queued) |
 | `iptv:send-alerts` | every 5 minutes |
 | `iptv:heartbeat` | every minute (feeds `/health` and the dashboard warning) |
+| `iptv:check-receivers` | every 5 minutes (satellite receiver relays) |
 | `model:prune` for `ActiveSession` | every 15 minutes |
 
 A newly added source starts importing within about a minute.

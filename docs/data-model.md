@@ -26,9 +26,13 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 | Column | Type | Notes |
 |---|---|---|
 | name | string | |
-| type | enum `url`,`file` | |
+| type | string(20): `url`, `file`, `receiver` | `receiver` = satellite receiver behind the NeboTV relay ([receiver.md](features/receiver.md)) |
 | url | string(2048), nullable | provider M3U URL (often contains provider credentials) |
 | file_path | string, nullable | path on the default disk, `sources/{uuid}.m3u` |
+| relay_secret | text, nullable, `encrypted` cast, hidden | receiver: shared secret for signed links and the relay's playlist/status |
+| transcode | bool, default false | receiver: play the 720p transcoded stream (relay port 8002) |
+| receiver_online | bool, nullable | receiver: last `/status` result; null = not checked yet |
+| receiver_checked_at | timestamp, nullable | |
 | bouquet_id | FK → bouquets, nullable, `ON DELETE SET NULL` | imported channels are added here |
 | skip_vod | bool, default true | |
 | auto_sync | bool, default true | re-sync every 24 h |
@@ -39,7 +43,7 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 | channel_count | uint | after last successful sync |
 | last_synced_at | timestamp, nullable | |
 
-Helpers: `isBusy()` (queued/syncing), `isDueForSync()`.
+Helpers: `isBusy()` (queued/syncing), `isDueForSync()`, `isReceiver()`, `playlistUrl()` (the URL, or the relay playlist with `?key=`).
 
 ### channels
 | Column | Type | Notes |
@@ -66,7 +70,7 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 ### stream_alerts
 | Column | Type | Notes |
 |---|---|---|
-| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed` (`StreamAlert::TYPE_*`) |
+| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up` (`StreamAlert::TYPE_*`) |
 | channel_id | FK → channels, nullable, `ON DELETE SET NULL` | |
 | source_id | FK → sources, nullable, `ON DELETE SET NULL` | |
 | name | string | channel or source name when the alert was made |

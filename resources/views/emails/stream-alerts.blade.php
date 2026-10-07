@@ -95,7 +95,7 @@
                                                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                                             <tr>
                                                                 <td style="font-family:{{ $font }};vertical-align:middle;">
-                                                                    <div style="font-size:15px;font-weight:600;color:#101828;">{{ $alert->isSystem() ? $alert->message() : $alert->name }}</div>
+                                                                    <div style="font-size:15px;font-weight:600;color:#101828;">{{ $alert->title() }}</div>
                                                                     <div style="padding-top:2px;font-size:13px;color:#8a92a6;">
                                                                         @if($alert->channel_id && $alert->source){{ $alert->source->name }} · @endif{{ $alert->created_at->translatedFormat('j M, H:i') }}
                                                                     </div>

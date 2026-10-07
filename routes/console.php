@@ -18,6 +18,9 @@ Schedule::command('iptv:sync-sources --due')->hourly();
 // Heartbeat for /health and alerts when queued jobs are stuck or failing (see HealthService)
 Schedule::command('iptv:heartbeat')->everyMinute();
 
+// Alert when a satellite receiver's relay stops answering (see ReceiverService)
+Schedule::command('iptv:check-receivers')->everyFiveMinutes();
+
 // Switch dead streams off and recovered ones back on (see StreamCheckService)
 Schedule::command('iptv:check-streams')->dailyAt('04:00');
 Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();

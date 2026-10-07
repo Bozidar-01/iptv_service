@@ -51,7 +51,7 @@ class StreamAlertsMail extends Mailable
             'system' => $this->alerts->filter->isSystem()->values(),
             StreamAlert::TYPE_SYNC_FAILED => $this->alerts->where('type', StreamAlert::TYPE_SYNC_FAILED)->values(),
             StreamAlert::TYPE_DOWN => $this->alerts->where('type', StreamAlert::TYPE_DOWN)->values(),
-            StreamAlert::TYPE_UP => $this->alerts->where('type', StreamAlert::TYPE_UP)->values(),
+            StreamAlert::TYPE_UP => $this->alerts->whereIn('type', [StreamAlert::TYPE_UP, StreamAlert::TYPE_RECEIVER_UP])->values(),
         ])->filter->isNotEmpty()->all();
     }
 }

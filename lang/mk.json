@@ -360,5 +360,18 @@
     "A web page instead of a stream": "Веб-страница наместо стрим",
     "Empty answer": "Празен одговор",
     "Disable channels whose stream stops working, and turn them back on when it works again. Turn this off for channels that only play in some countries, since the check runs from the server.": "Исклучи ги каналите чиј стрим престанува да работи и вклучи ги повторно кога ќе проработи. Исклучете го ова за канали што работат само во некои земји, бидејќи проверката се прави од серверот.",
-    "A stream check is already running. Try again when it has finished.": "Проверка на стримови веќе е во тек. Обидете се повторно кога ќе заврши."
+    "A stream check is already running. Try again when it has finished.": "Проверка на стримови веќе е во тек. Обидете се повторно кога ќе заврши.",
+    "Satellite receiver": "Сателитски ресивер",
+    "Relay address": "Адреса на релејот",
+    "The address of the NeboTV relay running on the receiver. Setup: :link.": "Адресата на NeboTV релејот што работи на ресиверот. Поставување: :link.",
+    "Shared secret": "Заедничка тајна",
+    "(leave empty to keep the current one)": "(оставете празно за да ја задржите сегашната)",
+    "Put the same value as \"secret\" in /etc/nebotv-relay.conf on the receiver. Play links are signed with it, so only this panel can make working links.": "Ставете ја истата вредност како \"secret\" во /etc/nebotv-relay.conf на ресиверот. Линковите за гледање се потпишуваат со неа, па само овој панел може да прави линкови што работат.",
+    "Smaller streams (transcoding)": "Помали стримови (транскодирање)",
+    "The receiver converts channels to 720p at about 1 Mbps. Better for phones and slow connections; needs transcoding turned on in the receiver.": "Ресиверот ги претвора каналите во 720p со околу 1 Mbps. Подобро за телефони и бавни врски; бара вклучено транскодирање на ресиверот.",
+    "receiver offline": "ресиверот е исклучен",
+    "receiver online": "ресиверот е вклучен",
+    "receiver not checked yet": "ресиверот сè уште не е проверен",
+    "Receiver :name is offline": "Ресиверот :name не е достапен",
+    "Receiver :name is back online": "Ресиверот :name повторно е достапен"
 }

@@ -47,14 +47,15 @@ class StreamCheckService
 
     /**
      * Channels the check looks at: enabled ones, and ones it switched off itself, except
-     * channels of sources with check_streams turned off.
+     * channels of sources with check_streams turned off, and receiver channels (checking them
+     * would tune the receiver; ReceiverService checks the relay instead).
      */
     public function checkableQuery(?int $sourceId = null, bool $watchedOnly = false): Builder
     {
         return Channel::query()
             ->where(fn ($q) => $q->where('is_active', true)->orWhere('auto_disabled', true))
             ->where(fn ($q) => $q->whereNull('source_id')
-                ->orWhereIn('source_id', Source::select('id')->where('check_streams', true)))
+                ->orWhereIn('source_id', Source::select('id')->where('check_streams', true)->where('type', '!=', 'receiver')))
             ->when($sourceId, fn ($q) => $q->where('source_id', $sourceId))
             ->when($watchedOnly, fn ($q) => $q->watched());
     }

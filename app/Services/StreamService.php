@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Request;
 
 class StreamService
 {
+    public function __construct(private ReceiverService $receiverService)
+    {
+    }
+
     /**
      * Minutes after the last play request that a session still counts as active.
      */
@@ -33,8 +37,8 @@ class StreamService
         // 2. Manage session
         $this->updateSession($user, $channel);
 
-        // 3. Return target URL (Direct redirect for now)
-        return $channel->stream_url;
+        // 3. Return target URL: the stream itself, or a signed link for receiver channels
+        return $this->receiverService->playUrl($channel);
     }
 
     /**

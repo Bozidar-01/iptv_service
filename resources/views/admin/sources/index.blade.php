@@ -48,11 +48,14 @@
                     <tr>
                         <td>
                             <div class="cell-flex">
-                                <span class="logo-fallback"><x-icon :name="$source->type === 'url' ? 'globe' : 'upload'" style="width:15px;height:15px" /></span>
+                                <span class="logo-fallback"><x-icon :name="['url' => 'globe', 'file' => 'upload', 'receiver' => 'tv'][$source->type] ?? 'globe'" style="width:15px;height:15px" /></span>
                                 <div style="min-width: 0">
                                     <div class="cell-main">{{ $source->name }}</div>
                                     <div class="cell-sub truncate">
-                                        {{ $source->type === 'url' ? parse_url($source->url, PHP_URL_HOST) : __('Uploaded file') }}
+                                        {{ $source->type === 'file' ? __('Uploaded file') : parse_url($source->url, PHP_URL_HOST) }}
+                                        @if($source->isReceiver())
+                                            · @if($source->receiver_online === false)<span style="color: var(--danger)">{{ __('receiver offline') }}</span>@elseif($source->receiver_online)<span style="color: var(--success)">{{ __('receiver online') }}</span>@else{{ __('receiver not checked yet') }}@endif
+                                        @endif
                                         @if($source->skip_vod) · {{ __('live only') }} @endif
                                         @if($source->auto_sync) · {{ __('auto-refresh daily') }} @endif
                                     </div>

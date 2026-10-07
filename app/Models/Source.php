@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['name', 'type', 'url', 'file_path', 'bouquet_id', 'skip_vod', 'auto_sync', 'check_streams', 'alert_on_down', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
+#[Hidden(['relay_secret'])]
+#[Fillable(['name', 'type', 'url', 'file_path', 'relay_secret', 'transcode', 'receiver_online', 'receiver_checked_at', 'bouquet_id', 'skip_vod', 'auto_sync', 'check_streams', 'alert_on_down', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
 class Source extends Model
 {
     public const STATUS_PENDING = 'pending';
@@ -25,6 +27,10 @@ class Source extends Model
             'skip_vod' => 'boolean',
             'auto_sync' => 'boolean',
             'check_streams' => 'boolean',
+            'relay_secret' => 'encrypted',
+            'transcode' => 'boolean',
+            'receiver_online' => 'boolean',
+            'receiver_checked_at' => 'datetime',
             'alert_on_down' => 'boolean',
             'channel_count' => 'integer',
             'last_synced_at' => 'datetime',
@@ -39,6 +45,25 @@ class Source extends Model
     public function bouquet()
     {
         return $this->belongsTo(Bouquet::class);
+    }
+
+    /**
+     * A satellite receiver behind a NeboTV relay (relay/nebotv-relay.py): channels play
+     * through signed relay links (ReceiverService).
+     */
+    public function isReceiver(): bool
+    {
+        return $this->type === 'receiver';
+    }
+
+    /**
+     * Address the importer downloads: the URL itself, or the relay's protected playlist.
+     */
+    public function playlistUrl(): ?string
+    {
+        return $this->isReceiver()
+            ? rtrim((string) $this->url, '/').'/playlist.m3u?key='.urlencode((string) $this->relay_secret)
+            : $this->url;
     }
 
     public function isBusy(): bool

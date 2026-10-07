@@ -55,5 +55,6 @@ Admin resource routes are limited with `->only()` / `->except()` so that only im
 | `iptv:check-streams {source?} {--watched} {--now}` | all channels daily at 04:00, `--watched` every 15 minutes |
 | `iptv:send-alerts {--test}` | every 5 minutes, without overlapping |
 | `iptv:heartbeat` | every minute |
+| `iptv:check-receivers` | every 5 minutes |
 | `model:prune --model=App\Models\ActiveSession` | every 15 minutes |
 | `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` | every minute, only when `QUEUE_SCHEDULED_WORKER=true` (shared hosting); `withoutOverlapping(15)`, in the background |

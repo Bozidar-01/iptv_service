@@ -25,6 +25,7 @@ Admins can ask to be told when something stops working.
   - `up`: a watched channel works again after being `offline`.
   - `sync_failed`: a watched source's import fails (`SourceSyncService`).
   - `queue_stuck` and `jobs_failed`: background jobs stopped (see below). Always created, no watching needed.
+  - `receiver_down` / `receiver_up`: a satellite receiver's relay stopped / started answering ([receiver.md](receiver.md)). Always created.
   - `down` alerts store the reason in `detail`. The message then reads e.g. "Telma stopped working: No answer in time".
 - **In the panel:**
   - A bell in the header (top right on desktop, in the top bar on phones) shows the number of unread alerts on a red badge (round bordered button, highlighted while open). It opens a menu with the 8 latest alerts, **Mark all as read** (`POST admin/alerts/read`) and **See all alerts**.

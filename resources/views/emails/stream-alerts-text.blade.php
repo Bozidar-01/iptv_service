@@ -14,7 +14,7 @@
     default => trans_choice(':count channel is working again|:count channels are working again', count($items), ['count' => count($items)]),
 } !!}
 @foreach($items as $alert)
-- {!! $alert->isSystem() ? $alert->message() : $alert->name !!}@if($alert->channel_id && $alert->source) ({!! $alert->source->name !!})@endif, {!! $alert->created_at->translatedFormat('j M, H:i') !!}@if($alert->reason()): {!! $alert->reason() !!}@endif
+- {!! $alert->title() !!}@if($alert->channel_id && $alert->source) ({!! $alert->source->name !!})@endif, {!! $alert->created_at->translatedFormat('j M, H:i') !!}@if($alert->reason()): {!! $alert->reason() !!}@endif
 @endforeach
 
 @endforeach

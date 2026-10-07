@@ -30,6 +30,7 @@ Then, for both:
 - Play URLs use the host the playlist was requested from. TVs must request it via a LAN address, not `localhost`.
 - Escaping: inside quoted attributes, `"` becomes `'`. Line breaks become spaces everywhere.
 - Channels with `http_user_agent` / `http_referrer` get `#EXTVLCOPT:http-user-agent=…` / `#EXTVLCOPT:http-referrer=…` lines before their URL. TiviMate, OTT Navigator, VLC and Kodi send these on the play request and keep them through the redirect. The Xtream API has no way to pass them, so those channels may not play with a username/password login.
+- Satellite receiver channels redirect to a signed, expiring relay link instead of their stored URL (`ReceiverService::playUrl`, [receiver.md](receiver.md)).
 - Headers: `Content-Type: audio/x-mpegurl`, `Content-Disposition: attachment; filename="playlist.m3u"`.
 
 ## 2. Play: `GET /play/{channel_id}/{token}[.ext]`

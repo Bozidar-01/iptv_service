@@ -23,6 +23,9 @@ _None currently known._
 - **Provider credentials are stored in plain text** in `sources.url` and `channels.stream_url`.
 - **Credentials in query string** for `/m3u?username=&password=` (standard for IPTV, but they end up in server/proxy logs). Prefer the `/playlist/{token}.m3u` link.
 - **No overall request limit:** wrong passwords are limited (admin sign-in and app logins), but `/playlist/{token}.m3u` and `/play` have no request limit.
+- **Relay links can be shared for 3 hours:** a signed receiver link keeps working until it expires (`RECEIVER_LINK_MINUTES`), so a viewer could pass it on. The tuner limit caps the damage. A shorter time means more failed reconnects.
+- **Relay is wiped by image updates:** flashing OpenATV removes `/usr/bin/nebotv-relay.py` and the init script unless they are in the image backup ([receiver.md](receiver.md#after-an-openatv-image-update)).
+- **Relay uses plain HTTP:** links carry signatures, not passwords, but streams aren't encrypted in transit.
 - **Old admin password in git history:** commit `82be74b` put a real-looking admin password in `AdminSeeder.php`. The seeder now reads `.env`, but that password is still in the history: change it on any server that used it.
 - **Devices are told apart by IP + user agent:** two identical TVs with the same app version behind one router look like one device and share a slot. Suggested fix: a per-device token or a stream proxy.
 - **No heartbeat:** a session only stays "active" for 5 minutes after the last `/play` request, so long viewing frees the slot.

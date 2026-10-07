@@ -15,6 +15,7 @@
             <div class="segmented" role="radiogroup">
                 <label><input type="radio" name="type" value="url" @checked($type === 'url') data-type-toggle><span><x-icon name="globe" style="width:15px;height:15px" /> {{ __('From URL') }}</span></label>
                 <label><input type="radio" name="type" value="file" @checked($type === 'file') data-type-toggle><span><x-icon name="upload" style="width:15px;height:15px" /> {{ __('Upload file') }}</span></label>
+                <label><input type="radio" name="type" value="receiver" @checked($type === 'receiver') data-type-toggle><span><x-icon name="tv" style="width:15px;height:15px" /> {{ __('Satellite receiver') }}</span></label>
             </div>
         </div>
 
@@ -28,6 +29,29 @@
             <label class="label" for="file">{{ __('M3U file') }} @if(isset($source) && $source->file_path)<span class="optional">{{ __('(leave empty to keep the current file)') }}</span>@endif</label>
             <input class="input" id="file" name="file" type="file" accept=".m3u,.m3u8,.txt">
             <span class="help">{{ __(".m3u or .m3u8, up to 50 MB (also limited by PHP's upload_max_filesize).") }}</span>
+        </div>
+
+        <div class="field full" data-type="receiver" @if($type !== 'receiver') hidden @endif>
+            <label class="label" for="relay_url">{{ __('Relay address') }}</label>
+            <input class="input mono" id="relay_url" name="relay_url" type="url" value="{{ old('relay_url', ($source->type ?? null) === 'receiver' ? $source->url : '') }}" placeholder="http://nebotv-home.duckdns.org:28080">
+            <span class="help">{!! __('The address of the NeboTV relay running on the receiver. Setup: :link.', ['link' => '<code>docs/features/receiver.md</code>']) !!}</span>
+        </div>
+
+        <div class="field full" data-type="receiver" @if($type !== 'receiver') hidden @endif>
+            <label class="label" for="relay_secret">{{ __('Shared secret') }} @if(isset($source) && $source->relay_secret)<span class="optional">{{ __('(leave empty to keep the current one)') }}</span>@endif</label>
+            <div class="copy-field">
+                <input class="input mono" id="relay_secret" name="relay_secret" value="{{ old('relay_secret', isset($source) ? '' : ($newSecret ?? '')) }}" autocomplete="off" spellcheck="false">
+                <button type="button" class="btn btn-secondary" data-copy="#relay_secret"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+            </div>
+            <span class="help">{{ __('Put the same value as "secret" in /etc/nebotv-relay.conf on the receiver. Play links are signed with it, so only this panel can make working links.') }}</span>
+        </div>
+
+        <div class="field full" data-type="receiver" @if($type !== 'receiver') hidden @endif>
+            <input type="hidden" name="transcode" value="0">
+            <label class="check">
+                <input type="checkbox" name="transcode" value="1" @checked(old('transcode', $source->transcode ?? false))>
+                <div><strong>{{ __('Smaller streams (transcoding)') }}</strong><span>{{ __('The receiver converts channels to 720p at about 1 Mbps. Better for phones and slow connections; needs transcoding turned on in the receiver.') }}</span></div>
+            </label>
         </div>
 
         <div class="field full">
@@ -46,7 +70,7 @@
 
         <div class="field full" style="gap: 12px">
             <input type="hidden" name="skip_vod" value="0">
-            <label class="check">
+            <label class="check" data-type="url file" @if($type === 'receiver') hidden @endif>
                 <input type="checkbox" name="skip_vod" value="1" @checked(old('skip_vod', $source->skip_vod ?? true))>
                 <div><strong>{{ __('Live TV only') }}</strong><span>{{ __('Skip movies and series (VOD) entries. Recommended: provider lists can contain tens of thousands of them.') }}</span></div>
             </label>
@@ -56,7 +80,7 @@
                 <div><strong>{{ __('Refresh automatically') }}</strong><span>{{ __('Re-import once a day to pick up new channels and changed stream links.') }}</span></div>
             </label>
             <input type="hidden" name="check_streams" value="0">
-            <label class="check">
+            <label class="check" data-type="url file" @if($type === 'receiver') hidden @endif>
                 <input type="checkbox" name="check_streams" value="1" @checked(old('check_streams', $source->check_streams ?? true))>
                 <div><strong>{{ __('Check streams') }}</strong><span>{{ __('Disable channels whose stream stops working, and turn them back on when it works again. Turn this off for channels that only play in some countries, since the check runs from the server.') }}</span></div>
             </label>
@@ -76,7 +100,7 @@
 @push('scripts')
 <script>
     document.querySelectorAll('[data-type-toggle]').forEach((radio) => radio.addEventListener('change', () => {
-        document.querySelectorAll('[data-type]').forEach((el) => el.hidden = el.dataset.type !== radio.value);
+        document.querySelectorAll('[data-type]').forEach((el) => el.hidden = !el.dataset.type.split(' ').includes(radio.value));
     }));
 </script>
 @endpush

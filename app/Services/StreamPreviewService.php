@@ -52,7 +52,7 @@ class StreamPreviewService
     public function target(Channel $channel, ?string $encoded, ?string $signature): ?string
     {
         if ($encoded === null) {
-            return $channel->stream_url;
+            return app(ReceiverService::class)->playUrl($channel);
         }
 
         $target = base64_decode(strtr($encoded, '-_', '+/'), true);

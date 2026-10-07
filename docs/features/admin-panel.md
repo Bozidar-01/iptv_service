@@ -16,6 +16,8 @@ Shared behaviours (in the layout script):
 - The Channels stat links to the channels the stream check switched off.
 
 ## Sources (`admin.sources.*`, `POST sources/{source}/sync`)
+Three kinds: **From URL**, **Upload file**, **Satellite receiver** (relay address, shared secret with copy button and a generated suggestion, transcoding switch; see [receiver.md](receiver.md)). Receiver rows show *receiver online / offline / not checked yet*. The *Live TV only* and *Check streams* options are hidden for receivers.
+
 List with type/host, status badge (Not synced / Queued / Syncing / Synced / Failed with the error), channel counts (linked to the filtered channel list), bouquet, last sync, and Sync / Edit / Delete. See [sources.md](sources.md).
 
 ## Channels (`admin.channels.*`, `POST channels/bulk`)

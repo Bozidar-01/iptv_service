@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-07 — Satellite receiver through the NeboTV relay
+- New `relay/nebotv-relay.py`, a small Python 3 program that runs on the Enigma2 receiver (Octagon SF8008 / OpenATV). It streams a channel only for links signed by the panel, allows at most `max_streams` channels (tuners), adds the box's stream login, offers the chosen bouquets as M3U (markers become categories, encrypted channels left out with `fta_only`), reports `/status`, serves picons and keeps a DuckDNS name updated. With init script, example settings and `relay/test_relay.py`.
+- New source type **Satellite receiver** (`sources.type = receiver`, `relay_secret` encrypted, `transcode`, `receiver_online`, `receiver_checked_at`). Imports the relay playlist. Never stream-checked.
+- `ReceiverService`: `/play`, Xtream `/live` and the admin preview send receiver channels to a signed link that expires (`RECEIVER_LINK_MINUTES`, default 180). `iptv:check-receivers` runs every 5 minutes and sends `receiver_down` / `receiver_up` alerts.
+- Import errors never store the relay secret.
+- Docs: new `docs/features/receiver.md` (setup guide). Tests: `ReceiverTest` (14) and 9 relay tests. 223 tests.
+- Files: `relay/*`, `app/Services/{ReceiverService,StreamService,StreamPreviewService,SourceSyncService,StreamCheckService}.php`, `app/Console/Commands/CheckReceiversCommand.php`, `app/Models/{Source,StreamAlert}.php`, `app/Mail/StreamAlertsMail.php`, `app/Http/Controllers/Admin/SourceController.php`, `database/migrations/2026_10_07_000009_add_receiver_columns_to_sources_table.php`, `config/iptv.php`, `routes/console.php`, `resources/views/admin/sources/{_form,index}.blade.php`, `resources/views/emails/*`, `lang/mk.json`, `lang/mk/validation.php`, `.env.example`, `CLAUDE.md`, `docs/**`, `tests/Feature/ReceiverTest.php`.
+
 ### 2026-10-07 — Admin-only middleware, admin from .env, per-source stream check, one check at a time
 - Admin routes now also require `role = admin` (`EnsureAdmin`, alias `admin`). Other signed-in users are signed out.
 - `AdminSeeder` reads `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env`. Without a password: `admin123` locally, otherwise a random one printed once. It never changes an existing user. The hard-coded password is removed (it is still in git history: change it where it was used).

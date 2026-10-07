@@ -21,7 +21,11 @@ class StreamAlert extends Model
     /** Background jobs failed. detail = how many */
     public const TYPE_JOBS_FAILED = 'jobs_failed';
 
-    public const SYSTEM_TYPES = [self::TYPE_QUEUE_STUCK, self::TYPE_JOBS_FAILED];
+    /** A satellite receiver's relay stopped / started answering (ReceiverService). */
+    public const TYPE_RECEIVER_DOWN = 'receiver_down';
+    public const TYPE_RECEIVER_UP = 'receiver_up';
+
+    public const SYSTEM_TYPES = [self::TYPE_QUEUE_STUCK, self::TYPE_JOBS_FAILED, self::TYPE_RECEIVER_DOWN];
 
     protected function casts(): array
     {
@@ -55,6 +59,8 @@ class StreamAlert extends Model
             self::TYPE_UP => __(':name is working again', ['name' => $this->name]),
             self::TYPE_SYNC_FAILED => __('Import of :name failed', ['name' => $this->name]),
             self::TYPE_QUEUE_STUCK => __('Background jobs are not running: the oldest has waited :minutes minutes', ['minutes' => (int) $this->detail]),
+            self::TYPE_RECEIVER_DOWN => __('Receiver :name is offline', ['name' => $this->name]),
+            self::TYPE_RECEIVER_UP => __('Receiver :name is back online', ['name' => $this->name]),
             self::TYPE_JOBS_FAILED => trans_choice(':count background job failed|:count background jobs failed', (int) $this->detail, ['count' => (int) $this->detail]),
             default => $this->name,
         };
@@ -70,7 +76,16 @@ class StreamAlert extends Model
 
     public function isProblem(): bool
     {
-        return $this->type !== self::TYPE_UP;
+        return !in_array($this->type, [self::TYPE_UP, self::TYPE_RECEIVER_UP], true);
+    }
+
+    /**
+     * Short text for lists that already say what happened (email groups): the channel or
+     * source name, or the full message for alerts that aren't about one channel.
+     */
+    public function title(): string
+    {
+        return in_array($this->type, [self::TYPE_DOWN, self::TYPE_UP, self::TYPE_SYNC_FAILED], true) ? $this->name : $this->message();
     }
 
     public function isSystem(): bool

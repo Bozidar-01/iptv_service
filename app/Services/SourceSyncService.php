@@ -43,7 +43,7 @@ class SourceSyncService
         try {
             $path = $source->type === 'file'
                 ? Storage::path($source->file_path)
-                : $tempFile = $this->download($source->url);
+                : $tempFile = $this->download($source->playlistUrl());
 
             $count = $this->import($source, $path);
 
@@ -55,7 +55,8 @@ class SourceSyncService
         } catch (Throwable $e) {
             $source->update([
                 'status' => Source::STATUS_FAILED,
-                'last_error' => mb_substr($e->getMessage(), 0, 1000),
+                // Never store a relay secret that a connection error message may contain
+                'last_error' => mb_substr($source->relay_secret ? str_replace([$source->relay_secret, urlencode($source->relay_secret)], '***', $e->getMessage()) : $e->getMessage(), 0, 1000),
             ]);
 
             if ($source->alert_on_down) {
