@@ -15,7 +15,7 @@ Docs live in [`docs/`](docs/README.md). **Every change that adds, removes or alt
 Docker is the default way to run the app (see the `run-app` skill):
 
 ```bash
-docker compose up -d --build                       # http://localhost:8000, admin / admin123
+docker compose up -d --build                       # http://localhost:8000, admin / admin123 (or ADMIN_* in .env)
 docker compose exec app php artisan test           # tests; all must pass before finishing a task
 docker compose exec app php artisan <cmd>          # artisan against the Docker MySQL
 docker compose logs -f queue                       # source imports

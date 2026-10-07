@@ -55,6 +55,11 @@
                 <input type="checkbox" name="auto_sync" value="1" @checked(old('auto_sync', $source->auto_sync ?? true))>
                 <div><strong>{{ __('Refresh automatically') }}</strong><span>{{ __('Re-import once a day to pick up new channels and changed stream links.') }}</span></div>
             </label>
+            <input type="hidden" name="check_streams" value="0">
+            <label class="check">
+                <input type="checkbox" name="check_streams" value="1" @checked(old('check_streams', $source->check_streams ?? true))>
+                <div><strong>{{ __('Check streams') }}</strong><span>{{ __('Disable channels whose stream stops working, and turn them back on when it works again. Turn this off for channels that only play in some countries, since the check runs from the server.') }}</span></div>
+            </label>
             <input type="hidden" name="alert_on_down" value="0">
             <label class="check">
                 <input type="checkbox" name="alert_on_down" value="1" @checked(old('alert_on_down', $source->alert_on_down ?? false))>

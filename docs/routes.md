@@ -25,7 +25,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/xmltv.php` | `xtream.xmltv` | `XtreamController@xmltv` | empty guide |
 | GET | `/live/{username}/{password}/{stream}` | `xtream.live` | `XtreamController@live` | `{stream}` = channel id + optional `.ts`/`.m3u8` |
 
-## Admin (`auth` middleware, prefix `/admin`, name prefix `admin.`)
+## Admin (`auth` + `admin` middleware, prefix `/admin`, name prefix `admin.`)
 
 | Method | URI | Name | Handler |
 |---|---|---|---|

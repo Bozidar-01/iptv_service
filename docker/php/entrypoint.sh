@@ -24,7 +24,7 @@ done
 
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
     php artisan migrate --force
-    # Creates admin / admin123 on first run; safe to repeat
+    # Creates the first admin (ADMIN_USERNAME / ADMIN_PASSWORD, admin / admin123 locally); safe to repeat
     php artisan db:seed --force
 fi
 

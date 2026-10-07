@@ -1,6 +1,6 @@
 # Local stack: nginx + PHP-FPM app, queue worker, scheduler and MySQL.
 #   docker compose up -d --build
-#   open http://localhost:8000  (admin / admin123)
+#   open http://localhost:8000  (admin / admin123, or ADMIN_USERNAME / ADMIN_PASSWORD from .env)
 # TVs on your network use http://<this computer's LAN IP>:8000
 
 x-app: &app

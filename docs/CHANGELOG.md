@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-07 — Admin-only middleware, admin from .env, per-source stream check, one check at a time
+- Admin routes now also require `role = admin` (`EnsureAdmin`, alias `admin`). Other signed-in users are signed out.
+- `AdminSeeder` reads `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env`. Without a password: `admin123` locally, otherwise a random one printed once. It never changes an existing user. The hard-coded password is removed (it is still in git history: change it where it was used).
+- Sources: **Check streams** switch (`sources.check_streams`, default on). Off = the stream check skips the source, and channels it had switched off come back. For channels that play only in some countries.
+- Stream check: only one at a time (`stream-check:pending` cache counter). The button says when a check is already running, and the schedule doesn't pile up checks while the queue is stopped.
+- Docs: replaced stale `admin / admin123` mentions. Tests: `AdminAccessTest`, more `StreamCheckTest`. 209 tests.
+- Files: `app/Http/Middleware/EnsureAdmin.php`, `bootstrap/app.php`, `routes/web.php`, `database/seeders/AdminSeeder.php`, `database/migrations/2026_10_07_000008_add_check_streams_to_sources_table.php`, `app/Models/Source.php`, `app/Services/{SourceService,StreamCheckService}.php`, `app/Jobs/CheckStreams.php`, `app/Console/Commands/CheckStreamsCommand.php`, `app/Http/Controllers/Admin/{ChannelController,SourceController}.php`, `resources/views/admin/sources/_form.blade.php`, `lang/mk.json`, `.env.example`, `README.md`, `CLAUDE.md`, `docker-compose.yml`, `docker/php/entrypoint.sh`, `.claude/skills/run-app/SKILL.md`, `docs/**`, `tests/**`.
+
 ### 2026-10-07 — Reliability: login limits, confirmed failures, background task monitoring, stream headers
 - **Login limits:** admin sign-in is locked for a minute after 5 wrong passwords (username + IP). App logins (`/m3u`, `/get.php`, `/player_api.php`, `/live`) are blocked for 10 minutes after 20 wrong attempts from one IP.
 - **Stream check:** failed streams are retried once after 5 s before they count as offline, and the reason is stored (`channels.stream_error`: HTTP code, timeout, connect, web page, empty). It is shown in the badge tooltip, the dashboard and alerts/emails ("stopped working: No answer in time"). Full check: 3,619 online (was 3,578).

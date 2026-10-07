@@ -51,6 +51,8 @@ DB_PASSWORD=...
 QUEUE_CONNECTION=database
 DB_QUEUE_RETRY_AFTER=900
 QUEUE_SCHEDULED_WORKER=true
+ADMIN_USERNAME=yourname
+ADMIN_PASSWORD=a-long-password
 # Alert emails via Brevo: see features/alerts.md#email-with-brevo
 MAIL_MAILER=smtp
 MAIL_HOST=smtp-relay.brevo.com
@@ -65,7 +67,7 @@ Then:
 
 ```bash
 php artisan migrate --force
-php artisan db:seed --force      # creates the admin and, on an empty database, the default sources
+php artisan db:seed --force      # creates the admin (ADMIN_USERNAME / ADMIN_PASSWORD, or a random password it prints) and, on an empty database, the default sources
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 

@@ -17,7 +17,7 @@ If `docker info` fails, Docker Desktop isn't running (`open -a Docker`, then wai
 The project is bind-mounted, so PHP/Blade/CSS changes apply immediately. `public/css/admin.css` is cache-busted by its mtime.
 
 ## URLs and logins
-- Panel: http://localhost:8000. Admin `admin` / `admin123` (from `AdminSeeder`, seeded on container start).
+- Panel: http://localhost:8000. Admin `admin` / `admin123` (from `AdminSeeder`, seeded on container start; `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `.env` override it). This machine's DB may have other admins from earlier seeds.
 - From TVs and phones: `http://<LAN IP>:8000` (`ipconfig getifaddr en0`).
 - MySQL from the host: `127.0.0.1:3307`, `iptv` / `iptv`, db `iptv_service`.
 

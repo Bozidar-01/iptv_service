@@ -21,6 +21,11 @@ class CheckStreamsCommand extends Command
 
         if (!$this->option('now')) {
             $count = $checker->queueCheck($source, $watched);
+            if ($count === null) {
+                $this->warn('A stream check is already running.');
+
+                return self::SUCCESS;
+            }
             $this->info("Queued a check of {$count} channels.");
 
             return self::SUCCESS;

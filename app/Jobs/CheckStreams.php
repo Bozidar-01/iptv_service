@@ -23,6 +23,18 @@ class CheckStreams implements ShouldQueue
 
     public function handle(StreamCheckService $checker): void
     {
-        $checker->checkChannels($this->channelIds);
+        try {
+            $checker->checkChannels($this->channelIds);
+        } finally {
+            $checker->jobFinished();
+        }
+    }
+
+    /**
+     * Killed or timed out (handle() never reached its finally): still count the job as done.
+     */
+    public function failed(?\Throwable $e): void
+    {
+        app(StreamCheckService::class)->jobFinished();
     }
 }

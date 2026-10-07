@@ -114,6 +114,10 @@ class ChannelController extends Controller
 
         $count = $checker->queueCheck($data['source_id'] ?? null);
 
+        if ($count === null) {
+            return back()->with('error', __('A stream check is already running. Try again when it has finished.'));
+        }
+
         return back()->with('success', trans_choice(
             'Checking :count channel. If it does not work, it will be disabled.|Checking :count channels. The ones that do not work will be disabled.',
             $count,

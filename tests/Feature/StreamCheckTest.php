@@ -5,6 +5,7 @@ use App\Models\Channel;
 use App\Models\Source;
 use App\Models\User;
 use App\Services\StreamCheckService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -83,8 +84,9 @@ it('queues the check in chunks, optionally for one source', function () {
     streamChannel('http://live.test/2');
     streamChannel('http://live.test/3', ['is_active' => false]);
 
-    expect(app(StreamCheckService::class)->queueCheck())->toBe(2)
-        ->and(app(StreamCheckService::class)->queueCheck($source->id))->toBe(1);
+    expect(app(StreamCheckService::class)->queueCheck())->toBe(2);
+    Cache::forget(StreamCheckService::PENDING_KEY);
+    expect(app(StreamCheckService::class)->queueCheck($source->id))->toBe(1);
     Queue::assertPushed(CheckStreams::class, 2);
 });
 
@@ -190,4 +192,66 @@ it('sends the user agent and referrer a stream needs', function () {
     app(StreamCheckService::class)->checkChannels([$channel->id]);
 
     Http::assertSent(fn ($request) => $request->hasHeader('User-Agent', 'Agent/9') && $request->hasHeader('Referer', 'https://site.test/'));
+});
+
+it('does not queue a second check while one is running', function () {
+    Queue::fake();
+    streamChannel('http://live.test/1');
+    $checker = app(StreamCheckService::class);
+
+    expect($checker->queueCheck())->toBe(1)
+        ->and($checker->isRunning())->toBeTrue()
+        ->and($checker->queueCheck())->toBeNull();
+
+    // The job finishing releases the lock
+    $checker->jobFinished();
+    expect($checker->isRunning())->toBeFalse()
+        ->and($checker->queueCheck())->toBe(1);
+});
+
+it('releases the lock when the jobs run, even if one fails', function () {
+    fakeStreams();
+    streamChannel('http://live.test/1');
+
+    app(StreamCheckService::class)->queueCheck(); // sync queue in tests: runs right away
+
+    expect(app(StreamCheckService::class)->isRunning())->toBeFalse();
+
+    Cache::put(StreamCheckService::PENDING_KEY, 1, 60);
+    (new CheckStreams([1]))->failed(new RuntimeException('killed'));
+    expect(app(StreamCheckService::class)->isRunning())->toBeFalse();
+});
+
+it('skips sources with stream checking turned off and re-enables what it switched off', function () {
+    fakeStreams();
+    $source = Source::create(['name' => 'Geo', 'type' => 'url', 'url' => 'http://p.test', 'check_streams' => true]);
+    $channel = streamChannel('http://gone.test/a', ['source_id' => $source->id]);
+    app(StreamCheckService::class)->checkChannels([$channel->id]);
+    expect($channel->fresh()->is_active)->toBeFalse();
+
+    app(\App\Services\SourceService::class)->updateSource($source, ['name' => 'Geo', 'type' => 'url', 'url' => 'http://p.test', 'check_streams' => false]);
+
+    expect($channel->fresh())->is_active->toBeTrue()->auto_disabled->toBeFalse()
+        ->and(app(StreamCheckService::class)->checkableQuery()->count())->toBe(0);
+});
+
+describe('admin button', function () {
+    beforeEach(fn () => $this->actingAs(User::factory()->admin()->create()));
+
+    it('says when a check is already running', function () {
+        Queue::fake();
+        streamChannel('http://live.test/a.m3u8');
+        Cache::put(StreamCheckService::PENDING_KEY, 3, 60);
+
+        $this->from(route('admin.channels.index'))->post(route('admin.channels.check-streams'))
+            ->assertSessionHas('error', 'A stream check is already running. Try again when it has finished.');
+        Queue::assertNothingPushed();
+    });
+
+    it('saves the source check switch', function () {
+        Queue::fake();
+        $this->post(route('admin.sources.store'), ['name' => 'P', 'type' => 'url', 'url' => 'http://p.test/l.m3u', 'check_streams' => '0']);
+
+        expect(Source::where('name', 'P')->value('check_streams'))->toBeFalse();
+    });
 });

@@ -40,7 +40,7 @@ composer install
 cp .env.example .env           # APP_NAME=NeboTV is the name shown in the panel
 php artisan key:generate
 php artisan migrate
-php artisan db:seed            # admin / admin123 (safe to re-run)
+php artisan db:seed            # admin / admin123 locally, or ADMIN_USERNAME / ADMIN_PASSWORD from .env (safe to re-run)
 composer dev                   # server + queue worker + log tail + vite
 php artisan schedule:work      # in another terminal: auto-refresh + session pruning
 ```

@@ -358,5 +358,7 @@
     "No answer in time": "Нема одговор навреме",
     "Could not connect": "Не може да се поврзе",
     "A web page instead of a stream": "Веб-страница наместо стрим",
-    "Empty answer": "Празен одговор"
+    "Empty answer": "Празен одговор",
+    "Disable channels whose stream stops working, and turn them back on when it works again. Turn this off for channels that only play in some countries, since the check runs from the server.": "Исклучи ги каналите чиј стрим престанува да работи и вклучи ги повторно кога ќе проработи. Исклучете го ова за канали што работат само во некои земји, бидејќи проверката се прави од серверот.",
+    "A stream check is already running. Try again when it has finished.": "Проверка на стримови веќе е во тек. Обидете се повторно кога ќе заврши."
 }

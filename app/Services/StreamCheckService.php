@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Jobs\CheckStreams;
 use App\Models\Channel;
+use App\Models\Source;
 use App\Models\StreamAlert;
 use App\Support\CappedStream;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use Throwable;
@@ -40,13 +42,19 @@ class StreamCheckService
     private const MAX_BYTES = 4096;
     private const USER_AGENT = 'VLC/3.0.20 LibVLC/3.0.20';
 
+    /** Cache counter of queued check jobs not finished yet (see queueCheck). */
+    public const PENDING_KEY = 'stream-check:pending';
+
     /**
-     * Channels the check looks at: enabled ones, and ones it switched off itself.
+     * Channels the check looks at: enabled ones, and ones it switched off itself, except
+     * channels of sources with check_streams turned off.
      */
     public function checkableQuery(?int $sourceId = null, bool $watchedOnly = false): Builder
     {
         return Channel::query()
             ->where(fn ($q) => $q->where('is_active', true)->orWhere('auto_disabled', true))
+            ->where(fn ($q) => $q->whereNull('source_id')
+                ->orWhereIn('source_id', Source::select('id')->where('check_streams', true)))
             ->when($sourceId, fn ($q) => $q->where('source_id', $sourceId))
             ->when($watchedOnly, fn ($q) => $q->watched());
     }
@@ -54,18 +62,46 @@ class StreamCheckService
     /**
      * Queue a check of every checkable channel, in chunks.
      *
-     * @return int number of channels queued
+     * Only one check at a time: while jobs of an earlier check are still queued or running,
+     * nothing is queued (so pressing the button twice, or a stopped queue worker, doesn't pile
+     * up checks). The counter expires after 2 hours in case a worker died mid-check.
+     *
+     * @return ?int number of channels queued, null when a check is still running
      */
-    public function queueCheck(?int $sourceId = null, bool $watchedOnly = false): int
+    public function queueCheck(?int $sourceId = null, bool $watchedOnly = false): ?int
     {
-        $total = 0;
+        if ($this->isRunning()) {
+            return null;
+        }
 
-        $this->checkableQuery($sourceId, $watchedOnly)->select('id')->chunkById(self::CHUNK_SIZE, function ($channels) use (&$total) {
-            CheckStreams::dispatch($channels->pluck('id')->all());
-            $total += $channels->count();
+        $chunks = [];
+        $this->checkableQuery($sourceId, $watchedOnly)->select('id')->chunkById(self::CHUNK_SIZE, function ($channels) use (&$chunks) {
+            $chunks[] = $channels->pluck('id')->all();
         });
 
-        return $total;
+        if ($chunks !== []) {
+            Cache::put(self::PENDING_KEY, count($chunks), now()->addHours(2));
+            foreach ($chunks as $ids) {
+                CheckStreams::dispatch($ids);
+            }
+        }
+
+        return array_sum(array_map('count', $chunks));
+    }
+
+    public function isRunning(): bool
+    {
+        return (int) Cache::get(self::PENDING_KEY, 0) > 0;
+    }
+
+    /**
+     * Called by each CheckStreams job when it ends, successfully or not.
+     */
+    public function jobFinished(): void
+    {
+        if (Cache::decrement(self::PENDING_KEY) <= 0) {
+            Cache::forget(self::PENDING_KEY);
+        }
     }
 
     /**

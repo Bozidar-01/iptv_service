@@ -27,7 +27,7 @@ Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update
 Route::post('/theme', [ThemeController::class, 'update'])->name('theme.update');
 
 // Admin Routes
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('sources/{source}/sync', [SourceController::class, 'sync'])->name('sources.sync');
