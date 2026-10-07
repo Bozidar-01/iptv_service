@@ -12,8 +12,8 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\User::firstOrCreate(['username' => 'admin'], [
-            'password' => \Illuminate\Support\Facades\Hash::make('admin123'),
+        \App\Models\User::firstOrCreate(['username' => 'nebojsa'], [
+            'password' => \Illuminate\Support\Facades\Hash::make('Pejoski3009!'),
             'role' => 'admin',
             'status' => 'active',
         ]);
