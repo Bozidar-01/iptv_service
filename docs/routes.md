@@ -23,6 +23,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/health` | `health` | `HealthController` | `200`/`503` JSON for an uptime monitor |
 | GET | `/m3u` | `m3u` | `M3uController@generate` | query: `username`, `password` |
 | GET | `/playlist/{token}.m3u` | `playlist` | `M3uController@playlist` | per-user playlist link |
+| GET | `/me/{token}` | `me` | `SelfServiceController@show`: the subscriber's own page; `?lang=en\|mk`; `?sent=yes\|again` after a renewal request; 404 for unknown / admin links |
+| POST | `/me/{token}/renew` | `me.renew` | `SelfServiceController@renew`: creates a `renewal_requested` alert (once per 24 h), redirects back to the page |
 | GET | `/epg/{token}.xml` | `epg` | `M3uController@epg` | XMLTV guide for the playlist link |
 | GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream, or the stream itself for sources with *Hide provider address*; token may end in `.m3u8`/`.ts`/… |
 | GET | `/stream/{channel_id}/{token}?u=` | `stream` | `PlayController@stream` | one part (segment, key, variant) of a proxied stream; `u` = encrypted provider address; own limit `THROTTLE_STREAM_PER_TOKEN` |

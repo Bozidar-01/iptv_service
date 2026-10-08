@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Subscriber page and smaller PHPStan baseline
+- **`/me/{token}`**: a page a subscriber opens with their personal link: status, expiry, playlist link with copy button, setup steps, Xtream server + username (never the password), channel count, streams in use, and **Ask to renew** (alert for the admins, once a day). English or Macedonian (`?lang=` or the browser's language), no cookies, `noindex`, own request limit. The user page in the panel shows the link to send (*Page for this user*).
+- New alert type `renewal_requested` (in the *Subscriptions* group of the email digest).
+- PHPStan: date columns of `User`, `Source` and `EpgProgramme` are declared with `@property`, so the analyser knows they are dates: baseline 15 → 8 findings.
+- Tests: `SelfServiceTest` (17), 379 tests. Looked at the page on a phone-sized screen in Macedonian.
+- Files: `app/Http/Controllers/SelfServiceController.php`, `resources/views/me/show.blade.php`, `app/Models/{StreamAlert,User,Source,EpgProgramme}.php`, `routes/player.php`, `app/Providers/AppServiceProvider.php`, `public/css/admin.css`, `resources/views/admin/users/show.blade.php`, `lang/mk.json`, `phpstan-baseline.neon`, `docs/**`, `tests/Feature/SelfServiceTest.php`.
+
 ### 2026-10-09 — Usage statistics
 - New **Statistics** page (sidebar, under Users): plays, viewers and channels watched for the last 7 / 30 / 90 days, plays per day and per hour as column charts, top 10 channels and top 10 users. `StatisticsService`: grouped queries only (a fixed number whatever the history size), 5-minute cache; MySQL and SQLite expressions for day and hour. Runs on the existing `stream_logs` data, no schema change.
 - CSS: `.chart`, `.chart-axis`, `.bar` (theme tokens only; looked at in light and dark).

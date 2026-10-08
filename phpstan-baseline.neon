@@ -13,24 +13,6 @@ parameters:
 			path: app/Models/Channel.php
 
 		-
-			message: '#^Cannot call method lte\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/Source.php
-
-		-
-			message: '#^Cannot call method isPast\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/User.php
-
-		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Services/EpgService.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1
@@ -59,21 +41,3 @@ parameters:
 			identifier: argument.type
 			count: 1
 			path: app/Services/StreamCheckService.php
-
-		-
-			message: '#^Cannot call method isPast\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/SubscriptionReminderService.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/SubscriptionReminderService.php
-
-		-
-			message: '#^Cannot access property \$timestamp on string\.$#'
-			identifier: property.nonObject
-			count: 1
-			path: app/Services/XtreamService.php

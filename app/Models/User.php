@@ -11,8 +11,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
+/**
+ * @property Carbon|null $expiration_date
+ * @property Carbon|null $two_factor_confirmed_at
+ * @property Carbon|null $created_at
+ */
 #[Fillable(['username', 'password', 'status', 'role', 'expiration_date', 'max_connections'])]
 #[Hidden(['password', 'remember_token', 'playlist_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable

@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon|null $last_synced_at
+ * @property Carbon|null $receiver_checked_at
+ */
 #[Hidden(['relay_secret'])]
 #[Fillable(['name', 'type', 'url', 'file_path', 'relay_secret', 'transcode', 'receiver_online', 'receiver_checked_at', 'bouquet_id', 'skip_vod', 'auto_sync', 'check_streams', 'proxy_streams', 'alert_on_down', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
 class Source extends Model

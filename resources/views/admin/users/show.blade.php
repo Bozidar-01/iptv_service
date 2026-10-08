@@ -68,6 +68,15 @@
                 </div>
 
                 <div>
+                    <div class="label" style="margin-bottom: 6px">{{ __('Page for this user') }}</div>
+                    <div class="copy-field">
+                        <input class="input" id="customer-url" value="{{ route('me', ['token' => $user->playlist_token]) }}" readonly onclick="this.select()">
+                        <button type="button" class="btn btn-secondary" data-copy="#customer-url"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+                    </div>
+                    <p class="help" style="margin: 6px 0 0">{{ __('Send this to the user: it shows their expiry, the playlist link and a button to ask for a renewal. It stops working when you make a new playlist link.') }}</p>
+                </div>
+
+                <div>
                     <div class="label" style="margin-bottom: 6px">{{ __('Set up on a TV') }}</div>
                     <ol class="steps">
                         <li>{!! __('Install an IPTV player: :apps (Android TV / Fire TV), or :vlc.', ['apps' => '<strong>TiviMate</strong>, <strong>IPTV Smarters</strong>, <strong>OTT Navigator</strong>', 'vlc' => '<strong>VLC</strong>']) !!}</li>
