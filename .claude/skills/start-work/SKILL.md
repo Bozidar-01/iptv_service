@@ -17,8 +17,10 @@ description: Start any new feature, fix, refactor or docs change in this IPTV se
 3. **Create the branch from it**, never from an old local main:
 
 ```bash
-git switch -c <type>/<short-kebab-name> origin/main
+git switch --no-track -c <type>/<short-kebab-name> origin/main
 ```
+
+   `--no-track` matters: without it git makes the branch track `origin/main`, and a plain `git push` would then push to production. Push with `git push -u origin <branch>` (the first push sets the right upstream).
 
    Types: `feature/` (new behaviour), `fix/` (bug), `docs/`, `chore/` (tooling, deps, CI), `refactor/`. Names say what, not when: `feature/two-factor-recovery`, `fix/playlist-order`. One task = one branch; unrelated work gets its own branch, so each can be shipped or dropped alone.
 4. **Work normally**, following `CLAUDE.md`. Commit in small steps on the branch with clear messages (commit freely; branches never deploy). Keep docs, `CHANGELOG.md` and `lang/mk.json` up to date as you go (`update-docs` skill), not at the end.
@@ -27,6 +29,7 @@ git switch -c <type>/<short-kebab-name> origin/main
 
 ## Rules
 
+- Before any `git push`, check the target: `git rev-parse --abbrev-ref @{u}` must be your branch, never `origin/main`.
 - Never `git commit`, `git push origin main`, `git merge ... main` + push, or force-push while on `main`.
 - Never rewrite history that is already on `origin/main`.
 - Hotfix for a broken production: still a branch (`fix/...`), still `ship-to-main`, just with the smallest possible change.

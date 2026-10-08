@@ -166,7 +166,7 @@ The job uses the `production` environment: in Settings → Environments → prod
 
 `main` is production: a push to it deploys. Work therefore happens on branches and reaches `main` only when finished:
 
-1. **Start:** `git fetch && git switch -c feature/short-name origin/main` (or `fix/…`, `docs/…`, `chore/…`). Commit as often as you like; branch pushes never deploy.
+1. **Start:** `git fetch && git switch --no-track -c feature/short-name origin/main` (or `fix/…`, `docs/…`, `chore/…`). Commit as often as you like; branch pushes never deploy.
 2. **Check:** `composer check` (Pint, PHPStan, tests), `npm run e2e` for UI changes, migrations tried up and down on MySQL, docs and translations updated.
 3. **Pull request:** `gh pr create --base main`. The same five checks run on it. Write down in the description what the server needs (migrations, new `.env` variables: the deploy never edits the server's `.env`, add them *before* merging).
 4. **Merge** (`gh pr merge --squash --delete-branch`) only when everything is green and you decided it is ready: this is the release. The deploy job then updates the server.
