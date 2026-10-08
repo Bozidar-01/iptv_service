@@ -133,6 +133,18 @@ class User extends Authenticatable
         };
     }
 
+    /** Is this reseller limited by credits? (no balance = unlimited, as before credits existed) */
+    public function usesCredits(): bool
+    {
+        return $this->isReseller() && $this->credits !== null;
+    }
+
+    /** @return HasMany<CreditTransaction, $this> */
+    public function creditTransactions(): HasMany
+    {
+        return $this->hasMany(CreditTransaction::class);
+    }
+
     /** Can a reseller still add a customer? (admins and resellers without a limit: always) */
     public function canAddCustomer(): bool
     {
