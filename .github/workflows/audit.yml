@@ -1,0 +1,24 @@
+name: Dependency audit
+
+# Reports known security advisories in PHP dependencies. Not one of the checks a pull request must pass
+# (a new advisory would block unrelated work): it runs weekly and when composer.lock changes, and a red
+# run is the signal to update (see docs/deployment.md#dependencies).
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  pull_request:
+    paths:
+      - composer.lock
+  workflow_dispatch:
+
+jobs:
+  composer-audit:
+    name: composer audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - run: composer audit --locked

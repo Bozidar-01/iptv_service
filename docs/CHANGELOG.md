@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Dependency update and weekly audit
+- `composer update`: Laravel 13.5 → 13.35, Guzzle 7 → **8**, psr7 2 → 3, Symfony 8.0 → 8.1, league/commonmark, flysystem, Pest, Pint and more. Fixes the 20+ advisories `composer audit` reported (Laravel email-rule CRLF injection and signed-URL path confusion, Guzzle host-check bypass, Symfony mime/mailer/routing/http-kernel, commonmark DoS). `composer audit` is clean.
+- Checked after the update: all tests, Pint, PHPStan, and the real HTTP paths against a fake provider (playlist import, `php` and `nginx` stream proxy with redirects, HLS rewrite).
+- New `audit.yml` workflow (weekly + when `composer.lock` changes) and `dependabot.yml` (weekly PRs for composer, npm, GitHub Actions).
+- Files: `composer.lock`, `.github/workflows/audit.yml`, `.github/dependabot.yml`, `docs/deployment.md`.
+
 ### 2026-10-09 — Branch protection on main
 - GitHub protects `main`: pull request + the five checks green and up to date, no direct or force pushes (also for the owner), linear history. Documented in `docs/deployment.md#branches-and-releases`. A required reviewer for the `production` environment is not available on this plan.
 - Files: `docs/deployment.md`.
