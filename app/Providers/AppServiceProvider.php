@@ -32,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(config('iptv.throttle_per_ip'))->by('ip:'.$request->ip()),
         ]);
 
+        // Xtream player_api.php: apps ask for categories, channels and guides in bursts, so a high limit per IP
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(config('iptv.throttle_api_per_ip'))->by('api:'.$request->ip()));
+
         // Xtream /live/{username}/{password}/{stream}: starts a stream like /play, but is keyed by username
         RateLimiter::for('live', fn (Request $request) => [
             Limit::perMinute(config('iptv.throttle_per_token'))->by('live:'.$request->route('username').'|'.$request->ip()),

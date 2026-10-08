@@ -16,7 +16,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/theme` | `theme.update` | `ThemeController@update` | body: `theme` (`light`/`dark`/`system`); sets or clears the unencrypted `theme` cookie, redirects back. Only used without JS |
 ## Player (`routes/player.php`)
 
-`/play`, `/playlist/{token}.m3u` and `/epg/{token}.xml` use the `player` request limiter (429 when exceeded): `THROTTLE_PER_TOKEN` a minute per link + IP and `THROTTLE_PER_IP` per IP. `/stream` has its own (`THROTTLE_STREAM_PER_TOKEN`, 600). `/m3u`, `/get.php`, `/live` and `/player_api.php` only have the wrong-password limit.
+`/play`, `/playlist/{token}.m3u` and `/epg/{token}.xml` use the `player` request limiter (429 when exceeded): `THROTTLE_PER_TOKEN` a minute per link + IP and `THROTTLE_PER_IP` per IP. `/stream` has its own (`THROTTLE_STREAM_PER_TOKEN`, 600). `/m3u`, `/get.php` and `/xmltv.php` use the same limiter; `/live` is limited per username + IP; `/player_api.php` per IP (`THROTTLE_API_PER_IP`, 600 a minute).
 
 | Method | URI | Name | Handler | Notes |
 |---|---|---|---|---|

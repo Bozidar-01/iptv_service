@@ -60,7 +60,7 @@ class TokenService
         $channels = Channel::with('category')->availableTo($user)->playlistOrder();
 
         // Build the play URL by replacing placeholders: route() per channel is slow at 100k entries
-        $playTemplate = route('play', ['channel_id' => 'CHANNEL_ID', 'token' => 'PLAY_TOKEN']);
+        $playTemplate = route('play', ['channel_id' => '__NEBOTV_ID__', 'token' => '__NEBOTV_TOKEN__']);
 
         $buffer = $guideUrl
             ? '#EXTM3U x-tvg-url="'.$this->escapeAttribute($guideUrl).'" url-tvg="'.$this->escapeAttribute($guideUrl)."\"\n"
@@ -68,11 +68,11 @@ class TokenService
 
         foreach ($channels->lazy(1000) as $channel) {
             $categoryName = $channel->category ? $channel->category->name : 'General';
-            $playUrl = str_replace(
-                ['CHANNEL_ID', 'PLAY_TOKEN'],
-                [(string) $channel->id, $tokenValue.$this->streamExtension($channel->stream_url)],
-                $playTemplate
-            );
+            // One pass (strtr): a value that happens to contain the other placeholder is not replaced again
+            $playUrl = strtr($playTemplate, [
+                '__NEBOTV_ID__' => (string) $channel->id,
+                '__NEBOTV_TOKEN__' => $tokenValue.$this->streamExtension($channel->stream_url),
+            ]);
 
             $buffer .= sprintf(
                 "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s%s\n",

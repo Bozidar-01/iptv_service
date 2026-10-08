@@ -230,6 +230,18 @@ describe('hardening', function () {
             ->and(app(TwoFactorService::class)->verify($stale, $code))->toBeFalse();
     });
 
+    it('survives an APP_KEY change instead of failing with a server error', function () {
+        $admin = User::factory()->admin()->create();
+        $service = app(TwoFactorService::class);
+        $service->begin($admin);
+        $admin->forceFill(['two_factor_secret' => 'not-decryptable-with-this-key'])->save();
+
+        expect($service->pendingSecret($admin->fresh()))->toBeNull();
+
+        $admin->forceFill(['two_factor_confirmed_at' => now()])->save();
+        expect($service->verify($admin->fresh(), '123456'))->toBeFalse();
+    });
+
     it('stops trying many usernames from one address', function () {
         foreach (range(1, AuthController::MAX_ATTEMPTS_PER_IP) as $i) {
             $this->post('/login', ['username' => "ghost{$i}", 'password' => 'nope'])->assertSessionHasErrors('username');

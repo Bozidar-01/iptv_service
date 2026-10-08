@@ -8,6 +8,7 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -44,9 +45,16 @@ class TwoFactorService
     /** The secret of a setup that isn't confirmed yet. */
     public function pendingSecret(User $user): ?string
     {
-        return $user->two_factor_secret !== null && $user->two_factor_confirmed_at === null
-            ? Crypt::decryptString($user->two_factor_secret)
-            : null;
+        if ($user->two_factor_secret === null || $user->two_factor_confirmed_at !== null) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($user->two_factor_secret);
+        } catch (DecryptException) {
+            // APP_KEY changed since the setup was started: start again
+            return null;
+        }
     }
 
     /**
@@ -94,7 +102,13 @@ class TwoFactorService
             return false;
         }
 
-        $step = Totp::verify(Crypt::decryptString($user->two_factor_secret), $input, $user->two_factor_last_step);
+        try {
+            $secret = Crypt::decryptString($user->two_factor_secret);
+        } catch (DecryptException) {
+            return false;
+        }
+
+        $step = Totp::verify($secret, $input, $user->two_factor_last_step);
         if ($step !== null) {
             // One atomic update: of two requests with the same code, only one changes a row
             $claimed = User::whereKey($user->id)

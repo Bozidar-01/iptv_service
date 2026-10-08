@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Support\PublicAddress;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Plays a channel through this server instead of sending the viewer to the provider, so the
@@ -132,7 +134,7 @@ class StreamProxyService
             return response('', 200, ['Content-Type' => $this->isPlaylist($target) ? 'application/vnd.apple.mpegurl' : 'video/mp2t', 'Cache-Control' => 'no-store']);
         }
 
-        if ($this->mode() === 'nginx' && !$this->isPlaylist($target)) {
+        if ($this->mode() === 'nginx' && !$this->isPlaylist($target, $channel)) {
             $playing = $channel->playbackChannel();
 
             return response('', 200, array_filter([
@@ -145,18 +147,73 @@ class StreamProxyService
             ]));
         }
 
-        return $this->preview->proxy(
+        $fetch = fn (callable $alive) => $this->preview->proxy(
             $channel,
             $target,
             fn (string $part) => $this->partUrl($channel, $token, $part, $user->id),
-            fn () => $this->streams->touch($user, $channel),
+            function () use ($user, $channel, $alive) {
+                $this->streams->touch($user, $channel);
+                $alive();
+            },
             self::MAX_SECONDS,
             publicOnly: true,
         );
+
+        // Playlists and segments are short requests; only a running stream (no m3u8 in the address) is counted
+        return stripos($target, 'm3u8') === false
+            ? $this->limitParallel($user, $request, $fetch)
+            : $fetch(fn () => null);
     }
 
-    private function isPlaylist(string $target): bool
+    /**
+     * An HLS playlist must be rewritten by PHP. "m3u8" in the address says so; for other addresses
+     * nginx mode asks the provider once (first bytes only) and remembers the answer for an hour.
+     */
+    private function isPlaylist(string $target, ?Channel $channel = null): bool
     {
-        return stripos($target, 'm3u8') !== false;
+        if (stripos($target, 'm3u8') !== false) {
+            return true;
+        }
+
+        if ($channel === null || $this->mode() !== 'nginx') {
+            return false;
+        }
+
+        return Cache::remember('proxy-playlist:'.sha1($target), 3600, fn () => $this->preview->answersWithPlaylist($channel, $target));
+    }
+
+    /**
+     * At most `iptv.proxy_streams_per_device` live streams at once per device in php mode: each one
+     * holds a PHP worker. The count is kept in the cache, refreshed by the session heartbeat, and
+     * expires by itself if a worker dies without counting down.
+     */
+    private function limitParallel(User $user, Request $request, callable $start): Response
+    {
+        $key = 'proxy-streams:'.$user->id.':'.sha1($request->ip().'|'.$request->userAgent());
+        Cache::add($key, 0, 120);
+
+        if (Cache::increment($key) > config('iptv.proxy_streams_per_device')) {
+            Cache::decrement($key);
+
+            return response('Too many streams are playing on this device.', 429, ['Content-Type' => 'text/plain; charset=UTF-8', 'Retry-After' => '5']);
+        }
+
+        $release = fn () => Cache::get($key, 0) > 0 && Cache::decrement($key);
+        $response = $start(fn () => Cache::put($key, max(1, (int) Cache::get($key, 1)), 120));
+
+        if (!$response instanceof StreamedResponse) {
+            $release();
+
+            return $response;
+        }
+
+        // Same response, but counted down when the stream ends (also when the viewer leaves)
+        return new StreamedResponse(function () use ($response, $release) {
+            try {
+                $response->sendContent();
+            } finally {
+                $release();
+            }
+        }, $response->getStatusCode(), $response->headers->all());
     }
 }

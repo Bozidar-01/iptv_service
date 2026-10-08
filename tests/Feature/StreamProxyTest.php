@@ -7,6 +7,7 @@ use App\Models\StreamLog;
 use App\Models\User;
 use App\Services\StreamProxyService;
 use App\Services\StreamService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -163,7 +164,7 @@ describe('nginx mode', function () {
     beforeEach(fn () => config(['iptv.stream_proxy' => 'nginx']));
 
     it('hands media streams to nginx', function () {
-        Http::fake();
+        Http::fake(['provider.test/*' => Http::response(str_repeat("\x47", 600), 200, ['Content-Type' => 'video/mp2t'])]);
         $user = User::factory()->create();
         $channel = proxiedChannel($user, channel: ['http_user_agent' => 'Picky/1.0']);
 
@@ -174,9 +175,24 @@ describe('nginx mode', function () {
             ->assertHeader('X-Proxy-Target', $channel->stream_url)
             ->assertHeader('X-Proxy-User-Agent', 'Picky/1.0');
 
-        // PHP never fetched the stream itself
-        Http::assertNothingSent();
-        expect(StreamLog::count())->toBe(1);
+        // PHP only looked at the first bytes, once, to be sure it isn't a playlist; the answer is remembered
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request->header('Range')[0] === 'bytes=0-511');
+        $this->withServerVariables(['STREAM_PROXY_ENGINE' => 'nginx'])->get(playUrlFor($user, $channel))->assertHeader('X-Accel-Redirect', '/_proxy');
+        Http::assertSentCount(1);
+        expect(StreamLog::count())->toBe(2);
+    });
+
+    it('rewrites a playlist that is served at an address without m3u8', function () {
+        // A closure: the probe and the real fetch each need their own body stream
+        Http::fake(['provider.test/*' => fn () => Http::response("#EXTM3U\n#EXTINF:6,\nhttp://cdn.test/seg1.ts?token=PROVIDERLOGIN\n", 200, ['Content-Type' => 'application/vnd.apple.mpegurl'])]);
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user, 'http://provider.test/live/u/secret/1');
+
+        $response = $this->withServerVariables(['STREAM_PROXY_ENGINE' => 'nginx'])->get(playUrlFor($user, $channel))->assertOk();
+
+        expect($response->headers->has('X-Accel-Redirect'))->toBeFalse()
+            ->and($response->getContent())->not->toContain('PROVIDERLOGIN')->toContain('/stream/'.$channel->id.'/');
     });
 
     it('still rewrites HLS playlists in PHP', function () {
@@ -329,5 +345,49 @@ describe('hardening', function () {
         $this->get("/live/tv1/secret/{$channel->id}.ts")->assertOk();
         $this->get("/live/tv1/secret/{$channel->id}.ts")->assertOk();
         $this->get("/live/tv1/secret/{$channel->id}.ts")->assertStatus(429);
+    });
+
+    it('allows only a few running streams per device in php mode', function () {
+        config(['iptv.stream_proxy' => 'php', 'iptv.proxy_streams_per_device' => 2]);
+        Http::fake(['provider.test/*' => Http::response('x', 200, ['Content-Type' => 'video/mp2t'])]);
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user);
+
+        // Two streams are "running" (their responses are not read to the end yet)
+        $key = 'proxy-streams:'.$user->id.':'.sha1('127.0.0.1|Symfony');
+        Cache::put($key, 2, 120);
+
+        $this->get(playUrlFor($user, $channel))->assertStatus(429)->assertHeader('Retry-After');
+        expect((int) Cache::get($key))->toBe(2);
+
+        // A finished stream counts down, so the next one is let in again
+        Cache::put($key, 0, 120);
+        $this->get(playUrlFor($user, $channel))->assertOk()->streamedContent();
+        expect((int) Cache::get($key, 0))->toBe(0);
+    });
+});
+
+describe('request limits for the apps', function () {
+    it('limits the playlist addresses and the guide', function (string $url) {
+        config(['iptv.throttle_per_token' => 2]);
+        $user = User::factory()->create(['username' => 'tv1', 'password' => bcrypt('secret')]);
+
+        $this->get($url)->assertStatus(200);
+        $this->get($url)->assertStatus(200);
+        $this->get($url)->assertStatus(429);
+    })->with([
+        '/m3u' => '/m3u?username=tv1&password=secret',
+        '/get.php' => '/get.php?username=tv1&password=secret&type=m3u_plus',
+        '/xmltv.php' => '/xmltv.php?username=tv1&password=secret',
+    ]);
+
+    it('limits player_api.php per address, generously', function () {
+        config(['iptv.throttle_api_per_ip' => 3]);
+        User::factory()->create(['username' => 'tv1', 'password' => bcrypt('secret')]);
+
+        foreach (range(1, 3) as $i) {
+            $this->get('/player_api.php?username=tv1&password=secret')->assertOk();
+        }
+        $this->get('/player_api.php?username=tv1&password=secret')->assertStatus(429);
     });
 });

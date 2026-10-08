@@ -5,6 +5,7 @@ use App\Models\Bouquet;
 use App\Models\Category;
 use App\Models\User;
 use App\Services\TokenService;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 
 it('returns a playlist with a play url per active subscribed channel', function () {
     $user = User::factory()->create();
@@ -151,6 +152,36 @@ it('streams a long playlist in chunks with one entry per channel', function () {
     expect($chunks)->toBeGreaterThan(2)
         ->and(substr_count($body, '#EXTINF'))->toBe(1500)
         ->and($body)->toStartWith('#EXTM3U');
+});
+
+it('records why a playlist stopped half way', function () {
+    $user = User::factory()->create();
+    subscribedChannel($user);
+    $reported = [];
+    $this->app->make(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
+        $reported[] = $e->getMessage();
+    });
+    $this->app->instance(TokenService::class, new class extends TokenService
+    {
+        public function writeM3u(User $user, string $tokenValue, ?string $guideUrl, callable $write): void
+        {
+            $write("#EXTM3U\n");
+
+            throw new RuntimeException('database went away');
+        }
+    });
+
+    $level = ob_get_level();
+    try {
+        $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
+    } catch (Throwable) {
+        // streamedContent() leaves its output buffer open when the stream throws
+        while (ob_get_level() > $level) {
+            ob_end_clean();
+        }
+    }
+
+    expect($reported)->toContain('database went away');
 });
 
 it('lists channels that tie on category, position and name exactly once, in a fixed order', function () {

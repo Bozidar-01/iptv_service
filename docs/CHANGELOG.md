@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Remaining review fixes
+- **nginx mode:** an address without `m3u8` is first probed once (first bytes, cached an hour) so an HLS playlist served there is rewritten instead of leaking the provider address; protocol-relative redirects (`//host/x`) are followed.
+- **php mode:** at most `PROXY_STREAMS_PER_DEVICE` (3) running streams per device (`429` + `Retry-After`).
+- **Request limits** on `/m3u`, `/get.php`, `/xmltv.php` (player limiter) and `/player_api.php` (`THROTTLE_API_PER_IP`, 600/min per IP).
+- Playlist: failures half way are reported; the play URL template uses a one-pass `strtr` with distinctive placeholders.
+- Two-factor: an unfinished setup survives an `APP_KEY` change.
+- Tests: 341 PHP. Files: `app/Services/{StreamProxyService,StreamPreviewService,TokenService,TwoFactorService}.php`, `app/Http/Controllers/M3uController.php`, `app/Providers/AppServiceProvider.php`, `routes/player.php`, `config/iptv.php`, `docker/nginx/stream-proxy.conf`, `.env.example`, `docs/**`, `tests/**`.
+
 ### 2026-10-09 — Fixes from the quality review
 Three independent reviews (security, stream proxy, correctness) found these; all fixed:
 - **Playlist:** channels that tie on category, position and name now have a fixed order (`channels.id` last), so chunked reading can't skip or repeat one. Prune models use `MassPrunable` (one `DELETE` per chunk) and the prune job can't overlap itself. The play log truncates very long user agents (was a 500 on MySQL).

@@ -35,6 +35,7 @@ return [
     */
     'throttle_per_token' => (int) env('THROTTLE_PER_TOKEN', 60),
     'throttle_per_ip' => (int) env('THROTTLE_PER_IP', 300),
+    'throttle_api_per_ip' => (int) env('THROTTLE_API_PER_IP', 600),
     // Parts of a proxied stream (HLS segments): many requests per viewing
     'throttle_stream_per_token' => (int) env('THROTTLE_STREAM_PER_TOKEN', 600),
 
@@ -44,6 +45,8 @@ return [
     */
     'stream_proxy' => env('STREAM_PROXY', 'off'),
     // The proxy refuses addresses on private / local networks (PublicAddress); true when a provider is on your LAN
+    // Live streams passed on by PHP at once per device (php mode holds a PHP worker for each)
+    'proxy_streams_per_device' => (int) env('PROXY_STREAMS_PER_DEVICE', 3),
     'proxy_allow_private' => (bool) env('PROXY_ALLOW_PRIVATE', false),
 
     /*

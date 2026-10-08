@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class)->name('health');
 
 // M3U playlist link and username/password playlist
-Route::get('/m3u', [M3uController::class, 'generate'])->name('m3u');
+Route::get('/m3u', [M3uController::class, 'generate'])->middleware('throttle:player')->name('m3u');
 // Links with a token are limited per minute (limiter "player", see AppServiceProvider)
 Route::middleware('throttle:player')->group(function () {
     Route::get('/playlist/{token}.m3u', [M3uController::class, 'playlist'])->name('playlist');
@@ -27,7 +27,7 @@ Route::middleware('throttle:player')->group(function () {
 Route::get('/stream/{channel_id}/{token}', [PlayController::class, 'stream'])->middleware('throttle:stream')->name('stream');
 
 // Xtream Codes API: apps log in with server URL + username + password
-Route::match(['get', 'post'], '/player_api.php', [XtreamController::class, 'api'])->name('xtream.api');
-Route::match(['get', 'post'], '/get.php', [M3uController::class, 'generate'])->name('xtream.playlist');
-Route::get('/xmltv.php', [XtreamController::class, 'xmltv'])->name('xtream.xmltv');
+Route::match(['get', 'post'], '/player_api.php', [XtreamController::class, 'api'])->middleware('throttle:api')->name('xtream.api');
+Route::match(['get', 'post'], '/get.php', [M3uController::class, 'generate'])->middleware('throttle:player')->name('xtream.playlist');
+Route::get('/xmltv.php', [XtreamController::class, 'xmltv'])->middleware('throttle:player')->name('xtream.xmltv');
 Route::get('/live/{username}/{password}/{stream}', [XtreamController::class, 'live'])->middleware('throttle:live')->name('xtream.live');

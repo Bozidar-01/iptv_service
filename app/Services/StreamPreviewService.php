@@ -212,6 +212,44 @@ class StreamPreviewService
         return implode("\n", $lines);
     }
 
+    /**
+     * Does $target answer with an HLS playlist? Reads only the first bytes. Used where the stream
+     * itself is passed on by nginx (which can't rewrite a playlist), for addresses without "m3u8".
+     */
+    public function answersWithPlaylist(Channel $channel, string $target): bool
+    {
+        $playing = $channel->playbackChannel();
+
+        try {
+            $response = Http::withUserAgent($playing->http_user_agent ?: self::USER_AGENT)
+                ->withHeaders(array_filter(['Referer' => $playing->http_referrer, 'Range' => 'bytes=0-511']))
+                ->connectTimeout(self::CONNECT_TIMEOUT)
+                ->timeout(0)
+                ->withOptions([
+                    'stream' => true,
+                    'read_timeout' => self::READ_TIMEOUT,
+                    'allow_redirects' => [
+                        'max' => 5,
+                        'on_redirect' => function ($request, $response, $uri) {
+                            if (!PublicAddress::allows((string) $uri)) {
+                                throw new \RuntimeException('Redirect to a private address.');
+                            }
+                        },
+                    ],
+                ])
+                ->get($target);
+
+            $body = $response->toPsrResponse()->getBody();
+            $first = $this->readFirst($body);
+            $body->close();
+
+            return $this->isPlaylist($response->header('Content-Type'), $first);
+        } catch (\Throwable) {
+            // Can't tell: treat as media (the provider is probably down, the viewer gets that error)
+            return false;
+        }
+    }
+
     private function isPlaylist(string $type, string $first): bool
     {
         return str_starts_with(ltrim($first, "\xEF\xBB\xBF \t\r\n"), '#EXTM3U')

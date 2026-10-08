@@ -75,10 +75,19 @@ class M3uController extends Controller
 
         // Streamed in chunks: a big playlist is never held in memory
         return response()->stream(
-            fn () => $this->tokenService->writeM3u($user, $token->token, $guideUrl, function (string $chunk) {
-                echo $chunk;
-                flush();
-            }),
+            function () use ($user, $token, $guideUrl) {
+                try {
+                    $this->tokenService->writeM3u($user, $token->token, $guideUrl, function (string $chunk) {
+                        echo $chunk;
+                        flush();
+                    });
+                } catch (\Throwable $e) {
+                    // The status line is already sent: the app gets a short playlist, so at least record why
+                    report($e);
+
+                    throw $e;
+                }
+            },
             200,
             ['Content-Type' => 'audio/x-mpegurl', 'Content-Disposition' => 'attachment; filename="playlist.m3u"']
         );
