@@ -17,13 +17,13 @@ class AdminSeeder extends Seeder
 {
     public function run(): void
     {
-        $username = env('ADMIN_USERNAME') ?: 'admin';
+        $username = config('iptv.admin_username');
 
         if (User::where('username', $username)->exists()) {
             return;
         }
 
-        $password = env('ADMIN_PASSWORD') ?: (app()->environment('local', 'testing') ? 'admin123' : Str::password(16, symbols: false));
+        $password = config('iptv.admin_password') ?: (app()->environment('local', 'testing') ? 'admin123' : Str::password(16, symbols: false));
 
         User::create([
             'username' => $username,
@@ -32,7 +32,7 @@ class AdminSeeder extends Seeder
             'status' => 'active',
         ]);
 
-        if (!env('ADMIN_PASSWORD') && !app()->environment('local', 'testing')) {
+        if (!config('iptv.admin_password') && !app()->environment('local', 'testing')) {
             $this->command?->warn("Created admin \"{$username}\" with password: {$password}  (shown once; change it after signing in)");
         }
     }

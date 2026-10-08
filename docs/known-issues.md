@@ -8,7 +8,8 @@ _None currently known._
 
 ## Tooling
 
-- **Pint is not runnable locally:** `vendor/bin/pint` fails because `vendor/laravel/pint/builds/pint` is missing. Run `composer install` to restore it.
+- **PHPStan baseline:** `phpstan-baseline.neon` lists 15 findings that are the analyser's limits, not bugs (date casts read as strings, Eloquent collection generics). Don't add to it: fix new findings. Shrink it when you touch those spots (`vendor/bin/phpstan analyse --generate-baseline`).
+- **Browser tests need Google Chrome** on the machine (`channel: 'chrome'`). The Watch player (hls.js / mpegts.js from a CDN) is not covered.
 
 ## Design gaps / risks
 
@@ -39,6 +40,4 @@ _None currently known._
 - **Xtream password checks are not cached:** every `player_api.php` and `/live` request runs `Hash::check` (bcrypt). Fine for a few users. With many, cache the result briefly or lower the bcrypt cost.
 - **Docker setup is development-grade:** code is bind-mounted, `APP_DEBUG` comes from `.env`, MySQL passwords are fixed in `docker-compose.yml`, and there's no HTTPS.
 - **Partly translated:** `/m3u`, `/playlist` and `/play` error bodies and `sources.last_error` are always English; numbers use English separators (`1,234`) in Macedonian too. Laravel's Macedonian plural rule treats 11 like 1 ("11 канал").
-- **Unused:** Vite/Tailwind setup (`resources/css`, `resources/js`, `vite.config.js`).
-- **Not covered by tests:** category CRUD, the user status toggle, and any browser-level JS (bulk selection, dialogs, copy button). Verified manually.
 - **No Content-Security-Policy:** panel pages send basic security headers, but the views use inline scripts, so a CSP is not set yet.

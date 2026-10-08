@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['user_id', 'channel_id', 'ip', 'user_agent', 'started_at'])]
 class StreamLog extends Model
@@ -29,12 +30,14 @@ class StreamLog extends Model
         return static::where('started_at', '<', now()->subDays(config('iptv.log_retention_days')));
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function channel()
+    /** @return BelongsTo<Channel, $this> */
+    public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }

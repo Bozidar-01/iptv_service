@@ -3,9 +3,9 @@
 ## Stack
 
 - Laravel 13, PHP 8.4 (8.3+), MySQL 8.4 (Docker) / any MySQL locally, SQLite in-memory for tests
-- Blade views + hand-written CSS (`public/css/admin.css`), no build step. Vite/Tailwind are installed but unused.
+- Blade views + hand-written CSS (`public/css/admin.css`), no build step and no front-end framework. `package.json` only holds the browser-test tools (Playwright)
 - Database-backed queue, cache and sessions
-- Pest 4 for tests, Pint for style
+- Pest 4 for tests, Playwright for browser tests, Pint (`pint.json`, Laravel preset except `!$x` spacing) for style, PHPStan + Larastan level 5 (`phpstan.neon`, known leftovers in `phpstan-baseline.neon`)
 - Docker: nginx + PHP-FPM + MySQL + queue worker + scheduler (`docker-compose.yml`, `Dockerfile`, `docker/`)
 
 ## Layers

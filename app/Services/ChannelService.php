@@ -68,6 +68,7 @@ class ChannelService
                 ->where('bouquet_id', $bouquetId)
                 ->whereIn('channel_id', $ids)
                 ->delete(),
+            default => throw new \InvalidArgumentException("Unknown bulk action: {$action}"),
         };
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\StreamCheckService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -51,17 +52,20 @@ class StreamAlert extends Model
         ];
     }
 
-    public function channel()
+    /** @return BelongsTo<Channel, $this> */
+    public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }
 
-    public function source()
+    /** @return BelongsTo<Source, $this> */
+    public function source(): BelongsTo
     {
         return $this->belongsTo(Source::class);
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }

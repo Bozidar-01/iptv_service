@@ -58,4 +58,11 @@ return [
         'dump_options' => array_values(array_filter(array_map('trim', explode(',', (string) env('BACKUP_DUMP_OPTIONS', ''))))),
     ],
 
+    /*
+    | First admin created by AdminSeeder (read here, not with env() in the seeder, so it also works with `config:cache`).
+    | Without a password: "admin123" locally, otherwise a random one printed once.
+    */
+    'admin_username' => env('ADMIN_USERNAME') ?: 'admin',
+    'admin_password' => env('ADMIN_PASSWORD'),
+
 ];

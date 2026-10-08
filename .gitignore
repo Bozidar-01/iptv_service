@@ -35,3 +35,8 @@ CLAUDE.local.md
 
 # Filled-in relay settings (secret, box password, DuckDNS token)
 /relay/nebotv-relay.conf
+
+# Browser tests
+/storage/e2e.sqlite
+/test-results
+/playwright-report

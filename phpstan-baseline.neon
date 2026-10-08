@@ -1,0 +1,79 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method App\\Mail\\StreamAlertsMail\:\:groups\(\) should return array\<string, Illuminate\\Support\\Collection\<int, App\\Models\\StreamAlert\>\> but returns array\<int, Illuminate\\Support\\Collection\<int, App\\Models\\StreamAlert\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Mail/StreamAlertsMail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>alert_on_down" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/Channel.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Source.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/EpgService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/StreamCheckService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\Channel\>\:\:filter\(\) expects \(callable\(App\\Models\\Channel, int\)\: bool\)\|null, Closure\(mixed\)\: \(string\|null\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/StreamCheckService.php
+
+		-
+			message: '#^Parameter \#1 \$channels of method App\\Services\\StreamCheckService\:\:probe\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Channel\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/StreamCheckService.php
+
+		-
+			message: '#^Parameter \#1 \$channels of method App\\Services\\StreamCheckService\:\:recordAlerts\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Channel\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/StreamCheckService.php
+
+		-
+			message: '#^Parameter \#1 \$dead of method App\\Services\\StreamCheckService\:\:findBackups\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Channel\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/StreamCheckService.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/SubscriptionReminderService.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/SubscriptionReminderService.php
+
+		-
+			message: '#^Cannot access property \$timestamp on string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/XtreamService.php

@@ -78,3 +78,36 @@ it('renders the dashboard with data', function () {
 
     $this->get(route('admin.dashboard'))->assertOk()->assertSee('Expiring within 7 days')->assertSee($user->username);
 });
+
+describe('on and off switch', function () {
+    it('switches a user off and on again', function () {
+        $user = User::factory()->create();
+
+        $this->post(route('admin.users.toggle', $user))->assertRedirect()->assertSessionHas('success');
+        expect($user->fresh()->status)->toBe('disabled');
+
+        $this->post(route('admin.users.toggle', $user))->assertRedirect();
+        expect($user->fresh()->status)->toBe('active');
+    });
+
+    it('stops a switched-off user from playing and from getting a playlist', function () {
+        $user = User::factory()->create();
+        $channel = subscribedChannel($user);
+        $token = tokenFor($user);
+
+        $this->post(route('admin.users.toggle', $user));
+
+        $this->get(route('play', ['channel_id' => $channel->id, 'token' => $token]))->assertStatus(403);
+        $this->get(route('playlist', ['token' => $user->playlist_token]))->assertStatus(403);
+    });
+
+    it('is for admins only', function () {
+        $user = User::factory()->create();
+        auth()->logout();
+
+        $this->post(route('admin.users.toggle', $user))->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->create())->post(route('admin.users.toggle', $user))->assertRedirect();
+
+        expect($user->fresh()->status)->toBe('active');
+    });
+});

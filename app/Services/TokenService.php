@@ -70,7 +70,7 @@ class TokenService
             $categoryName = $channel->category ? $channel->category->name : 'General';
             $playUrl = str_replace(
                 ['CHANNEL_ID', 'PLAY_TOKEN'],
-                [$channel->id, $tokenValue.$this->streamExtension($channel->stream_url)],
+                [(string) $channel->id, $tokenValue.$this->streamExtension($channel->stream_url)],
                 $playTemplate
             );
 

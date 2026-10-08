@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['user_id', 'channel_id', 'ip', 'user_agent', 'started_at', 'last_activity_at'])]
 class ActiveSession extends Model
@@ -31,12 +32,14 @@ class ActiveSession extends Model
         return static::where('last_activity_at', '<=', now()->subMinutes(StreamService::SESSION_TIMEOUT_MINUTES));
     }
 
-    public function user()
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function channel()
+    /** @return BelongsTo<Channel, $this> */
+    public function channel(): BelongsTo
     {
         return $this->belongsTo(Channel::class);
     }

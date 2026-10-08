@@ -11,16 +11,11 @@ it('ends a subscriber session that reaches the admin area', function () {
 });
 
 it('creates the first admin from ADMIN_USERNAME and ADMIN_PASSWORD', function () {
-    putenv('ADMIN_USERNAME=owner');
-    putenv('ADMIN_PASSWORD=from-env-pass');
+    // Read through config('iptv.admin_*'), so it also works when the config is cached
+    config(['iptv.admin_username' => 'owner', 'iptv.admin_password' => 'from-env-pass']);
 
-    try {
-        $this->seed(AdminSeeder::class);
-        $this->seed(AdminSeeder::class);
-    } finally {
-        putenv('ADMIN_USERNAME');
-        putenv('ADMIN_PASSWORD');
-    }
+    $this->seed(AdminSeeder::class);
+    $this->seed(AdminSeeder::class);
 
     $admin = User::where('username', 'owner')->sole();
     expect($admin->role)->toBe('admin')

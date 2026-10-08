@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name'])]
 class Category extends Model
 {
-    public function channels()
+    /** @return HasMany<Channel, $this> */
+    public function channels(): HasMany
     {
         return $this->hasMany(Channel::class);
     }

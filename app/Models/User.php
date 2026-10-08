@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -39,17 +41,20 @@ class User extends Authenticatable
         ];
     }
 
-    public function bouquets()
+    /** @return BelongsToMany<Bouquet, $this> */
+    public function bouquets(): BelongsToMany
     {
         return $this->belongsToMany(Bouquet::class, 'user_bouquet');
     }
 
-    public function activeSessions()
+    /** @return HasMany<ActiveSession, $this> */
+    public function activeSessions(): HasMany
     {
         return $this->hasMany(ActiveSession::class);
     }
 
-    public function streamLogs()
+    /** @return HasMany<StreamLog, $this> */
+    public function streamLogs(): HasMany
     {
         return $this->hasMany(StreamLog::class);
     }
@@ -63,7 +68,8 @@ class User extends Authenticatable
         $this->save();
     }
 
-    public function accessTokens()
+    /** @return HasMany<AccessToken, $this> */
+    public function accessTokens(): HasMany
     {
         return $this->hasMany(AccessToken::class);
     }

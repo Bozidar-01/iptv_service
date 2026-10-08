@@ -21,7 +21,7 @@ docker compose exec app php artisan <cmd>          # artisan against the Docker 
 docker compose logs -f queue                       # source imports
 ```
 
-Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:work`, `composer test`. Shared hosting (Hostinger): one `schedule:run` cron + `QUEUE_SCHEDULED_WORKER=true`, see [docs/deployment.md](docs/deployment.md). `vendor/bin/pint` is currently broken locally (missing build).
+Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:work`, `composer test`. Before finishing a task run `composer check` (Pint, PHPStan, tests; `vendor/bin/pint` fixes style) and, for JS/UI changes, `npm run e2e` (Playwright, needs Chrome; see [docs/getting-started.md](docs/getting-started.md#tests-and-style)). Shared hosting (Hostinger): one `schedule:run` cron + `QUEUE_SCHEDULED_WORKER=true`, see [docs/deployment.md](docs/deployment.md).
 
 ## Architecture
 

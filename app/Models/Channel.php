@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id'])]
 class Channel extends Model
@@ -47,7 +49,8 @@ class Channel extends Model
             ->orderBy('name');
     }
 
-    public function epgSource()
+    /** @return BelongsTo<EpgSource, $this> */
+    public function epgSource(): BelongsTo
     {
         return $this->belongsTo(EpgSource::class);
     }
@@ -60,12 +63,14 @@ class Channel extends Model
         return $this->epg_id ?: $this->tvg_id;
     }
 
-    public function backupChannel()
+    /** @return BelongsTo<Channel, $this> */
+    public function backupChannel(): BelongsTo
     {
         return $this->belongsTo(Channel::class, 'backup_channel_id');
     }
 
-    public function usingBackup()
+    /** @return BelongsTo<Channel, $this> */
+    public function usingBackup(): BelongsTo
     {
         return $this->belongsTo(Channel::class, 'using_backup_id');
     }
@@ -86,17 +91,20 @@ class Channel extends Model
         return $this->alert_on_down || ($this->source?->alert_on_down ?? false);
     }
 
-    public function category()
+    /** @return BelongsTo<Category, $this> */
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function source()
+    /** @return BelongsTo<Source, $this> */
+    public function source(): BelongsTo
     {
         return $this->belongsTo(Source::class);
     }
 
-    public function bouquets()
+    /** @return BelongsToMany<Bouquet, $this> */
+    public function bouquets(): BelongsToMany
     {
         return $this->belongsToMany(Bouquet::class, 'bouquet_channel');
     }

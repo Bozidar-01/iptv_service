@@ -4,6 +4,15 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Code quality: Pint, PHPStan, browser tests, more tests
+- **Pint** works again (`composer reinstall laravel/pint --prefer-dist`: it had been installed from source, without the phar) with `pint.json` matching the house style. The whole code base was formatted once.
+- **PHPStan + Larastan** level 5 (`phpstan.neon`); 15 analyser-limit findings in `phpstan-baseline.neon`. All model relations now have return types and generics. Real findings fixed: `AdminSeeder` read `env()` directly, which is `null` under `php artisan config:cache` (ADMIN_USERNAME / ADMIN_PASSWORD were ignored on a cached production config) → `config('iptv.admin_*')`; `ChannelService::bulkAction` throws on an unknown action instead of an `UnhandledMatchError`; one `str_replace` got ints.
+- **Browser tests** (Playwright, 13): sign-in/out, wrong password, bulk selection and bulk actions, delete confirmations, theme and language switch, copy button, full two-factor flow. Own SQLite database, installed Chrome.
+- **More PHP tests:** category CRUD (6), user on/off switch (3). 312 tests.
+- **Removed** the unused Vite/Tailwind setup (`vite.config.js`, `resources/css|js`, npm packages); `composer setup` / `composer dev` no longer need npm.
+- **CI** gained *Code style and static analysis* and *Browser tests* jobs. New scripts `composer lint | analyse | check`.
+- Files: `pint.json`, `phpstan.neon`, `phpstan-baseline.neon`, `playwright.config.js`, `e2e/**`, `package.json`, `composer.json`, `.github/workflows/ci.yml`, `app/Models/*` (relation types), `config/iptv.php`, `database/seeders/AdminSeeder.php`, `app/Services/{ChannelService,TokenService}.php`, `tests/Feature/Admin/{CategoryTest,UserTest}.php`, `tests/Feature/AdminAccessTest.php`, `CLAUDE.md`, `docs/**`; formatting in ~47 files.
+
 ### 2026-10-09 — Hide provider address (stream proxy)
 - **New source option *Hide provider address*** (`sources.proxy_streams`) with server setting `STREAM_PROXY` = `off` (default) / `php` / `nginx`. `/play` and Xtream `/live` then pass the stream on instead of redirecting to the provider, so viewers can't read the provider login. `StreamProxyService`; the existing preview proxy (`StreamPreviewService`) is reused.
   - `php`: works anywhere, holds a PHP worker per live viewer. `nginx`: PHP checks access, nginx passes the stream on (`X-Accel-Redirect`, `docker/nginx/stream-proxy.conf`: follows up to 3 redirects including relative ones, hides provider headers). Falls back to `php` when the nginx rules aren't there.

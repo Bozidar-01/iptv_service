@@ -50,6 +50,7 @@ class AuthController extends Controller
         }
 
         $provider = Auth::guard()->getProvider();
+        /** @var User|null $user */
         $user = $provider->retrieveByCredentials(['username' => $credentials['username']]);
 
         if ($user && $provider->validateCredentials($user, ['password' => $credentials['password']])) {

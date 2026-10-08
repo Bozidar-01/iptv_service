@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - routes
+        - database
+    level: 5
+    # Models use #[Fillable] attributes and relations without return types
+    treatPhpDocTypesAsCertain: false

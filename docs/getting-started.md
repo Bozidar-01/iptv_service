@@ -41,7 +41,7 @@ cp .env.example .env           # APP_NAME=NeboTV is the name shown in the panel
 php artisan key:generate
 php artisan migrate
 php artisan db:seed            # admin / admin123 locally, or ADMIN_USERNAME / ADMIN_PASSWORD from .env (safe to re-run)
-composer dev                   # server + queue worker + log tail + vite
+composer dev                   # server + queue worker + log tail
 php artisan schedule:work      # in another terminal: auto-refresh + session pruning
 ```
 
@@ -78,7 +78,14 @@ Set `ALERT_MAIL_TO` and the `MAIL_*` variables (Brevo SMTP) in `.env`, then run 
 
 ```bash
 composer test            # or: docker compose exec app php artisan test
-vendor/bin/pint          # currently broken locally, see known-issues
+composer lint            # Pint, check only (vendor/bin/pint fixes the files)
+composer analyse         # PHPStan / Larastan, level 5
+composer check           # all three
+npm install && npm run e2e   # browser tests (Playwright)
 ```
+
+**Browser tests** (`e2e/*.spec.js`, Playwright) cover what PHP tests can't: the bulk selection bar, confirm dialogs, the copy button, theme and language switches, and the whole two-factor sign-in. They use the Google Chrome installed on the machine (no browser download) and start the app themselves on `127.0.0.1:8765` with a throw-away SQLite file (`storage/e2e.sqlite`, created by `e2e/serve.sh`), so they need PHP and `composer install` locally but never touch your database. A failed run leaves a trace in `test-results/` (`npx playwright show-trace`).
+
+**GitHub Actions** (`.github/workflows/ci.yml`) run the PHP tests, Pint + PHPStan, the browser tests, the MySQL migration check and the relay tests on every push to `main` and every pull request.
 
 Tests always run on in-memory SQLite: `phpunit.xml` forces it, and `Tests\TestCase::beforeRefreshingDatabase()` refuses to wipe any other database.
