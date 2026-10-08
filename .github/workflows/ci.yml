@@ -116,11 +116,13 @@ jobs:
       - run: php artisan migrate:reset --force
       - run: php artisan migrate --force
       - run: php artisan db:seed --force
-      - name: Back up and check the dump
+      - name: Back up, then restore the dump into a scratch database
         run: |
-          sudo apt-get install -y -qq mysql-client > /dev/null
           php artisan iptv:backup
-          ls storage/app/private/backups/*.sql.gz
+          file=$(ls storage/app/private/backups/*.sql.gz | tail -1)
+          mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE restore_check"
+          gunzip -c "$file" | mysql -h 127.0.0.1 -uroot -proot restore_check
+          test "$(mysql -h 127.0.0.1 -uroot -proot -N -e 'SELECT COUNT(*) FROM restore_check.users')" -ge 1
 
   relay:
     name: Receiver relay
