@@ -25,6 +25,7 @@ class SyncEpgCommand extends Command
                     SyncEpgSource::dispatch($source);
                 }
                 $this->line("Queued: {$source->name}");
+
                 continue;
             }
 

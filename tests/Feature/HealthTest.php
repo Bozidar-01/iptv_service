@@ -3,6 +3,7 @@
 use App\Models\StreamAlert;
 use App\Models\User;
 use App\Services\HealthService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 
 function queueJob(int $minutesAgo): void
@@ -67,7 +68,7 @@ it('warns on the dashboard when background tasks are not running', function () {
 });
 
 it('is scheduled every minute', function () {
-    $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+    $event = collect(app(Schedule::class)->events())
         ->first(fn ($e) => str_contains($e->command ?? '', 'iptv:heartbeat'));
 
     expect($event?->expression)->toBe('* * * * *');

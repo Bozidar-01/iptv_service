@@ -34,7 +34,7 @@ class M3uParser
     }
 
     /**
-     * @param iterable<string> $lines
+     * @param  iterable<string>  $lines
      * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string}>
      */
     public function parseLines(iterable $lines): Generator
@@ -56,11 +56,13 @@ class M3uParser
 
             if (str_starts_with($line, '#EXTINF')) {
                 $current = $this->parseExtinf($line);
+
                 continue;
             }
 
             if (str_starts_with($line, '#EXTGRP:') && $current !== null && $current['group'] === null) {
                 $current['group'] = trim(substr($line, 8)) ?: null;
+
                 continue;
             }
 
@@ -71,6 +73,7 @@ class M3uParser
                 if ($key && trim($value) !== '') {
                     $current[$key] = trim($value);
                 }
+
                 continue;
             }
 

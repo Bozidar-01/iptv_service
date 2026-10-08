@@ -33,6 +33,7 @@ use Throwable;
 class StreamCheckService
 {
     public const STATUS_ONLINE = 'online';
+
     public const STATUS_OFFLINE = 'offline';
 
     /** Channels per queued job; with the limits below a job takes about a minute at most. */
@@ -42,9 +43,13 @@ class StreamCheckService
     public const RETRY_DELAY = 5;
 
     private const CONCURRENCY = 50;
+
     private const TIMEOUT = 10;
+
     private const CONNECT_TIMEOUT = 6;
+
     private const MAX_BYTES = 4096;
+
     private const USER_AGENT = 'VLC/3.0.20 LibVLC/3.0.20';
 
     /** Cache counter of queued check jobs not finished yet (see queueCheck). */

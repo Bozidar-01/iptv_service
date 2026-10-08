@@ -4,10 +4,14 @@ use App\Jobs\CheckStreams;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Models\User;
+use App\Services\SourceService;
 use App\Services\StreamCheckService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 
 function streamChannel(string $url, array $attributes = []): Channel
 {
@@ -101,9 +105,9 @@ it('runs inline from the command', function () {
 });
 
 it('is scheduled daily, and every 15 minutes for watched channels', function () {
-    $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+    $events = collect(app(Schedule::class)->events())
         ->filter(fn ($e) => str_contains($e->command ?? '', 'iptv:check-streams'))
-        ->mapWithKeys(fn ($e) => [trim(\Illuminate\Support\Str::after($e->command, 'iptv:check-streams')) => $e->expression]);
+        ->mapWithKeys(fn ($e) => [trim(Str::after($e->command, 'iptv:check-streams')) => $e->expression]);
 
     expect($events->all())->toBe(['' => '0 4 * * *', '--watched' => '*/15 * * * *']);
 });
@@ -158,7 +162,7 @@ it('tries failed streams once more before switching them off', function () {
 
     expect($channel->fresh())->is_active->toBeTrue()->stream_status->toBe('online')->stream_error->toBeNull()
         ->and($calls)->toBe(2);
-    \Illuminate\Support\Sleep::assertSlept(fn ($duration) => $duration->totalSeconds == StreamCheckService::RETRY_DELAY, 1);
+    Sleep::assertSlept(fn ($duration) => $duration->totalSeconds == StreamCheckService::RETRY_DELAY, 1);
 });
 
 it('does not retry or wait when everything works', function () {
@@ -167,7 +171,7 @@ it('does not retry or wait when everything works', function () {
 
     app(StreamCheckService::class)->checkChannels([$channel->id]);
 
-    \Illuminate\Support\Sleep::assertNeverSlept();
+    Sleep::assertNeverSlept();
 });
 
 it('stores why a stream failed', function () {
@@ -229,7 +233,7 @@ it('skips sources with stream checking turned off and re-enables what it switche
     app(StreamCheckService::class)->checkChannels([$channel->id]);
     expect($channel->fresh()->is_active)->toBeFalse();
 
-    app(\App\Services\SourceService::class)->updateSource($source, ['name' => 'Geo', 'type' => 'url', 'url' => 'http://p.test', 'check_streams' => false]);
+    app(SourceService::class)->updateSource($source, ['name' => 'Geo', 'type' => 'url', 'url' => 'http://p.test', 'check_streams' => false]);
 
     expect($channel->fresh())->is_active->toBeTrue()->auto_disabled->toBeFalse()
         ->and(app(StreamCheckService::class)->checkableQuery()->count())->toBe(0);

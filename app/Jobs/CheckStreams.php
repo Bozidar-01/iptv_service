@@ -17,9 +17,7 @@ class CheckStreams implements ShouldQueue
     /**
      * @param  array<int>  $channelIds  at most StreamCheckService::CHUNK_SIZE
      */
-    public function __construct(public array $channelIds)
-    {
-    }
+    public function __construct(public array $channelIds) {}
 
     public function handle(StreamCheckService $checker): void
     {

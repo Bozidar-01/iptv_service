@@ -1,21 +1,24 @@
 <?php
 
 use App\Models\ActiveSession;
+use App\Models\Channel;
 use App\Models\Source;
 use App\Models\StreamLog;
 use App\Models\User;
+use App\Services\StreamProxyService;
 use App\Services\StreamService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 /** A subscribed channel on a source that hides the provider address. */
-function proxiedChannel(User $user, string $url = 'http://provider.test/live/u/secret/1.ts', array $channel = [], array $source = []): App\Models\Channel
+function proxiedChannel(User $user, string $url = 'http://provider.test/live/u/secret/1.ts', array $channel = [], array $source = []): Channel
 {
     $src = Source::create(array_merge(['name' => 'Provider', 'type' => 'url', 'url' => 'http://provider.test/list.m3u', 'proxy_streams' => true], $source));
 
     return subscribedChannel($user, array_merge(['name' => 'Proxied', 'stream_url' => $url, 'source_id' => $src->id], $channel));
 }
 
-function playUrlFor(User $user, App\Models\Channel $channel): string
+function playUrlFor(User $user, Channel $channel): string
 {
     return route('play', ['channel_id' => $channel->id, 'token' => tokenFor($user)]);
 }
@@ -103,7 +106,7 @@ describe('php mode', function () {
         $other = proxiedChannel($user, 'http://provider.test/hls/other.m3u8');
         $token = tokenFor($user);
 
-        $part = app(App\Services\StreamProxyService::class)->partUrl($channel, $token, 'http://provider.test/hls/seg.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, $token, 'http://provider.test/hls/seg.ts');
         $this->get($part)->assertOk();
 
         $this->get($part.'x')->assertStatus(403);
@@ -122,7 +125,7 @@ describe('php mode', function () {
         $this->get(playUrlFor($user, $channel))->assertOk();
 
         $this->travel(4)->minutes();
-        $part = app(App\Services\StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts');
         $this->get($part)->assertOk();
 
         expect(ActiveSession::where('user_id', $user->id)->sole()->last_activity_at->diffInSeconds(now()))->toBeLessThan(5)
@@ -143,7 +146,7 @@ describe('php mode', function () {
         config(['iptv.throttle_stream_per_token' => 2]);
         $user = User::factory()->create();
         $channel = proxiedChannel($user, 'http://provider.test/hls/index.m3u8');
-        $part = app(App\Services\StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts');
 
         $this->get($part)->assertOk();
         $this->get($part)->assertOk();
@@ -186,7 +189,7 @@ describe('nginx mode', function () {
         Http::fake();
         $user = User::factory()->create();
         $channel = proxiedChannel($user, 'http://provider.test/hls/index.m3u8');
-        $part = app(App\Services\StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg1.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg1.ts');
 
         $this->withServerVariables(['STREAM_PROXY_ENGINE' => 'nginx'])->get($part)
             ->assertHeader('X-Accel-Redirect', '/_proxy')
@@ -229,7 +232,7 @@ it('lets StreamService refresh a session without logging a new play', function (
 
 it('saves "Hide provider address" on a source, but never for receivers', function () {
     $this->actingAs(User::factory()->admin()->create());
-    Illuminate\Support\Facades\Queue::fake();
+    Queue::fake();
 
     $this->post(route('admin.sources.store'), ['name' => 'P', 'type' => 'url', 'url' => 'http://p.test/list.m3u', 'proxy_streams' => '1'])->assertSessionHasNoErrors()->assertRedirect();
     expect(Source::where('name', 'P')->sole()->proxy_streams)->toBeTrue();

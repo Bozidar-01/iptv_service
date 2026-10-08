@@ -38,6 +38,7 @@ class SyncSources extends Command
                 $source->update(['status' => Source::STATUS_QUEUED]);
                 SyncSource::dispatch($source);
                 $this->line("Queued: {$source->name}");
+
                 continue;
             }
 

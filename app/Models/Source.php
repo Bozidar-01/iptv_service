@@ -11,9 +11,13 @@ use Illuminate\Database\Eloquent\Model;
 class Source extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_QUEUED = 'queued';
+
     public const STATUS_SYNCING = 'syncing';
+
     public const STATUS_SUCCESS = 'success';
+
     public const STATUS_FAILED = 'failed';
 
     /**

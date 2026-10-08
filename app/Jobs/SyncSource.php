@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
-class SyncSource implements ShouldQueue, ShouldBeUnique
+class SyncSource implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -20,9 +20,7 @@ class SyncSource implements ShouldQueue, ShouldBeUnique
      */
     public int $timeout = 600;
 
-    public function __construct(public Source $source)
-    {
-    }
+    public function __construct(public Source $source) {}
 
     public function uniqueId(): string
     {

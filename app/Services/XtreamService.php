@@ -20,6 +20,7 @@ class XtreamService
 {
     /** Wrong username/password attempts per IP before it is blocked for LOCKOUT_SECONDS. */
     public const MAX_FAILED_ATTEMPTS = 20;
+
     public const LOCKOUT_SECONDS = 600;
 
     /**

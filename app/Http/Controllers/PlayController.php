@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 class PlayController extends Controller
 {
     protected $streamService;
+
     protected $tokenService;
 
     protected $proxyService;

@@ -19,6 +19,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = $this->channelService->getCategoriesWithCounts();
+
         return view('admin.categories.index', compact('categories'));
     }
 
@@ -36,7 +37,7 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
+            'name' => 'required|string|max:255|unique:categories,name,'.$category->id,
         ]);
 
         $this->channelService->updateCategory($category, $data);

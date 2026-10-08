@@ -2,17 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\Channel;
-use App\Models\User;
-use App\Models\StreamLog;
 use App\Models\ActiveSession;
+use App\Models\Channel;
+use App\Models\StreamLog;
+use App\Models\User;
 use Illuminate\Support\Facades\Request;
 
 class StreamService
 {
-    public function __construct(private ReceiverService $receiverService)
-    {
-    }
+    public function __construct(private ReceiverService $receiverService) {}
 
     /**
      * Minutes after the last play request that a session still counts as active.

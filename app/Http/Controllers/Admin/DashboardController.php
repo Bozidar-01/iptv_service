@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\ActiveSession;
 use App\Models\Channel;
 use App\Models\Source;
-use App\Models\StreamAlert;
 use App\Models\StreamLog;
 use App\Models\User;
 use App\Services\HealthService;

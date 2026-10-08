@@ -29,9 +29,7 @@ class StreamProxyService
     /** Longest a single viewing is passed on in php mode. */
     private const MAX_SECONDS = 86400;
 
-    public function __construct(private StreamPreviewService $preview, private StreamService $streams)
-    {
-    }
+    public function __construct(private StreamPreviewService $preview, private StreamService $streams) {}
 
     /**
      * Answer a play request: redirect to the provider, or pass the stream on.

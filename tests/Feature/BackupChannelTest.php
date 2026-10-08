@@ -3,6 +3,7 @@
 use App\Models\Channel;
 use App\Models\User;
 use App\Services\StreamCheckService;
+use App\Services\TokenService;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -76,7 +77,7 @@ it('sends viewers to the backup stream', function () {
     $dead = subscribedChannel($user, ['stream_url' => 'http://dead.test/a', 'tvg_id' => 'Rai1.it']);
     $twin = tvChannel('http://live.test/backup', ['tvg_id' => 'Rai1.it']);
     checkAll();
-    $token = app(\App\Services\TokenService::class)->generateToken($user)->token;
+    $token = app(TokenService::class)->generateToken($user)->token;
 
     $this->get(route('play', ['channel_id' => $dead->id, 'token' => $token]))->assertRedirect('http://live.test/backup');
 });

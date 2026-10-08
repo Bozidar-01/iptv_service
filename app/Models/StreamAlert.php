@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Services\StreamCheckService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Something an admin asked to be told about: a watched channel stopped or started working,
@@ -14,19 +15,25 @@ use Illuminate\Database\Eloquent\Model;
 class StreamAlert extends Model
 {
     public const TYPE_DOWN = 'down';
+
     public const TYPE_UP = 'up';
+
     public const TYPE_SYNC_FAILED = 'sync_failed';
+
     /** Queued jobs waiting too long: the queue worker isn't running. detail = minutes waited */
     public const TYPE_QUEUE_STUCK = 'queue_stuck';
+
     /** Background jobs failed. detail = how many */
     public const TYPE_JOBS_FAILED = 'jobs_failed';
 
     /** A satellite receiver's relay stopped / started answering (ReceiverService). */
     public const TYPE_RECEIVER_DOWN = 'receiver_down';
+
     public const TYPE_RECEIVER_UP = 'receiver_up';
 
     /** A subscription ends within iptv.expiry_reminder_days / has ended. detail = expiry date (Y-m-d) */
     public const TYPE_EXPIRING = 'expiring';
+
     public const TYPE_EXPIRED = 'expired';
 
     public const SUBSCRIPTION_TYPES = [self::TYPE_EXPIRING, self::TYPE_EXPIRED];
@@ -107,7 +114,7 @@ class StreamAlert extends Model
 
     private function expiryDate(): string
     {
-        return \Illuminate\Support\Carbon::parse($this->detail)->translatedFormat('j M Y');
+        return Carbon::parse($this->detail)->translatedFormat('j M Y');
     }
 
     public function isSystem(): bool

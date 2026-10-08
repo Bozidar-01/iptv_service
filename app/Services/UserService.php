@@ -42,6 +42,7 @@ class UserService
         if (isset($data['bouquets'])) {
             $user->bouquets()->sync($data['bouquets']);
         }
+
         return $user;
     }
 
@@ -57,6 +58,7 @@ class UserService
         if (isset($data['bouquets'])) {
             $user->bouquets()->sync($data['bouquets']);
         }
+
         return $user;
     }
 
@@ -68,6 +70,7 @@ class UserService
     public function toggleStatus(User $user)
     {
         $user->status = $user->status === 'active' ? 'disabled' : 'active';
+
         return $user->save();
     }
 }

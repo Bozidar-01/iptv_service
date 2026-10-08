@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 class HealthService
 {
     public const HEARTBEAT_KEY = 'health:scheduler-heartbeat';
+
     private const FAILED_CHECKED_KEY = 'health:failed-jobs-checked-at';
 
     /** The scheduler runs every minute; older than this means cron stopped. */

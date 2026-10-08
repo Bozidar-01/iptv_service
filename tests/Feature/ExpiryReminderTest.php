@@ -4,6 +4,7 @@ use App\Mail\StreamAlertsMail;
 use App\Models\StreamAlert;
 use App\Models\User;
 use App\Services\SubscriptionReminderService;
+use Illuminate\Console\Scheduling\Schedule;
 
 function subscriber(array $attributes = []): User
 {
@@ -46,7 +47,7 @@ it('skips users that are far from expiry, never expire, are disabled, admins, or
 });
 
 it('is scheduled daily and shown in the email and the panel', function () {
-    $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+    $event = collect(app(Schedule::class)->events())
         ->first(fn ($e) => str_contains($e->command ?? '', 'iptv:expiry-reminders'));
     expect($event?->expression)->toBe('0 8 * * *');
 

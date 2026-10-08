@@ -117,7 +117,7 @@ class TwoFactorService
     public function qrSvg(User $user, string $secret): string
     {
         $uri = Totp::uri($secret, $user->username, config('app.name'));
-        $writer = new Writer(new ImageRenderer(new RendererStyle(200, 0), new SvgImageBackEnd()));
+        $writer = new Writer(new ImageRenderer(new RendererStyle(200, 0), new SvgImageBackEnd));
 
         return preg_replace('/^<\?xml[^>]*\?>\s*/', '', $writer->writeString($uri));
     }

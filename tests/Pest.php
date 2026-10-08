@@ -1,6 +1,11 @@
 <?php
 
+use App\Models\Bouquet;
+use App\Models\Channel;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /*
@@ -47,15 +52,15 @@ expect()->extend('toBeOne', function () {
 /**
  * Create an active channel inside a bouquet assigned to the given user.
  */
-function subscribedChannel(App\Models\User $user, array $attributes = []): App\Models\Channel
+function subscribedChannel(User $user, array $attributes = []): Channel
 {
-    $channel = App\Models\Channel::create(array_merge([
+    $channel = Channel::create(array_merge([
         'name' => 'Test Channel',
         'stream_url' => 'https://upstream.test/stream.m3u8',
         'is_active' => true,
     ], $attributes));
 
-    $bouquet = App\Models\Bouquet::create(['name' => 'Pack '.$channel->id]);
+    $bouquet = Bouquet::create(['name' => 'Pack '.$channel->id]);
     $bouquet->channels()->attach($channel);
     $user->bouquets()->attach($bouquet);
 
@@ -68,7 +73,7 @@ function subscribedChannel(App\Models\User $user, array $attributes = []): App\M
  */
 function refakeHttp(array $stubs): void
 {
-    app()->instance(Illuminate\Http\Client\Factory::class, new Illuminate\Http\Client\Factory);
-    Illuminate\Support\Facades\Http::clearResolvedInstances();
-    Illuminate\Support\Facades\Http::fake($stubs);
+    app()->instance(Factory::class, new Factory);
+    Http::clearResolvedInstances();
+    Http::fake($stubs);
 }

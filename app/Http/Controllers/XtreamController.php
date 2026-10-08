@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 class XtreamController extends Controller
 {
     protected $xtreamService;
+
     protected $streamService;
 
     public function __construct(XtreamService $xtreamService, StreamService $streamService)
@@ -91,7 +92,9 @@ class XtreamController extends Controller
             return response("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<tv></tv>\n")->header('Content-Type', 'application/xml');
         }
 
-        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) { echo $chunk; }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) {
+            echo $chunk;
+        }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
 
     /**

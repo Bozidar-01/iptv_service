@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\StreamAlert;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;

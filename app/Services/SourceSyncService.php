@@ -33,9 +33,7 @@ class SourceSyncService
     /** @var array<string, int> lowercase category name => id */
     private array $categoryIds = [];
 
-    public function __construct(private M3uParser $parser)
-    {
-    }
+    public function __construct(private M3uParser $parser) {}
 
     public function sync(Source $source): void
     {

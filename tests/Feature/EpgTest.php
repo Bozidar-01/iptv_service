@@ -1,12 +1,15 @@
 <?php
 
+use App\Jobs\SyncEpgSource;
 use App\Models\Channel;
 use App\Models\EpgProgramme;
 use App\Models\EpgSource;
 use App\Models\User;
 use App\Services\EpgImportService;
 use App\Services\EpgService;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 function xmltv(string $body): string
 {
@@ -131,7 +134,7 @@ it('runs from the command and the daily schedule', function () {
 
     $this->artisan('iptv:sync-epg', ['--now' => true])->expectsOutputToContain('Imported: Italy (2 programmes)')->assertSuccessful();
 
-    $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())->first(fn ($e) => str_contains($e->command ?? '', 'iptv:sync-epg'));
+    $event = collect(app(Schedule::class)->events())->first(fn ($e) => str_contains($e->command ?? '', 'iptv:sync-epg'));
     expect($event?->expression)->toBe('30 3 * * *');
 });
 
@@ -145,7 +148,7 @@ describe('admin', function () {
     beforeEach(fn () => $this->actingAs(User::factory()->admin()->create()));
 
     it('lists guides with coverage and adds, refreshes and deletes them', function () {
-        \Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
         $source = importGuide();
         Channel::create(['name' => 'Rai 1', 'stream_url' => 'http://x.test/1', 'is_active' => true]);
         app(EpgService::class)->matchChannels();
@@ -153,7 +156,7 @@ describe('admin', function () {
         $this->get(route('admin.epg.index'))->assertOk()->assertSee('Italy')->assertSee('Enabled channels with a guide');
 
         $this->post(route('admin.epg.store'), ['name' => 'Germany', 'url' => 'https://iptv-epg.org/files/epg-de.xml.gz'])->assertSessionHas('success');
-        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SyncEpgSource::class);
+        Queue::assertPushed(SyncEpgSource::class);
 
         $this->post(route('admin.epg.sync', $source))->assertSessionHas('success');
         $this->post(route('admin.epg.match'))->assertSessionHas('success', '1 channel has a guide.');

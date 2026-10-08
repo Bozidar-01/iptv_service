@@ -22,9 +22,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class StreamPreviewService
 {
     private const USER_AGENT = 'VLC/3.0.20 LibVLC/3.0.20';
+
     private const CONNECT_TIMEOUT = 8;
+
     private const READ_TIMEOUT = 20;
+
     private const CHUNK = 16384;
+
     private const MAX_PLAYLIST_BYTES = 2 * 1024 * 1024;
 
     /** A live MPEG-TS stream never ends; stop passing it on after this many seconds. */

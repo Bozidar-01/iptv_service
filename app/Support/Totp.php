@@ -9,6 +9,7 @@ namespace App\Support;
 class Totp
 {
     public const PERIOD = 30;
+
     public const DIGITS = 6;
 
     private const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -23,8 +24,8 @@ class Totp
     public static function code(string $secret, int $step): string
     {
         $hash = hash_hmac('sha1', pack('J', $step), self::base32Decode($secret), true);
-        $offset = ord($hash[19]) & 0xf;
-        $number = ((ord($hash[$offset]) & 0x7f) << 24)
+        $offset = ord($hash[19]) & 0xF;
+        $number = ((ord($hash[$offset]) & 0x7F) << 24)
             | (ord($hash[$offset + 1]) << 16)
             | (ord($hash[$offset + 2]) << 8)
             | ord($hash[$offset + 3]);

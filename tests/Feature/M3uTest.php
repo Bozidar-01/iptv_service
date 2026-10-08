@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\AccessToken;
+use App\Models\Bouquet;
 use App\Models\Category;
 use App\Models\User;
+use App\Services\TokenService;
 
 it('returns a playlist with a play url per active subscribed channel', function () {
     $user = User::factory()->create();
@@ -46,7 +48,7 @@ it('reuses an existing valid token', function () {
 
 it('escapes quotes and line breaks in channel and category names', function () {
     $user = User::factory()->create();
-    $category = Category::create(['name' => "Kids \"Fun\""]);
+    $category = Category::create(['name' => 'Kids "Fun"']);
     subscribedChannel($user, ['name' => "Say \"Hi\"\nTV", 'category_id' => $category->id]);
 
     $body = $this->get('/m3u?'.http_build_query(['username' => $user->username, 'password' => 'password']))->streamedContent();
@@ -100,7 +102,7 @@ it('refuses the playlist link for disabled users', function () {
 it('lists a channel once even when it is in several bouquets', function () {
     $user = User::factory()->create();
     $channel = subscribedChannel($user);
-    $second = App\Models\Bouquet::create(['name' => 'Second']);
+    $second = Bouquet::create(['name' => 'Second']);
     $second->channels()->attach($channel);
     $user->bouquets()->attach($second);
 
@@ -111,8 +113,8 @@ it('lists a channel once even when it is in several bouquets', function () {
 
 it('orders channels by category then source order and keeps the stream extension', function () {
     $user = User::factory()->create();
-    $b = App\Models\Category::create(['name' => 'B group']);
-    $a = App\Models\Category::create(['name' => 'A group']);
+    $b = Category::create(['name' => 'B group']);
+    $a = Category::create(['name' => 'A group']);
     subscribedChannel($user, ['name' => 'Second', 'category_id' => $b->id, 'stream_url' => 'http://p.test/live/2.ts']);
     subscribedChannel($user, ['name' => 'First', 'category_id' => $a->id, 'stream_url' => 'http://p.test/hls/1.m3u8']);
 
@@ -141,7 +143,7 @@ it('streams a long playlist in chunks with one entry per channel', function () {
     }
 
     $chunks = 0;
-    app(\App\Services\TokenService::class)->writeM3u($user, 'tok', null, function () use (&$chunks) {
+    app(TokenService::class)->writeM3u($user, 'tok', null, function () use (&$chunks) {
         $chunks++;
     });
     $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();

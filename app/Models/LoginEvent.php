@@ -19,10 +19,15 @@ class LoginEvent extends Model
     public const UPDATED_AT = null;
 
     public const SUCCESS = 'success';
+
     public const FAILED = 'failed';
+
     public const DENIED = 'denied';
+
     public const TWO_FACTOR_FAILED = 'two_factor_failed';
+
     public const TWO_FACTOR_ENABLED = 'two_factor_enabled';
+
     public const TWO_FACTOR_DISABLED = 'two_factor_disabled';
 
     /** Days the history is kept. */

@@ -11,7 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
-class SyncEpgSource implements ShouldQueue, ShouldBeUnique
+class SyncEpgSource implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -19,9 +19,7 @@ class SyncEpgSource implements ShouldQueue, ShouldBeUnique
 
     public int $timeout = 600;
 
-    public function __construct(public EpgSource $epgSource)
-    {
-    }
+    public function __construct(public EpgSource $epgSource) {}
 
     public function uniqueId(): string
     {

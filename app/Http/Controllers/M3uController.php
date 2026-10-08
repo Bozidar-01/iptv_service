@@ -56,7 +56,9 @@ class M3uController extends Controller
             return response('Guide not found', 404);
         }
 
-        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) { echo $chunk; }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) {
+            echo $chunk;
+        }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
     }
 
     private function playlistFor(User $user, ?string $guideUrl = null)

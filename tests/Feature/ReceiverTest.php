@@ -9,6 +9,9 @@ use App\Models\User;
 use App\Services\ReceiverService;
 use App\Services\SourceSyncService;
 use App\Services\StreamCheckService;
+use App\Services\TokenService;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -55,7 +58,7 @@ it('leaves other channels alone', function () {
 it('redirects /play and the Xtream /live to the signed link', function () {
     $user = User::factory()->create(['username' => 'tv1', 'password' => bcrypt('secret'), 'max_connections' => 2]);
     $channel = receiverChannel(receiver(), $user);
-    $token = app(\App\Services\TokenService::class)->generateToken($user)->token;
+    $token = app(TokenService::class)->generateToken($user)->token;
 
     $location = $this->get(route('play', ['channel_id' => $channel->id, 'token' => $token]))->assertRedirect()->headers->get('Location');
     expect($location)->toStartWith(RELAY.'/s/'.RAI1.'.ts?e=')->toContain('&x=0&s=');
@@ -79,10 +82,10 @@ it('imports the relay playlist with the secret and the receiver categories', fun
 });
 
 it('never stores the secret in an import error', function () {
-    Http::fake([RELAY.'/*' => fn () => throw new \Illuminate\Http\Client\ConnectionException('cURL error 7: Failed to connect to '.RELAY.'/playlist.m3u?key='.RELAY_SECRET)]);
+    Http::fake([RELAY.'/*' => fn () => throw new ConnectionException('cURL error 7: Failed to connect to '.RELAY.'/playlist.m3u?key='.RELAY_SECRET)]);
     $source = receiver();
 
-    expect(fn () => app(SourceSyncService::class)->sync($source))->toThrow(\Illuminate\Http\Client\ConnectionException::class);
+    expect(fn () => app(SourceSyncService::class)->sync($source))->toThrow(ConnectionException::class);
 
     expect($source->fresh()->last_error)->not->toContain(RELAY_SECRET)->toContain('***');
 });
@@ -126,7 +129,7 @@ it('alerts when a new receiver is offline on its first check', function () {
 });
 
 it('checks receivers every five minutes', function () {
-    $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+    $event = collect(app(Schedule::class)->events())
         ->first(fn ($e) => str_contains($e->command ?? '', 'iptv:check-receivers'));
 
     expect($event?->expression)->toBe('*/5 * * * *');

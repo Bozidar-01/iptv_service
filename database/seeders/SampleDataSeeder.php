@@ -2,11 +2,11 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\Bouquet;
 use App\Models\Category;
 use App\Models\Channel;
-use App\Models\Bouquet;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class SampleDataSeeder extends Seeder
@@ -38,7 +38,7 @@ class SampleDataSeeder extends Seeder
                 'name' => $c['name'],
                 'category_id' => $c['category_id'],
                 'stream_url' => $c['url'],
-                'logo_url' => 'https://via.placeholder.com/200x120.png?text=' . urlencode($c['name']),
+                'logo_url' => 'https://via.placeholder.com/200x120.png?text='.urlencode($c['name']),
                 'is_active' => true,
             ]);
         }
@@ -46,7 +46,7 @@ class SampleDataSeeder extends Seeder
         // 3. Bouquets
         $sportsBouquet = Bouquet::create(['name' => 'Sports Pack']);
         $sportsBouquet->channels()->attach(
-            array_filter($allCreatedChannels, fn($c) => $c->category_id == $sports->id)
+            array_filter($allCreatedChannels, fn ($c) => $c->category_id == $sports->id)
         );
 
         $fullBouquet = Bouquet::create(['name' => 'Full Access']);

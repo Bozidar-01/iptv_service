@@ -5,6 +5,7 @@ use App\Models\Bouquet;
 use App\Models\Category;
 use App\Models\Channel;
 use App\Models\Source;
+use App\Models\User;
 use App\Services\SourceSyncService;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
@@ -235,7 +236,7 @@ it('keeps the user agent and referrer a stream needs and puts them in the M3U', 
     $channel = Channel::where('name', 'Picky')->sole();
     expect($channel)->http_user_agent->toBe('Mozilla/5.0 Picky')->http_referrer->toBe('https://picky.test/');
 
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
     $bouquet = Bouquet::create(['name' => 'B']);
     $bouquet->channels()->attach($channel);
     $user->bouquets()->attach($bouquet);

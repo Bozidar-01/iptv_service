@@ -8,7 +8,6 @@ return [
     */
     'alert_mail_to' => array_values(array_filter(array_map('trim', explode(',', (string) env('ALERT_MAIL_TO', ''))))),
 
-
     /*
     | Minutes a signed satellite-receiver link stays valid (ReceiverService). Players that
     | reconnect after a drop reuse the link, so keep this longer than a typical viewing.

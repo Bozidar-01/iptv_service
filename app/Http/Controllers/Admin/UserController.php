@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Bouquet;
+use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 
@@ -21,6 +21,7 @@ class UserController extends Controller
     {
         $filters = $request->only(['search', 'status']);
         $users = $this->userService->getAllUsers($filters);
+
         return view('admin.users.index', compact('users', 'filters'));
     }
 
@@ -51,6 +52,7 @@ class UserController extends Controller
     public function create()
     {
         $bouquets = Bouquet::withCount('channels')->orderBy('name')->get();
+
         return view('admin.users.create', compact('bouquets'));
     }
 
@@ -76,13 +78,14 @@ class UserController extends Controller
     {
         $bouquets = Bouquet::withCount('channels')->orderBy('name')->get();
         $selectedBouquets = $user->bouquets->pluck('id')->toArray();
+
         return view('admin.users.edit', compact('user', 'bouquets', 'selectedBouquets'));
     }
 
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+            'username' => 'required|string|max:255|unique:users,username,'.$user->id,
             'password' => 'nullable|string|min:6',
             'status' => 'required|in:active,disabled',
             'role' => 'required|in:admin,user',
@@ -112,6 +115,7 @@ class UserController extends Controller
     public function toggleStatus(User $user)
     {
         $this->userService->toggleStatus($user);
+
         return back()->with('success', __('User status updated.'));
     }
 }

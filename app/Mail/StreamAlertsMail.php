@@ -14,11 +14,9 @@ class StreamAlertsMail extends Mailable
     use Queueable;
 
     /**
-     * @param  Collection<int, \App\Models\StreamAlert>  $alerts  empty for a test email
+     * @param  Collection<int, StreamAlert>  $alerts  empty for a test email
      */
-    public function __construct(public Collection $alerts)
-    {
-    }
+    public function __construct(public Collection $alerts) {}
 
     public function envelope(): Envelope
     {

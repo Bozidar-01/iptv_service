@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Channel;
 use App\Models\StreamLog;
 use App\Models\User;
+use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
     $this->user = User::factory()->create(['username' => 'tv1', 'password' => bcrypt('secret'), 'max_connections' => 1]);
@@ -15,7 +16,7 @@ beforeEach(function () {
     $this->loose = subscribedChannel($this->user, ['name' => 'Loose']);
 });
 
-function api(array $params = []): \Illuminate\Testing\TestResponse
+function api(array $params = []): TestResponse
 {
     return test()->get('/player_api.php?'.http_build_query(array_merge(['username' => 'tv1', 'password' => 'secret'], $params)));
 }

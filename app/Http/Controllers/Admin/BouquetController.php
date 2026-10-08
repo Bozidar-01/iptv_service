@@ -20,12 +20,14 @@ class BouquetController extends Controller
     public function index()
     {
         $bouquets = $this->bouquetService->getAllBouquets();
+
         return view('admin.bouquets.index', compact('bouquets'));
     }
 
     public function create()
     {
         $categories = $this->categoriesWithCounts();
+
         return view('admin.bouquets.create', compact('categories'));
     }
 
@@ -46,13 +48,14 @@ class BouquetController extends Controller
     {
         $categories = $this->categoriesWithCounts();
         $bouquet->loadCount(['channels', 'users']);
+
         return view('admin.bouquets.edit', compact('bouquet', 'categories'));
     }
 
     public function update(Request $request, Bouquet $bouquet)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255|unique:bouquets,name,' . $bouquet->id,
+            'name' => 'required|string|max:255|unique:bouquets,name,'.$bouquet->id,
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ]);

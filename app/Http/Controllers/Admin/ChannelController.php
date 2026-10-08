@@ -36,6 +36,7 @@ class ChannelController extends Controller
     public function create()
     {
         $categories = $this->channelService->getAllCategories();
+
         return view('admin.channels.create', compact('categories'));
     }
 
