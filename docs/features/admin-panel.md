@@ -49,7 +49,8 @@ Table with channel and enabled counts, *View channels* (filtered list), rename a
   - Warnings when the panel is opened on localhost (link unreachable from a TV), when the account is disabled/expired, or when the playlist would be empty.
   - TV setup steps (TiviMate, IPTV Smarters, OTT Navigator, VLC).
   - **Log in with username and password** (Xtream Codes): server URL (`scheme://host:port` of the current request) and username with copy buttons, a note that the password is the one set for the user (link to *Change password*), host and port separately, and setup steps. See [playlist-and-streaming.md](playlist-and-streaming.md#3-xtream-codes-api-login-with-server--username--password).
-  - Subscription details (expiry, active/max streams, channel count, bouquets) and the 10 latest plays.
+  - Subscription details (expiry, active/max streams, channel count, bouquets) and the 10 latest plays. "Active now" counts only devices that played within the last 5 minutes.
+  - **Devices watching now:** one row per device (channel, IP, player, since) with **Disconnect** and, for more than one device, **Disconnect all**. Disconnecting deletes the device's session (freeing its slot) and keeps that device (IP + player) from starting a stream for `StreamService::DEVICE_BLOCK_MINUTES` (15). The block is kept in the cache. A player that streams straight from the provider (redirect) keeps its current stream until it reconnects, because the panel is no longer in the path; through *Hide provider address* HLS parts are refused at once and a running MPEG-TS stream stops at the next 30-second tick.
 
 ## Activity (`admin.logs.index`)
 Stream starts, newest first, 50 per page, filterable by user (`?user=`), with IP and player user agent.

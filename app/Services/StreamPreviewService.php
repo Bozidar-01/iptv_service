@@ -83,7 +83,7 @@ class StreamPreviewService
      * The upstream request sends the playing channel's own User-Agent / Referer when it has them.
      *
      * @param  ?callable(string): string  $urlFor  address a playlist entry is rewritten to (default: the admin preview)
-     * @param  ?callable(): void  $onTick  called about every 30 seconds while media is passed on (keeps a viewing session alive)
+     * @param  ?callable(): mixed  $onTick  called about every 30 seconds while media is passed on (keeps a viewing session alive); returning false ends the stream
      * @param  ?int  $maxSeconds  stop passing media on after this long (default MAX_SECONDS)
      * @param  bool  $publicOnly  refuse redirects to private / local addresses (viewers' streams, see PublicAddress)
      */
@@ -173,7 +173,10 @@ class StreamPreviewService
                 }
 
                 if ($onTick && time() >= $nextTick) {
-                    $onTick();
+                    // A tick that answers false ends the stream (the viewer was disconnected)
+                    if ($onTick() === false) {
+                        break;
+                    }
                     $nextTick = time() + self::TICK_SECONDS;
                 }
             }

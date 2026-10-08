@@ -151,6 +151,46 @@
     </div>
 
     <div class="card">
+        <div class="card-header">
+            <div>
+                <h2>{{ __('Devices watching now') }}</h2>
+                <p>{{ __('A player that plays straight from the provider keeps its current stream until it reconnects. Streams played through this server stop within seconds.') }}</p>
+            </div>
+            @if($devices->count() > 1)
+                <form method="POST" action="{{ route('admin.users.sessions.disconnect-all', $user) }}" data-confirm="{{ __('Disconnect all devices of this user? They can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger-ghost btn-sm"><x-icon name="power" /> {{ __('Disconnect all') }}</button>
+                </form>
+            @endif
+        </div>
+        @if($devices->isEmpty())
+            <div class="empty" style="padding: 28px 20px"><p>{{ __('Nobody is watching right now.') }}</p></div>
+        @else
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>{{ __('Channel') }}</th><th class="hide-sm">{{ __('IP address') }}</th><th class="hide-sm">{{ __('Player') }}</th><th class="right">{{ __('Since') }}</th><th class="shrink"></th></tr></thead>
+                    <tbody>
+                    @foreach($devices as $device)
+                        <tr>
+                            <td class="cell-main truncate">{{ $device->channel->name ?? __('Deleted channel') }}</td>
+                            <td class="hide-sm mono muted">{{ $device->ip }}</td>
+                            <td class="hide-sm muted truncate" style="max-width: 200px" title="{{ $device->user_agent }}">{{ $device->user_agent }}</td>
+                            <td class="right muted" title="{{ $device->started_at }}">{{ $device->started_at->diffForHumans() }}</td>
+                            <td>
+                                <form method="POST" action="{{ route('admin.users.sessions.disconnect', [$user, $device]) }}" data-confirm="{{ __('Disconnect this device? It can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-danger-ghost btn-sm">{{ __('Disconnect') }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
+    <div class="card">
         <div class="card-header"><h2>{{ __('Subscription') }}</h2></div>
         <div class="card-body">
             <dl class="dl">

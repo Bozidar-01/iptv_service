@@ -456,5 +456,15 @@
     "Play these channels through this server, so viewers never see the provider address or login. All the video then uses this server's internet connection.": "Пуштај ги овие канали преку овој сервер, за гледачите никогаш да не ја видат адресата или најавата на провајдерот. Целото видео тогаш ја користи интернет-врската на овој сервер.",
     "This is switched off for the whole server. Set STREAM_PROXY in the .env file to turn it on.": "Ова е исклучено за целиот сервер. Поставете STREAM_PROXY во .env датотеката за да го вклучите.",
     "The provider sent a playlist this server can not read.": "Провајдерот испрати плејлиста што овој сервер не може да ја прочита.",
-    "No database backup for :hours hours": "Нема бекап на базата веќе :hours часа"
+    "No database backup for :hours hours": "Нема бекап на базата веќе :hours часа",
+    "Devices watching now": "Уреди што гледаат сега",
+    "A player that plays straight from the provider keeps its current stream until it reconnects. Streams played through this server stop within seconds.": "Плеер што пушта директно од провајдерот го задржува тековниот стрим додека не се поврзе повторно. Стримовите преку овој сервер запираат за неколку секунди.",
+    "Nobody is watching right now.": "Никој не гледа во моментов.",
+    "Disconnect all": "Исклучи ги сите",
+    "Disconnect": "Исклучи",
+    "Since": "Од",
+    "Disconnect all devices of this user? They can not start a stream for :minutes minutes.": "Да се исклучат ли сите уреди на овој корисник? Нема да можат да започнат стрим :minutes минути.",
+    "Disconnect this device? It can not start a stream for :minutes minutes.": "Да се исклучи ли овој уред? Нема да може да започне стрим :minutes минути.",
+    "Device disconnected. It can not start a stream for :minutes minutes.": "Уредот е исклучен. Нема да може да започне стрим :minutes минути.",
+    ":count device disconnected. It can not start a stream for :minutes minutes.|:count devices disconnected. They can not start a stream for :minutes minutes.": ":count уред е исклучен. Нема да може да започне стрим :minutes минути.|:count уреди се исклучени. Нема да можат да започнат стрим :minutes минути."
 }

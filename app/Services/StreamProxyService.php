@@ -152,8 +152,15 @@ class StreamProxyService
             $target,
             fn (string $part) => $this->partUrl($channel, $token, $part, $user->id),
             function () use ($user, $channel, $alive) {
+                // An admin disconnected this device: stop passing the stream on
+                if ($this->streams->isBlocked($user)) {
+                    return false;
+                }
+
                 $this->streams->touch($user, $channel);
                 $alive();
+
+                return true;
             },
             self::MAX_SECONDS,
             publicOnly: true,

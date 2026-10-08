@@ -6,6 +6,7 @@ use App\Models\ActiveSession;
 use App\Models\Channel;
 use App\Models\StreamLog;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Request;
 
 class StreamService
@@ -16,6 +17,9 @@ class StreamService
      * Minutes after the last play request that a session still counts as active.
      */
     public const SESSION_TIMEOUT_MINUTES = 5;
+
+    /** Minutes a disconnected device can't start a stream again. */
+    public const DEVICE_BLOCK_MINUTES = 15;
 
     /**
      * Get stream URL for a user and channel.
@@ -44,7 +48,7 @@ class StreamService
      */
     public function isAllowed(User $user, Channel $channel)
     {
-        if (!$user->isActive() || !$channel->is_active) {
+        if (!$user->isActive() || !$channel->is_active || $this->isBlocked($user)) {
             return false;
         }
 
@@ -69,6 +73,42 @@ class StreamService
         }
 
         return true;
+    }
+
+    /**
+     * Has an admin disconnected the requesting device? It then can't play (or keep a proxied stream
+     * running) until DEVICE_BLOCK_MINUTES have passed.
+     */
+    public function isBlocked(User $user): bool
+    {
+        return Cache::has($this->blockKey($user->id, Request::ip(), $this->userAgent()));
+    }
+
+    /**
+     * Admin action: end a device's session and keep it out for DEVICE_BLOCK_MINUTES. A player that streams
+     * straight from the provider keeps its current stream until it reconnects (the panel can't cut that);
+     * through "Hide provider address" it stops within seconds.
+     */
+    public function disconnect(ActiveSession $session): void
+    {
+        Cache::put($this->blockKey($session->user_id, (string) $session->ip, (string) $session->user_agent), true, now()->addMinutes(self::DEVICE_BLOCK_MINUTES));
+        $session->delete();
+    }
+
+    /**
+     * @return int devices disconnected
+     */
+    public function disconnectAll(User $user): int
+    {
+        $sessions = $user->activeSessions()->get();
+        $sessions->each(fn (ActiveSession $session) => $this->disconnect($session));
+
+        return $sessions->count();
+    }
+
+    private function blockKey(int $userId, string $ip, string $userAgent): string
+    {
+        return 'device-blocked:'.$userId.':'.sha1($ip.'|'.mb_substr($userAgent, 0, 255));
     }
 
     /**
