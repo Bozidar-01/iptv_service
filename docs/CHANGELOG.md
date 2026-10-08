@@ -4,6 +4,15 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Ops: off-site backups, backup watch, uptime monitor, staging
+- **Off-site backups:** `BACKUP_COPY_DISK` (e.g. `s3`) writes every backup to a second disk as well (`league/flysystem-aws-s3-v3`, works with AWS S3, Backblaze B2, Cloudflare R2, Wasabi via `AWS_ENDPOINT`). A failed copy fails the command and raises `backup_failed`; the local copy stays. Old backups are pruned on both disks.
+- **Backup watch:** `backup_stale` alert (once a day) when no backup succeeded on every disk for 36 hours (`HealthService`, `BackupService::lastSuccess()`).
+- **Uptime monitor:** `.github/workflows/uptime.yml` checks `/login` and `/health` every 30 minutes; a failed run emails you. Needs the repository variable `SITE_URL`.
+- **Staging:** pushing a branch to `staging` runs the checks and updates a separate staging site (`deploy-staging` job, `STAGING_PATH` secret). `scripts/deploy.sh` takes a branch and `DEPLOY_RESET=1` (tested against a diverged clone). Setup in `docs/deployment.md#staging`.
+- Not verified against a real bucket: the first `iptv:backup` after setting `BACKUP_COPY_DISK` shows it.
+- Tests: off-site copy, copy failure, pruning on both disks, stale alert. 346 tests.
+- Files: `app/Services/{BackupService,HealthService}.php`, `app/Models/StreamAlert.php`, `config/iptv.php`, `scripts/deploy.sh`, `.github/workflows/{ci,uptime}.yml`, `.env.example`, `lang/mk.json`, `composer.{json,lock}`, `.claude/skills/ship-to-main/SKILL.md`, `docs/**`, `tests/**`.
+
 ### 2026-10-09 — Dependency update and weekly audit
 - `composer update`: Laravel 13.5 → 13.35, Guzzle 7 → **8**, psr7 2 → 3, Symfony 8.0 → 8.1, league/commonmark, flysystem, Pest, Pint and more. Fixes the 20+ advisories `composer audit` reported (Laravel email-rule CRLF injection and signed-URL path confusion, Guzzle host-check bypass, Symfony mime/mailer/routing/http-kernel, commonmark DoS). `composer audit` is clean.
 - Checked after the update: all tests, Pint, PHPStan, and the real HTTP paths against a fake provider (playlist import, `php` and `nginx` stream proxy with redirects, HLS rewrite).

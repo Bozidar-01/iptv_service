@@ -24,6 +24,8 @@ Run from the work branch. Fix problems on the branch, then start the checklist a
 
 If anything is not true, say so plainly and stop: "not ready: <what>". Don't open a PR for unfinished work.
 
+**Risky or hard to test locally** (migrations on real data, proxy, auth, deploy changes, big UI)? If staging is set up (`docs/deployment.md#staging`), also try it there first: `git push -f origin <branch>:staging`, wait for *Deploy to staging*, click through the change on the staging site, then continue. Staging is the user's server: ask before pushing to `staging`.
+
 ## 2. Bring it up to date with main
 
 ```bash
