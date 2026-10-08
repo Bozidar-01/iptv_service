@@ -55,6 +55,7 @@ class StreamAlert extends Model
         return [
             'read_at' => 'datetime',
             'mailed_at' => 'datetime',
+            'user_mailed_at' => 'datetime',
         ];
     }
 

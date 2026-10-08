@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Expiry emails to subscribers
+- Users get an optional **email** and **language of emails** (user form; shown on the user page). Subscribers with an address are emailed the expiry reminder (before the end date and when it has ended) with a button to their own page, where *Ask to renew* is, plus the `RENEWAL_CONTACT` line. Once per reminder, retried next run on failure (`stream_alerts.user_mailed_at`). `REMINDER_EMAIL_USERS=false` switches it off. Nobody is emailed until addresses are added.
+- Schema: `users.email`, `users.locale`, `stream_alerts.user_mailed_at` (migration tried up/down/up on MySQL).
+- `iptv:expiry-reminders` prints the number of emails sent.
+- Tests: `UserReminderEmailTest` (13), 392 tests.
+- Files: `database/migrations/2026_10_09_000004_*`, `app/Mail/SubscriptionReminderMail.php`, `resources/views/emails/subscription-reminder*.blade.php`, `app/Services/SubscriptionReminderService.php`, `app/Console/Commands/ExpiryRemindersCommand.php`, `app/Http/Controllers/Admin/UserController.php`, `app/Models/{User,StreamAlert}.php`, `resources/views/admin/users/{_form,show}.blade.php`, `config/iptv.php`, `.env.example`, `lang/mk.json`, `lang/mk/validation.php`, `docs/**`, `tests/Feature/UserReminderEmailTest.php`.
+
 ### 2026-10-09 — Subscriber page and smaller PHPStan baseline
 - **`/me/{token}`**: a page a subscriber opens with their personal link: status, expiry, playlist link with copy button, setup steps, Xtream server + username (never the password), channel count, streams in use, and **Ask to renew** (alert for the admins, once a day). English or Macedonian (`?lang=` or the browser's language), no cookies, `noindex`, own request limit. The user page in the panel shows the link to send (*Page for this user*).
 - New alert type `renewal_requested` (in the *Subscriptions* group of the email digest).

@@ -17,6 +17,14 @@ return [
     /*
     | Days before a subscription's expiry date that admins get a reminder (iptv:expiry-reminders).
     */
+    /*
+    | Email subscribers (that have an email address) the same expiry reminder the admins get, with the
+    | link to their own page. Needs working MAIL_* settings. RENEWAL_CONTACT is a line added to the
+    | email, e.g. "Reply to this email or call 070 123 456."
+    */
+    'reminder_email_users' => (bool) env('REMINDER_EMAIL_USERS', true),
+    'renewal_contact' => env('RENEWAL_CONTACT', ''),
+
     'expiry_reminder_days' => (int) env('EXPIRY_REMINDER_DAYS', 3),
 
     /*

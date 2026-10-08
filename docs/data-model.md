@@ -15,6 +15,8 @@ Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..
 | expiration_date | datetime, nullable | null = never expires |
 | max_connections | int | default 1 |
 | playlist_token | string(64), unique, nullable | secret for `/playlist/{token}.m3u`; set on create (`User::booted`), backfilled by migration, hidden from serialization |
+| email | string, nullable | optional, not unique: where the subscriber gets expiry reminders (`SubscriptionReminderService`) |
+| locale | string(5), nullable | `en` / `mk`: language of those emails (empty = the panel default) |
 | two_factor_secret | text, nullable | authenticator secret, encrypted with `APP_KEY` (`TwoFactorService`); hidden |
 | two_factor_recovery_codes | text, nullable | JSON list of HMAC hashes of unused recovery codes; hidden |
 | two_factor_confirmed_at | timestamp, nullable | set when the first code was confirmed; null = two-factor off |
@@ -83,7 +85,7 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 ### stream_alerts
 | Column | Type | Notes |
 |---|---|---|
-| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up`, `expiring`, `expired` (`StreamAlert::TYPE_*`) |
+| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up`, `expiring`, `expired`, `renewal_requested`, `backup_failed`, `backup_stale` (`StreamAlert::TYPE_*`) |
 | channel_id | FK → channels, nullable, `ON DELETE SET NULL` | |
 | source_id | FK → sources, nullable, `ON DELETE SET NULL` | |
 | user_id | FK → users, nullable, `ON DELETE SET NULL` | subscription reminders |
@@ -91,6 +93,7 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 | detail | string(50), nullable | `down`: the `stream_error`; `queue_stuck`: minutes waited; `jobs_failed`: count |
 | read_at | timestamp, nullable, indexed | shared by all admins |
 | mailed_at | timestamp, nullable, indexed | set by `iptv:send-alerts` |
+| user_mailed_at | timestamp, nullable | when the subscriber was emailed about this expiry reminder (null = not yet, or no address); a failed send is retried on the next run |
 
 Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem()`, `isSystem()`.
 
