@@ -25,7 +25,7 @@ class CreditController extends Controller
     public function index(Request $request)
     {
         $actor = $request->user();
-        $resellers = $actor->isAdmin() ? User::where('role', 'reseller')->orderBy('username')->get(['id', 'username', 'credits']) : collect();
+        $resellers = $actor->isAdmin() ? User::where('role', 'reseller')->orderBy('username')->get(['id', 'username', 'role', 'credits']) : collect();
 
         // A reseller always sees their own; an admin all, or the one chosen
         $reseller = $actor->isReseller() ? $actor : $resellers->firstWhere('id', (int) $request->query('reseller'));
