@@ -23,13 +23,16 @@ class StatisticsService
     private const CACHE_SECONDS = 300;
 
     /**
-     * @return array{days: int, from: Carbon, plays: int, viewers: int, channels: int, per_day: array<string, int>, per_hour: array<int, int>, top_channels: list<array{name: string, plays: int, viewers: int}>, top_users: list<array{username: string, plays: int, channels: int}>}
+     * @return array{days: int, from: string, plays: int, viewers: int, channels: int, per_day: array<string, int>, per_hour: array<int, int>, top_channels: list<array{name: string, plays: int, viewers: int}>, top_users: list<array{username: string, plays: int, channels: int}>}
      */
     public function report(int $days): array
     {
         $days = in_array($days, self::PERIODS, true) ? $days : self::PERIODS[1];
 
-        return Cache::remember("statistics:$days", self::CACHE_SECONDS, fn () => $this->build($days));
+        // Only plain values go into the cache: it refuses to rebuild objects (config `cache.serializable_classes`
+        // is false), so a cached Carbon comes back as __PHP_Incomplete_Class and the page fails on the 2nd request.
+        // The key carries a version: older entries from before this fix hold such an object and must not be read.
+        return Cache::remember("statistics:v2:$days", self::CACHE_SECONDS, fn () => $this->build($days));
     }
 
     private function build(int $days): array
@@ -57,7 +60,7 @@ class StatisticsService
 
         return [
             'days' => $days,
-            'from' => $from,
+            'from' => $from->toDateString(),
             'plays' => array_sum($perDay),
             'viewers' => $logs()->distinct()->count('user_id'),
             'channels' => $logs()->distinct()->count('channel_id'),
