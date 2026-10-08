@@ -14,7 +14,7 @@ it('returns a playlist with a play url per active subscribed channel', function 
 
     $response->assertOk()->assertHeader('Content-Type', 'audio/x-mpegurl');
 
-    $body = $response->getContent();
+    $body = $response->streamedContent();
     $token = AccessToken::where('user_id', $user->id)->value('token');
 
     expect($body)->toStartWith('#EXTM3U x-tvg-url="'.route('xtream.xmltv', ['username' => $user->username, 'password' => 'password']).'"')
@@ -28,8 +28,9 @@ it('uses General as the group for channels without a category', function () {
     $user = User::factory()->create();
     subscribedChannel($user);
 
-    $this->get('/m3u?'.http_build_query(['username' => $user->username, 'password' => 'password']))
-        ->assertSee('group-title="General"', false);
+    $body = $this->get('/m3u?'.http_build_query(['username' => $user->username, 'password' => 'password']))->streamedContent();
+
+    expect($body)->toContain('group-title="General"');
 });
 
 it('reuses an existing valid token', function () {
@@ -48,7 +49,7 @@ it('escapes quotes and line breaks in channel and category names', function () {
     $category = Category::create(['name' => "Kids \"Fun\""]);
     subscribedChannel($user, ['name' => "Say \"Hi\"\nTV", 'category_id' => $category->id]);
 
-    $body = $this->get('/m3u?'.http_build_query(['username' => $user->username, 'password' => 'password']))->getContent();
+    $body = $this->get('/m3u?'.http_build_query(['username' => $user->username, 'password' => 'password']))->streamedContent();
 
     expect($body)->toContain("tvg-name=\"Say 'Hi' TV\"")
         ->toContain("group-title=\"Kids 'Fun'\",Say \"Hi\" TV\n")
@@ -82,10 +83,10 @@ it('serves the playlist from the per-user link', function () {
     $user = User::factory()->create();
     subscribedChannel($user, ['name' => 'Linked']);
 
-    $this->get(route('playlist', ['token' => $user->playlist_token]))
+    $response = $this->get(route('playlist', ['token' => $user->playlist_token]))
         ->assertOk()
-        ->assertHeader('Content-Type', 'audio/x-mpegurl')
-        ->assertSee('Linked');
+        ->assertHeader('Content-Type', 'audio/x-mpegurl');
+    expect($response->streamedContent())->toContain('Linked');
 
     $this->get(route('playlist', ['token' => 'unknown']))->assertNotFound();
 });
@@ -103,7 +104,7 @@ it('lists a channel once even when it is in several bouquets', function () {
     $second->channels()->attach($channel);
     $user->bouquets()->attach($second);
 
-    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
 
     expect(substr_count($body, '/play/'))->toBe(1);
 });
@@ -115,7 +116,7 @@ it('orders channels by category then source order and keeps the stream extension
     subscribedChannel($user, ['name' => 'Second', 'category_id' => $b->id, 'stream_url' => 'http://p.test/live/2.ts']);
     subscribedChannel($user, ['name' => 'First', 'category_id' => $a->id, 'stream_url' => 'http://p.test/hls/1.m3u8']);
 
-    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
 
     expect(strpos($body, ',First'))->toBeLessThan(strpos($body, ',Second'))
         ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}\.m3u8\n#')
@@ -127,8 +128,25 @@ it('issues a fresh playback token when the current one expires within a week', f
     subscribedChannel($user);
     AccessToken::create(['user_id' => $user->id, 'token' => 'almost-expired', 'expires_at' => now()->addDays(2)]);
 
-    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
 
     expect($body)->not->toContain('almost-expired')
         ->and(AccessToken::where('user_id', $user->id)->count())->toBe(2);
+});
+
+it('streams a long playlist in chunks with one entry per channel', function () {
+    $user = User::factory()->create();
+    foreach (range(1, 1500) as $i) {
+        subscribedChannel($user, ['name' => "Channel $i"]);
+    }
+
+    $chunks = 0;
+    app(\App\Services\TokenService::class)->writeM3u($user, 'tok', null, function () use (&$chunks) {
+        $chunks++;
+    });
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
+
+    expect($chunks)->toBeGreaterThan(2)
+        ->and(substr_count($body, '#EXTINF'))->toBe(1500)
+        ->and($body)->toStartWith('#EXTM3U');
 });

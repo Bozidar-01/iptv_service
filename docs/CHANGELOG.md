@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-08 — Playlist is streamed
+- `/m3u`, `/get.php` and `/playlist/{token}.m3u` send the playlist in 64 KB chunks (`TokenService::writeM3u`) instead of building one big string. Play URLs come from a single route template, not one `route()` call per channel. Output is unchanged, but there is no `Content-Length` header.
+- Tests: playlist tests read `streamedContent()`; new test for chunking 1,500 channels.
+- Files: `app/Services/TokenService.php`, `app/Http/Controllers/M3uController.php`, `docs/features/playlist-and-streaming.md`, `tests/**`.
+
 ### 2026-10-08 — Play history limits, request limits, security headers
 - **Play history:** `stream_logs` older than `LOG_RETENTION_DAYS` (default 90) are deleted by `model:prune` (now also run for `StreamLog`). New indexes: `stream_logs.started_at` and `active_sessions (user_id, last_activity_at)` for the dashboard, Logs page and the connection-limit check.
 - **Request limits:** `/play`, `/playlist/{token}.m3u` and `/epg/{token}.xml` answer 429 after `THROTTLE_PER_TOKEN` (60) requests a minute per link + IP, or `THROTTLE_PER_IP` (300) per IP.

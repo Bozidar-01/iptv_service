@@ -36,21 +36,45 @@ class TokenService
     }
 
     /**
-     * @param  ?string  $guideUrl  XMLTV address for the playlist header (x-tvg-url), so apps load the TV guide
+     * The whole playlist as a string. Fine for tests and small lists; the controller streams it
+     * with writeM3u() instead, so a 100k-channel playlist never sits in memory.
      */
-    public function getM3u(User $user, string $tokenValue, ?string $guideUrl = null)
+    public function getM3u(User $user, string $tokenValue, ?string $guideUrl = null): string
+    {
+        $m3u = '';
+        $this->writeM3u($user, $tokenValue, $guideUrl, function (string $chunk) use (&$m3u) {
+            $m3u .= $chunk;
+        });
+
+        return $m3u;
+    }
+
+    /**
+     * Write the playlist in chunks of about 64 KB to $write.
+     *
+     * @param  ?string  $guideUrl  XMLTV address for the playlist header (x-tvg-url), so apps load the TV guide
+     * @param  callable(string): mixed  $write
+     */
+    public function writeM3u(User $user, string $tokenValue, ?string $guideUrl, callable $write): void
     {
         $channels = Channel::with('category')->availableTo($user)->playlistOrder();
 
-        $m3u = $guideUrl
+        // Build the play URL by replacing placeholders: route() per channel is slow at 100k entries
+        $playTemplate = route('play', ['channel_id' => 'CHANNEL_ID', 'token' => 'PLAY_TOKEN']);
+
+        $buffer = $guideUrl
             ? '#EXTM3U x-tvg-url="'.$this->escapeAttribute($guideUrl).'" url-tvg="'.$this->escapeAttribute($guideUrl)."\"\n"
             : "#EXTM3U\n";
 
         foreach ($channels->lazy(1000) as $channel) {
             $categoryName = $channel->category ? $channel->category->name : 'General';
-            $playUrl = route('play', ['channel_id' => $channel->id, 'token' => $tokenValue.$this->streamExtension($channel->stream_url)]);
+            $playUrl = str_replace(
+                ['CHANNEL_ID', 'PLAY_TOKEN'],
+                [$channel->id, $tokenValue.$this->streamExtension($channel->stream_url)],
+                $playTemplate
+            );
 
-            $m3u .= sprintf(
+            $buffer .= sprintf(
                 "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s%s\n",
                 $this->escapeAttribute($channel->guideId() ?: (string) $channel->id),
                 $this->escapeAttribute($channel->name),
@@ -60,9 +84,14 @@ class TokenService
                 $this->vlcOptions($channel),
                 $playUrl
             );
+
+            if (strlen($buffer) >= 65536) {
+                $write($buffer);
+                $buffer = '';
+            }
         }
 
-        return $m3u;
+        $write($buffer);
     }
 
     /**

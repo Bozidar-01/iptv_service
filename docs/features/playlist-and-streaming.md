@@ -15,10 +15,10 @@ Two equivalent entry points:
 Then, for both:
 1. `status !== 'active'` → `403 Account disabled`; past `expiration_date` → `403 Account expired`.
 2. **Playback token** (`TokenService::playbackToken`): reuse an access token that is still valid for more than 7 days, otherwise create one (`Str::random(32)`, valid 1 month). A playlist cached by a TV app keeps working until its next refresh.
-3. Build the playlist (`TokenService::getM3u`):
+3. Build the playlist (`TokenService::writeM3u`; `getM3u` returns it as a string for tests):
    - every **enabled** channel in any of the user's bouquets, **once** (de-duplicated across bouquets)
    - ordered by category name, then source order (`sort_order`), then name
-   - streamed from the DB in chunks of 1000
+   - read from the DB in chunks of 1000 and sent to the app in chunks of about 64 KB (`response()->stream`), so a 100k-channel playlist is never held in memory. No `Content-Length` header. Play URLs are made from one `route('play')` template by replacing the channel id and token
 
 ```
 #EXTM3U

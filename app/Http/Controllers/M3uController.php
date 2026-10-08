@@ -71,8 +71,14 @@ class M3uController extends Controller
 
         $token = $this->tokenService->playbackToken($user);
 
-        return response($this->tokenService->getM3u($user, $token->token, $guideUrl))
-            ->header('Content-Type', 'audio/x-mpegurl')
-            ->header('Content-Disposition', 'attachment; filename="playlist.m3u"');
+        // Streamed in chunks: a big playlist is never held in memory
+        return response()->stream(
+            fn () => $this->tokenService->writeM3u($user, $token->token, $guideUrl, function (string $chunk) {
+                echo $chunk;
+                flush();
+            }),
+            200,
+            ['Content-Type' => 'audio/x-mpegurl', 'Content-Disposition' => 'attachment; filename="playlist.m3u"']
+        );
     }
 }

@@ -92,8 +92,8 @@ it('answers VOD, series and EPG actions with empty data', function () {
 });
 
 it('serves the M3U playlist from get.php', function () {
-    $this->get('/get.php?username=tv1&password=secret&type=m3u_plus&output=ts')
-        ->assertOk()->assertSee('#EXTM3U', false)->assertSee('Kanal 5');
+    $response = $this->get('/get.php?username=tv1&password=secret&type=m3u_plus&output=ts')->assertOk();
+    expect($response->streamedContent())->toContain('#EXTM3U')->toContain('Kanal 5');
     $this->get('/get.php?username=tv1&password=wrong')->assertStatus(401);
     $this->get('/get.php')->assertStatus(401);
 });

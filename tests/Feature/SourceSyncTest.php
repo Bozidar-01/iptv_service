@@ -240,9 +240,10 @@ it('keeps the user agent and referrer a stream needs and puts them in the M3U', 
     $bouquet->channels()->attach($channel);
     $user->bouquets()->attach($bouquet);
 
-    $this->get(route('playlist', ['token' => $user->playlist_token]))
-        ->assertOk()
-        ->assertSee("#EXTVLCOPT:http-user-agent=Mozilla/5.0 Picky\n#EXTVLCOPT:http-referrer=https://picky.test/\nhttp", false);
+    $response = $this->get(route('playlist', ['token' => $user->playlist_token]))->assertOk();
+
+    expect($response->streamedContent())
+        ->toContain("#EXTVLCOPT:http-user-agent=Mozilla/5.0 Picky\n#EXTVLCOPT:http-referrer=https://picky.test/\nhttp");
 });
 
 describe('stable channel ids', function () {

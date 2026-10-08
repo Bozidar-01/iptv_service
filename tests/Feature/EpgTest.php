@@ -93,7 +93,7 @@ it('serves the guide to the playlist link and the Xtream login', function () {
     Channel::create(['name' => 'Not mine', 'tvg_id' => 'Kanal5.mk', 'stream_url' => 'http://x.test/9', 'is_active' => true]);
     app(EpgService::class)->matchChannels();
 
-    $playlist = $this->get(route('playlist', ['token' => $user->playlist_token]))->getContent();
+    $playlist = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
     expect($playlist)->toStartWith('#EXTM3U x-tvg-url="'.route('epg', ['token' => $user->playlist_token]).'"')
         ->toContain('tvg-id="Rai1.it"');
 
