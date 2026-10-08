@@ -30,7 +30,8 @@ class SecurityController extends Controller
             'secret' => $secret,
             'qr' => $secret ? $this->twoFactor->qrSvg($user, $secret) : null,
             'codesLeft' => $this->twoFactor->recoveryCodesLeft($user),
-            'events' => LoginEvent::latest('id')->limit(30)->get(),
+            // An admin sees everyone's sign-ins, a reseller only their own
+            'events' => LoginEvent::latest('id')->when(!$user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))->limit(30)->get(),
         ]);
     }
 

@@ -10,10 +10,12 @@ class UserService
 {
     /**
      * Filters: search (username), status ("active" | "disabled" | "expired").
+     * $actor limits the list to what they may see (a reseller: their own customers).
      */
-    public function getAllUsers(array $filters = [])
+    public function getAllUsers(array $filters = [], ?User $actor = null)
     {
-        return User::with('bouquets')
+        return User::visibleTo($actor)->with(['bouquets', 'owner'])
+            ->when($filters['reseller'] ?? null, fn ($q, $reseller) => $q->where('owner_id', $reseller))
             ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('username', 'like', '%'.$search.'%'))
             ->when(($filters['status'] ?? null) === 'active', fn ($q) => $q->where('status', 'active')
                 ->where(fn ($q) => $q->whereNull('expiration_date')->orWhere('expiration_date', '>', now())))

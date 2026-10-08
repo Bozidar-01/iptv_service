@@ -54,8 +54,10 @@
                                 <div style="min-width: 0">
                                     <a href="{{ route('admin.users.show', $user) }}" class="cell-main">{{ $user->username }}</a>
                                     @if($user->isAdmin()) <span class="badge badge-primary">{{ __('Admin') }}</span> @endif
+                                    @if($user->isReseller()) <span class="badge badge-info">{{ __('Reseller') }}</span> @endif
                                     <div class="cell-sub truncate">
                                         {{ $user->bouquets->pluck('name')->join(', ') ?: __('No bouquets') }}
+                                        @if($user->owner && Auth::user()->isAdmin()) · {{ __('Reseller: :name', ['name' => $user->owner->username]) }} @endif
                                     </div>
                                 </div>
                             </div>

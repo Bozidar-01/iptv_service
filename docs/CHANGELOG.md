@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Resellers
+- New role **reseller**: signs in to the panel and sees and manages only their own users. Admin sets *Most users*, *Most streams per user* and the bouquets they may hand out. A reseller gets Dashboard, Users, Activity, Alerts (their users' only) and Security; the rest of the panel is 403. Details in `docs/features/admin-panel.md#resellers`.
+- Access control: `User::scopeVisibleTo` + a scoped `{user}` route binding (someone else's user is a 404 on every route), `EnsureStaff` (admin or an active reseller) and `EnsureAdmin` (reseller → 403) run before the binding; limits and role/owner can't be set by a reseller whatever is posted.
+- Schema: `users.role` is now a string(20) (was enum), `users.owner_id` (FK, null on delete), `users.max_customers`, `users.max_customer_connections`. Migration tried up / down / up on MySQL.
+- Not included: credits or prices, reseller-specific emails (renewal requests show in their Alerts), per-reseller branding.
+- Tests: `ResellerTest` (43 cases incl. 404 on every route for foreign users, limits, scoping of activity / alerts / sign-ins / dashboard). 435 tests.
+- Files: `database/migrations/2026_10_09_000005_*`, `app/Models/User.php`, `app/Http/Middleware/{EnsureStaff,EnsureAdmin}.php`, `bootstrap/app.php`, `routes/web.php`, `app/Providers/AppServiceProvider.php`, `app/Http/Controllers/{Auth/AuthController,Admin/UserController,Admin/DashboardController,Admin/LogController,Admin/AlertController,Admin/SecurityController}.php`, `app/Services/UserService.php`, `resources/views/admin/{dashboard-reseller,users/_form,users/index,users/show}.blade.php`, `resources/views/layouts/admin.blade.php`, `lang/mk.json`, `docs/**`, `tests/Feature/ResellerTest.php`.
+
 ### 2026-10-09 — Expiry emails to subscribers
 - Users get an optional **email** and **language of emails** (user form; shown on the user page). Subscribers with an address are emailed the expiry reminder (before the end date and when it has ended) with a button to their own page, where *Ask to renew* is, plus the `RENEWAL_CONTACT` line. Once per reminder, retried next run on failure (`stream_alerts.user_mailed_at`). `REMINDER_EMAIL_USERS=false` switches it off. Nobody is emailed until addresses are added.
 - Schema: `users.email`, `users.locale`, `stream_alerts.user_mailed_at` (migration tried up/down/up on MySQL).

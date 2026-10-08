@@ -28,13 +28,38 @@
                 @endforeach
             </select>
         </div>
-        <div class="field">
-            <label class="label" for="role">{{ __('Role') }}</label>
-            <select class="select" id="role" name="role">
-                <option value="user" @selected(old('role', $user->role ?? 'user') === 'user')>{{ __('Subscriber: watches via playlist') }}</option>
-                <option value="admin" @selected(old('role', $user->role ?? 'user') === 'admin')>{{ __('Admin: can sign in to this panel') }}</option>
-            </select>
-        </div>
+        @if(Auth::user()->isAdmin())
+            <div class="field">
+                <label class="label" for="role">{{ __('Role') }}</label>
+                <select class="select" id="role" name="role">
+                    <option value="user" @selected(old('role', $user->role ?? 'user') === 'user')>{{ __('Subscriber: watches via playlist') }}</option>
+                    <option value="reseller" @selected(old('role', $user->role ?? 'user') === 'reseller')>{{ __('Reseller: manages their own users in this panel') }}</option>
+                    <option value="admin" @selected(old('role', $user->role ?? 'user') === 'admin')>{{ __('Admin: can sign in to this panel') }}</option>
+                </select>
+            </div>
+            @if($resellers->isNotEmpty())
+                <div class="field" data-role-panel="user">
+                    <label class="label" for="owner_id">{{ __('Reseller') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                    <select class="select" id="owner_id" name="owner_id">
+                        <option value="">{{ __('None: belongs to you') }}</option>
+                        @foreach($resellers as $reseller)
+                            <option value="{{ $reseller->id }}" @selected((int) old('owner_id', $user->owner_id ?? 0) === $reseller->id)>{{ $reseller->username }}</option>
+                        @endforeach
+                    </select>
+                    <span class="help">{{ __('The reseller sees and manages this user.') }}</span>
+                </div>
+            @endif
+            <div class="field" data-role-panel="reseller">
+                <label class="label" for="max_customers">{{ __('Most users') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                <input class="input" id="max_customers" name="max_customers" type="number" min="1" value="{{ old('max_customers', $user->max_customers ?? '') }}">
+                <span class="help">{{ __('How many users this reseller can create. Empty = no limit.') }}</span>
+            </div>
+            <div class="field" data-role-panel="reseller">
+                <label class="label" for="max_customer_connections">{{ __('Most streams per user') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                <input class="input" id="max_customer_connections" name="max_customer_connections" type="number" min="1" max="100" value="{{ old('max_customer_connections', $user->max_customer_connections ?? '') }}">
+                <span class="help">{{ __('The most simultaneous streams this reseller can give a user. Empty = no limit.') }}</span>
+            </div>
+        @endif
         <div class="field">
             <label class="label" for="status">{{ __('Status') }}</label>
             <select class="select" id="status" name="status">
@@ -61,12 +86,19 @@
         <div class="field">
             <label class="label" for="max_connections">{{ __('Simultaneous streams') }}</label>
             <input class="input" id="max_connections" name="max_connections" type="number" min="1" max="100" value="{{ old('max_connections', $user->max_connections ?? 1) }}" required>
-            <span class="help">{{ __('How many different channels can play at the same time.') }}</span>
+            <span class="help">
+                {{ __('How many different channels can play at the same time.') }}
+                @if(Auth::user()->isReseller() && Auth::user()->max_customer_connections)
+                    {{ __('At most :count for you.', ['count' => Auth::user()->max_customer_connections]) }}
+                @endif
+            </span>
         </div>
 
         <div class="field full">
             <span class="label">{{ __('Bouquets') }}</span>
-            <span class="help">{{ __('The channels this user can watch.') }}</span>
+            <span class="help">
+                {{ Auth::user()->isAdmin() ? __('The channels this user can watch. For a reseller: the bouquets they may give to their users.') : __('The channels this user can watch.') }}
+            </span>
             @if($bouquets->isEmpty())
                 <p class="faint">{!! __('No bouquets yet. :link or add a source.', ['link' => '<a href="'.e(route('admin.bouquets.create')).'">'.e(__('Create one')).'</a>']) !!}</p>
             @else
@@ -90,6 +122,17 @@
 
 @push('scripts')
 <script>
+    // Fields that only belong to one role (admin form): the reseller's limits, a subscriber's reseller
+    (() => {
+        const role = document.getElementById('role');
+        if (!role) return;
+        const update = () => document.querySelectorAll('[data-role-panel]').forEach((panel) => {
+            panel.hidden = panel.dataset.rolePanel !== role.value;
+        });
+        role.addEventListener('change', update);
+        update();
+    })();
+
     document.querySelectorAll('[data-extend]').forEach((button) => button.addEventListener('click', () => {
         const input = document.getElementById('expiration_date');
         const months = Number(button.dataset.extend);

@@ -66,6 +66,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/security/two-factor/recovery-codes` | `admin.security.recovery-codes` | `password`; new recovery codes |
 | POST | `/admin/security/two-factor/disable` | `admin.security.disable` | `password` |
 
+Routes under `/admin` are in two groups: the **staff** group (admins and resellers: `dashboard`, `users.*`, `alerts.*`, `logs.index`, `security.*`; resellers see only their own users) and the **admin** group (everything else; a reseller gets 403). See [features/admin-panel.md](features/admin-panel.md#resellers).
+
 Admin resource routes are limited with `->only()` / `->except()` so that only implemented controller methods are registered.
 
 ## Console

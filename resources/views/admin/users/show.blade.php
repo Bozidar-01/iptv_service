@@ -10,6 +10,7 @@
         <p>
             @include('admin.partials.user-status', ['user' => $user])
             @if($user->isAdmin()) <span class="badge badge-primary">{{ __('Admin') }}</span> @endif
+            @if($user->isReseller()) <span class="badge badge-info">{{ __('Reseller') }}</span> @endif
         </p>
     </div>
     <div class="page-actions">
@@ -217,6 +218,21 @@
                         <span class="faint">{{ __('None') }}</span>
                     @endforelse
                 </dd>
+                @if($user->owner && Auth::user()->isAdmin())
+                    <dt>{{ __('Reseller') }}</dt>
+                    <dd><a href="{{ route('admin.users.show', $user->owner) }}">{{ $user->owner->username }}</a></dd>
+                @endif
+                @if($user->isReseller())
+                    <dt>{{ __('Users') }}</dt>
+                    <dd>
+                        {{ $user->max_customers !== null ? __(':count of :max', ['count' => $user->customers_count, 'max' => $user->max_customers]) : $user->customers_count }}
+                        @if($user->customers_count)
+                            · <a href="{{ route('admin.users.index', ['reseller' => $user->id]) }}">{{ __('View all') }}</a>
+                        @endif
+                    </dd>
+                    <dt>{{ __('Most streams per user') }}</dt>
+                    <dd>{{ $user->max_customer_connections ?? __('No limit') }}</dd>
+                @endif
                 <dt>{{ __('Email') }}</dt>
                 <dd>{{ $user->email ?: '–' }}</dd>
                 <dt>{{ __('Created') }}</dt>

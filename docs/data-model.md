@@ -11,7 +11,10 @@ Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..
 | username | string, unique | login identifier (no email column) |
 | password | string | `hashed` cast |
 | status | enum `active`,`disabled` | default `active` |
-| role | enum `admin`,`user` | default `user` |
+| role | string(20): `admin`, `reseller`, `user` | default `user`; was an enum, now a string so roles can be added |
+| owner_id | FK → users, nullable, `ON DELETE SET NULL` | the reseller a subscriber belongs to (`User::owner()`, `customers()`) |
+| max_customers | unsigned int, nullable | reseller limit: how many users they can create (null = no limit) |
+| max_customer_connections | unsigned smallint, nullable | reseller limit: the most simultaneous streams they can give a user (null = no limit) |
 | expiration_date | datetime, nullable | null = never expires |
 | max_connections | int | default 1 |
 | playlist_token | string(64), unique, nullable | secret for `/playlist/{token}.m3u`; set on create (`User::booted`), backfilled by migration, hidden from serialization |
