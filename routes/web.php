@@ -47,6 +47,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::post('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
     Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
+    Route::post('users/{user}/sessions/disconnect', [UserController::class, 'disconnectAllDevices'])->name('users.sessions.disconnect-all');
+    Route::post('users/{user}/sessions/{session}/disconnect', [UserController::class, 'disconnectDevice'])->name('users.sessions.disconnect');
     Route::resource('users', UserController::class);
 
     Route::get('epg', [EpgSourceController::class, 'index'])->name('epg.index');

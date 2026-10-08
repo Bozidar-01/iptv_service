@@ -47,6 +47,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | resource | `/admin/users` | `admin.users.*` | `UserController` (all, `show` is the playlist page) |
 | POST | `/admin/users/{user}/toggle` | `admin.users.toggle` | `UserController@toggleStatus` |
 | POST | `/admin/users/{user}/playlist-token` | `admin.users.playlist-token` | `UserController@regeneratePlaylistToken` |
+| POST | `/admin/users/{user}/sessions/{session}/disconnect` | `admin.users.sessions.disconnect` | `UserController@disconnectDevice`: ends the device's session, blocks it for 15 minutes; 404 for another user's session |
+| POST | `/admin/users/{user}/sessions/disconnect` | `admin.users.sessions.disconnect-all` | `UserController@disconnectAllDevices` |
 | GET | `/admin/epg` | `admin.epg.index` | `EpgSourceController@index` |
 | POST | `/admin/epg` | `admin.epg.store` | `EpgSourceController@store` |
 | POST | `/admin/epg/match` | `admin.epg.match` | `EpgSourceController@match` |

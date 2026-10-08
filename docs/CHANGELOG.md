@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Disconnect a device
+- The user page lists the **devices watching now** with **Disconnect** (and **Disconnect all**). It ends the device's session and blocks that device (IP + player) from starting a stream for 15 minutes (`StreamService::disconnect`, cache). Proxied streams stop (HLS parts refused; a running MPEG-TS stream stops at the next tick, `onTick` returning `false`); direct redirect streams can't be cut and end when the player reconnects.
+- "Active now" on the user page counts only sessions from the last 5 minutes (`ActiveSession::active()`).
+- Tests: `DisconnectDeviceTest` (7). 353 tests.
+- Files: `app/Services/{StreamService,StreamProxyService,StreamPreviewService}.php`, `app/Models/ActiveSession.php`, `app/Http/Controllers/Admin/UserController.php`, `routes/web.php`, `resources/views/admin/users/show.blade.php`, `lang/mk.json`, `docs/**`, `tests/Feature/Admin/DisconnectDeviceTest.php`.
+
 ### 2026-10-09 — Ops: off-site backups, backup watch, uptime monitor, staging
 - **Off-site backups:** `BACKUP_COPY_DISK` (e.g. `s3`) writes every backup to a second disk as well (`league/flysystem-aws-s3-v3`, works with AWS S3, Backblaze B2, Cloudflare R2, Wasabi via `AWS_ENDPOINT`). A failed copy fails the command and raises `backup_failed`; the local copy stays. Old backups are pruned on both disks.
 - **Backup watch:** `backup_stale` alert (once a day) when no backup succeeded on every disk for 36 hours (`HealthService`, `BackupService::lastSuccess()`).
