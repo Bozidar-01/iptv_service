@@ -397,3 +397,25 @@ describe('the visibility rule', function () {
             ->and(User::visibleTo(null)->count())->toBe(0);
     });
 });
+
+describe('hardening', function () {
+    it('shows a reseller only the bouquets it holds on a user\'s page', function () {
+        $this->a1->bouquets()->attach([$this->sports->id, $this->kids->id]);
+
+        $this->actingAs($this->resellerA)->get(route('admin.users.show', $this->a1))->assertSee('Sports')->assertDontSee('Kids');
+        $this->actingAs($this->admin)->get(route('admin.users.show', $this->a1))->assertSee('Sports')->assertSee('Kids');
+    });
+
+    it('ignores array-shaped filters instead of failing', function () {
+        $this->actingAs($this->resellerA);
+
+        $this->get('/admin/users?search[]=x&status[]=active&reseller[]=1')->assertOk();
+        $this->get('/admin/logs?user[]=1')->assertOk();
+    });
+
+    it('still stops at the limit when the check runs inside the lock', function () {
+        $this->actingAs($this->resellerA)->post(route('admin.users.store'), customerPayload())->assertSessionHas('error');
+
+        expect($this->resellerA->customers()->count())->toBe(2);
+    });
+});

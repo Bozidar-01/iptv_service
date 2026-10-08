@@ -31,8 +31,9 @@ return new class extends Migration
             $table->dropColumn(['max_customers', 'max_customer_connections']);
         });
 
-        // Resellers cannot exist in the old enum: they become plain subscribers
-        DB::table('users')->where('role', 'reseller')->update(['role' => 'user']);
+        // Resellers cannot exist in the old enum: they become plain subscribers, switched off so that rolling
+        // back never leaves a former reseller with a working playlist (an admin can switch them on again)
+        DB::table('users')->where('role', 'reseller')->update(['role' => 'user', 'status' => 'disabled']);
 
         Schema::table('users', function (Blueprint $table) {
             $table->enum('role', ['admin', 'user'])->default('user')->change();

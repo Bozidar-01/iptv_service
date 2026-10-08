@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\StreamService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -22,7 +23,8 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
-        $filters = $request->only(['search', 'status', 'reseller']);
+        // Only plain values: ?search[]=x would otherwise reach the query as an array
+        $filters = array_filter($request->only(['search', 'status', 'reseller']), 'is_scalar');
         $users = $this->userService->getAllUsers($filters, $request->user());
 
         return view('admin.users.index', compact('users', 'filters'));
@@ -30,7 +32,13 @@ class UserController extends Controller
 
     public function show(Request $request, User $user)
     {
-        $user->load(['bouquets', 'owner'])->loadCount([
+        $user->load(['bouquets', 'owner']);
+        // A reseller sees only the bouquets they hold; the ones the admin gave this user stay unnamed
+        if ($request->user()->isReseller()) {
+            $held = $request->user()->bouquets()->pluck('bouquets.id');
+            $user->setRelation('bouquets', $user->bouquets->whereIn('id', $held)->values());
+        }
+        $user->loadCount([
             'customers',
             'activeSessions' => fn ($query) => $query->active(),
         ]);
@@ -84,14 +92,22 @@ class UserController extends Controller
     {
         $actor = $request->user();
 
-        if ($actor->isReseller() && !$actor->canAddCustomer()) {
-            return back()->withInput()->with('error', __('You have reached your limit of :count users.', ['count' => $actor->max_customers]));
-        }
-
         $data = $request->validate($this->rules($actor));
         $data = $this->applyRestrictions($actor, $data);
 
-        $user = $this->userService->createUser($data);
+        // The limit is checked and the user created under a lock on the reseller's row, so parallel
+        // requests can't all pass the check before any of them is saved
+        $user = DB::transaction(function () use ($actor, $data) {
+            if ($actor->isReseller() && !User::whereKey($actor->id)->lockForUpdate()->firstOrFail()->canAddCustomer()) {
+                return null;
+            }
+
+            return $this->userService->createUser($data);
+        });
+
+        if (!$user) {
+            return back()->withInput()->with('error', __('You have reached your limit of :count users.', ['count' => $actor->max_customers]));
+        }
 
         return redirect()->route('admin.users.show', $user)->with('success', __('User created. Share the playlist link below.'));
     }

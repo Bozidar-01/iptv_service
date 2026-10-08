@@ -16,7 +16,7 @@ class LogController extends Controller
         $logs = StreamLog::with(['user', 'channel'])
             // A reseller sees the plays of their own customers only
             ->when(!$actor->isAdmin(), fn ($q) => $q->whereIn('user_id', User::visibleTo($actor)->select('id')))
-            ->when($request->input('user'), fn ($q, $user) => $q->where('user_id', $user))
+            ->when($request->input('user'), fn ($q, $user) => is_scalar($user) ? $q->where('user_id', $user) : $q)
             ->orderBy('started_at', 'desc')
             ->paginate(50)
             ->withQueryString();
