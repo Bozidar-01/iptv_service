@@ -3,6 +3,7 @@
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\M3uController;
 use App\Http\Controllers\PlayController;
+use App\Http\Controllers\SelfServiceController;
 use App\Http\Controllers\XtreamController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,12 @@ Route::middleware('throttle:player')->group(function () {
     Route::get('/playlist/{token}.m3u', [M3uController::class, 'playlist'])->name('playlist');
     Route::get('/play/{channel_id}/{token}', [PlayController::class, 'play'])->name('play');
     Route::get('/epg/{token}.xml', [M3uController::class, 'epg'])->name('epg');
+});
+
+// A subscriber's own page (status, expiry, playlist link, "ask to renew"): see SelfServiceController
+Route::middleware('throttle:me')->group(function () {
+    Route::get('/me/{token}', [SelfServiceController::class, 'show'])->name('me');
+    Route::post('/me/{token}/renew', [SelfServiceController::class, 'renew'])->name('me.renew');
 });
 
 // Parts (segments, keys) of a stream played through the server; higher limit, see StreamProxyService

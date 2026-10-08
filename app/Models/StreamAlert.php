@@ -37,7 +37,10 @@ class StreamAlert extends Model
 
     public const TYPE_EXPIRED = 'expired';
 
-    public const SUBSCRIPTION_TYPES = [self::TYPE_EXPIRING, self::TYPE_EXPIRED];
+    /** A subscriber pressed "ask to renew" on their own page (SelfServiceController). */
+    public const TYPE_RENEWAL_REQUESTED = 'renewal_requested';
+
+    public const SUBSCRIPTION_TYPES = [self::TYPE_EXPIRING, self::TYPE_EXPIRED, self::TYPE_RENEWAL_REQUESTED];
 
     /** The nightly database backup failed. detail = start of the error (the full one is in the log) */
     public const TYPE_BACKUP_FAILED = 'backup_failed';
@@ -89,6 +92,7 @@ class StreamAlert extends Model
             self::TYPE_QUEUE_STUCK => __('Background jobs are not running: the oldest has waited :minutes minutes', ['minutes' => (int) $this->detail]),
             self::TYPE_EXPIRING => __('Subscription of :name ends on :date', ['name' => $this->name, 'date' => $this->expiryDate()]),
             self::TYPE_EXPIRED => __('Subscription of :name ended on :date', ['name' => $this->name, 'date' => $this->expiryDate()]),
+            self::TYPE_RENEWAL_REQUESTED => __(':name asks to renew the subscription', ['name' => $this->name]),
             self::TYPE_RECEIVER_DOWN => __('Receiver :name is offline', ['name' => $this->name]),
             self::TYPE_RECEIVER_UP => __('Receiver :name is back online', ['name' => $this->name]),
             self::TYPE_BACKUP_FAILED => __('The database backup failed'),

@@ -26,6 +26,7 @@ Admins can ask to be told when something stops working.
   - `up`: a watched channel works again after being `offline`.
   - `sync_failed`: a watched source's import fails (`SourceSyncService`).
   - `queue_stuck` and `jobs_failed`: background jobs stopped (see below). Always created, no watching needed.
+  - `renewal_requested`: a subscriber pressed *Ask to renew* on their own page (`SelfServiceController`). Once per user per 24 hours; linked to the user page; in the *Subscriptions* group of the email.
   - `backup_failed`: the nightly `iptv:backup` failed (`detail` = start of the error, the full one is in the log). See [deployment.md](../deployment.md#6-backups).
   - `expiring` / `expired`: a subscriber's `expiration_date` is within `EXPIRY_REMINDER_DAYS` (3), or has passed in the last week (`SubscriptionReminderService`, `iptv:expiry-reminders` daily at 08:00). Once per user and expiry date (`stream_alerts.user_id`, `detail` = date), so an extended subscription gets new reminders. Active subscribers only. Linked to the user page; a *Subscriptions* group in the email.
   - `receiver_down` / `receiver_up`: a satellite receiver's relay stopped / started answering ([receiver.md](receiver.md)). Always created.
