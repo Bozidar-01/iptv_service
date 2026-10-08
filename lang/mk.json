@@ -506,5 +506,17 @@
     ":count channel in :bouquets|:count channels in :bouquets": ":count канал во :bouquets|:count канали во :bouquets",
     "Streams at the same time: :active of :max in use": "Истовремени стримови: :active од :max се користат",
     "Add playlist → M3U URL": "Додај плејлиста → M3U URL",
-    "Paste the link above.": "Залепете го линкот погоре."
+    "Paste the link above.": "Залепете го линкот погоре.",
+    ":app: your subscription has ended": ":app: вашата претплата истече",
+    ":app: your subscription ends on :date": ":app: вашата претплата истекува на :date",
+    "Your subscription ended on :date.": "Вашата претплата истече на :date.",
+    "Your subscription ends on :date.": "Вашата претплата истекува на :date.",
+    "The channels will not load until it is renewed.": "Каналите нема да се вчитуваат додека не се обнови.",
+    "To keep watching without a break, renew before then.": "За да гледате без прекин, обновете пред тоа.",
+    "Open my page and ask to renew": "Отвори ја мојата страница и побарај обнова",
+    "You get this email because your address is on your :app account.": "Ја добивате оваа порака затоа што вашата адреса е на вашата сметка на :app.",
+    "Email": "Е-пошта",
+    "For expiry reminders sent to the user. Leave empty to send none.": "За потсетници за истекување што му се праќаат на корисникот. Оставете празно за да не се праќаат.",
+    "Language of emails": "Јазик на пораките",
+    "Default": "Стандардно"
 }

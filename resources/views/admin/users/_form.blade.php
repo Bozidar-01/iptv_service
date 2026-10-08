@@ -15,6 +15,20 @@
             <span class="help">{{ __('At least 6 characters. Used for /m3u?username=…&password=… links.') }}</span>
         </div>
         <div class="field">
+            <label class="label" for="email">{{ __('Email') }} <span class="optional">{{ __('(optional)') }}</span></label>
+            <input class="input" id="email" name="email" type="email" value="{{ old('email', $user->email ?? '') }}" autocomplete="off">
+            <span class="help">{{ __('For expiry reminders sent to the user. Leave empty to send none.') }}</span>
+        </div>
+        <div class="field">
+            <label class="label" for="locale">{{ __('Language of emails') }}</label>
+            <select class="select" id="locale" name="locale">
+                <option value="">{{ __('Default') }}</option>
+                @foreach(config('app.locales') as $code => $locale)
+                    <option value="{{ $code }}" @selected(old('locale', $user->locale ?? '') === $code)>{{ $locale['name'] }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="field">
             <label class="label" for="role">{{ __('Role') }}</label>
             <select class="select" id="role" name="role">
                 <option value="user" @selected(old('role', $user->role ?? 'user') === 'user')>{{ __('Subscriber: watches via playlist') }}</option>

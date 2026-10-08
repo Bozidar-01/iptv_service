@@ -217,6 +217,8 @@
                         <span class="faint">{{ __('None') }}</span>
                     @endforelse
                 </dd>
+                <dt>{{ __('Email') }}</dt>
+                <dd>{{ $user->email ?: '–' }}</dd>
                 <dt>{{ __('Created') }}</dt>
                 <dd>{{ $user->created_at?->translatedFormat('M j, Y') }}</dd>
             </dl>

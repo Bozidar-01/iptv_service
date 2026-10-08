@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\StreamService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -85,6 +86,8 @@ class UserController extends Controller
             'password' => 'required|string|min:6',
             'status' => 'required|in:active,disabled',
             'role' => 'required|in:admin,user',
+            'email' => 'nullable|email|max:255',
+            'locale' => ['nullable', Rule::in(array_keys(config('app.locales')))],
             'expiration_date' => 'nullable|date',
             'max_connections' => 'required|integer|min:1',
             'bouquets' => 'nullable|array',
@@ -111,6 +114,8 @@ class UserController extends Controller
             'password' => 'nullable|string|min:6',
             'status' => 'required|in:active,disabled',
             'role' => 'required|in:admin,user',
+            'email' => 'nullable|email|max:255',
+            'locale' => ['nullable', Rule::in(array_keys(config('app.locales')))],
             'expiration_date' => 'nullable|date',
             'max_connections' => 'required|integer|min:1',
             'bouquets' => 'nullable|array',
