@@ -15,9 +15,13 @@ class CreditTransaction extends Model
     public const UPDATED_AT = null;
 
     public const GIVEN = 'admin_grant';
+
     public const TAKEN = 'admin_take';
+
     public const UNLIMITED = 'admin_unlimited';
+
     public const NEW_SUBSCRIPTION = 'new_subscription';
+
     public const EXTENDED = 'extended_subscription';
 
     /** @return BelongsTo<User, $this> the reseller */

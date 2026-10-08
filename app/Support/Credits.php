@@ -9,8 +9,10 @@ use Illuminate\Support\Carbon;
  * user's current subscription runs out (or from today, when it already ended or never started) to the new
  * end date, rounded up. Making it shorter or keeping it costs nothing.
  *
- * +1 month from the end date = 1 credit; one day more = 2. resources/views/admin/users/_form.blade.php
- * has the same rule in JavaScript for the live preview: change both together.
+ * One extra day is not charged for: the reseller's own date can differ from the server's by a day around midnight
+ * (time zones), so "+1 month" must stay 1 credit. Any longer subscription costs at least 1 credit, so extending
+ * a day at a time is not free. resources/views/admin/users/_form.blade.php has the same rule in JavaScript
+ * for the live preview: change both together.
  */
 class Credits
 {
@@ -24,11 +26,13 @@ class Credits
             return 0;
         }
 
+        // Months until one day before the end date (the tolerance), but never less than 1 for a longer subscription
+        $limit = $to->copy()->subDay();
         $months = 0;
-        while ($from->copy()->addMonthsNoOverflow($months)->lt($to) && $months < 1200) {
+        while ($from->copy()->addMonthsNoOverflow($months)->lt($limit) && $months < 1200) {
             $months++;
         }
 
-        return $months;
+        return max(1, $months);
     }
 }

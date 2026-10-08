@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\InsufficientCredits;
+use App\Exceptions\ResellerLimitReached;
 use App\Http\Controllers\Controller;
 use App\Models\ActiveSession;
 use App\Models\Bouquet;
+use App\Models\CreditTransaction;
 use App\Models\User;
+use App\Services\CreditService;
 use App\Services\StreamService;
 use App\Services\UserService;
+use App\Support\Credits;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -16,9 +22,12 @@ class UserController extends Controller
 {
     protected $userService;
 
-    public function __construct(UserService $userService)
+    protected $credits;
+
+    public function __construct(UserService $userService, CreditService $credits)
     {
         $this->userService = $userService;
+        $this->credits = $credits;
     }
 
     public function index(Request $request)
@@ -93,23 +102,44 @@ class UserController extends Controller
         $actor = $request->user();
 
         $data = $request->validate($this->rules($actor));
+        $initialCredits = $data['initial_credits'] ?? null;
+        unset($data['initial_credits']);
         $data = $this->applyRestrictions($actor, $data);
 
-        // The limit is checked and the user created under a lock on the reseller's row, so parallel
-        // requests can't all pass the check before any of them is saved
-        $user = DB::transaction(function () use ($actor, $data) {
-            if ($actor->isReseller() && !User::whereKey($actor->id)->lockForUpdate()->firstOrFail()->canAddCustomer()) {
-                return null;
-            }
+        try {
+            // The reseller's limit and credits are checked and spent under a lock on their row: parallel requests
+            // can't all pass the check, and a user that can't be paid for is not created at all
+            [$user, $spent] = DB::transaction(function () use ($actor, $data, $initialCredits) {
+                $spent = 0;
 
-            return $this->userService->createUser($data);
-        });
+                if ($actor->isReseller()) {
+                    $reseller = User::whereKey($actor->id)->lockForUpdate()->firstOrFail();
+                    if (!$reseller->canAddCustomer()) {
+                        throw new ResellerLimitReached;
+                    }
+                    $spent = $reseller->usesCredits() ? Credits::months(null, Carbon::parse($data['expiration_date'])) : 0;
+                }
 
-        if (!$user) {
+                $user = $this->userService->createUser($data);
+
+                if ($spent > 0) {
+                    $this->credits->charge($actor, $spent, CreditTransaction::NEW_SUBSCRIPTION, $user);
+                }
+
+                // An admin can start a new reseller with credits (0 switches the credit limit on with nothing to spend)
+                if ($actor->isAdmin() && $user->isReseller() && $initialCredits !== null) {
+                    $this->credits->adjust($actor, $user, (int) $initialCredits, __('Starting credits'));
+                }
+
+                return [$user, $spent];
+            });
+        } catch (ResellerLimitReached) {
             return back()->withInput()->with('error', __('You have reached your limit of :count users.', ['count' => $actor->max_customers]));
+        } catch (InsufficientCredits $e) {
+            return back()->withInput()->with('error', __('Not enough credits: this needs :needed, you have :balance.', ['needed' => $e->needed, 'balance' => $e->balance]));
         }
 
-        return redirect()->route('admin.users.show', $user)->with('success', __('User created. Share the playlist link below.'));
+        return redirect()->route('admin.users.show', $user)->with('success', $this->withCreditNote(__('User created. Share the playlist link below.'), $actor, $spent));
     }
 
     public function edit(Request $request, User $user)
@@ -137,9 +167,41 @@ class UserController extends Controller
 
         $data = $this->applyRestrictions($actor, $data, $user);
         $data['bouquets'] = $data['bouquets'] ?? []; // unchecking every bouquet must clear them
-        $this->userService->updateUser($user, $data);
 
-        return redirect()->route('admin.users.show', $user)->with('success', __('User updated successfully.'));
+        try {
+            $spent = DB::transaction(function () use ($actor, $user, $data) {
+                $spent = 0;
+
+                if ($actor->isReseller() && User::whereKey($actor->id)->lockForUpdate()->firstOrFail()->usesCredits()) {
+                    // Only the time added beyond what the user already has is paid for
+                    $spent = Credits::months($user->expiration_date, Carbon::parse($data['expiration_date']));
+                }
+
+                $this->userService->updateUser($user, $data);
+
+                if ($spent > 0) {
+                    $this->credits->charge($actor, $spent, CreditTransaction::EXTENDED, $user);
+                }
+
+                return $spent;
+            });
+        } catch (InsufficientCredits $e) {
+            return back()->withInput()->with('error', __('Not enough credits: this needs :needed, you have :balance.', ['needed' => $e->needed, 'balance' => $e->balance]));
+        }
+
+        return redirect()->route('admin.users.show', $user)->with('success', $this->withCreditNote(__('User updated successfully.'), $actor, $spent));
+    }
+
+    /**
+     * "…  3 credits used, 7 left." after a reseller spent credits.
+     */
+    private function withCreditNote(string $message, User $actor, int $spent): string
+    {
+        if ($spent <= 0 || !$actor->isReseller()) {
+            return $message;
+        }
+
+        return $message.' '.trans_choice(':count credit used, :left left.|:count credits used, :left left.', $spent, ['count' => $spent, 'left' => $actor->fresh()->credits]);
     }
 
     public function destroy(User $user)
@@ -183,7 +245,8 @@ class UserController extends Controller
             'status' => 'required|in:active,disabled',
             'email' => 'nullable|email|max:255',
             'locale' => ['nullable', Rule::in(array_keys(config('app.locales')))],
-            'expiration_date' => 'nullable|date',
+            // With credits a reseller must give an end date: it is what the credits are spent on
+            'expiration_date' => $actor->usesCredits() ? 'required|date' : 'nullable|date',
             'max_connections' => ['required', 'integer', 'min:1', ...($actor->isReseller() && $actor->max_customer_connections ? ['max:'.$actor->max_customer_connections] : [])],
             'bouquets' => 'nullable|array',
             'bouquets.*' => $actor->isAdmin() ? 'exists:bouquets,id' : Rule::in($actor->bouquets()->pluck('bouquets.id')->all()),
@@ -195,6 +258,8 @@ class UserController extends Controller
                 'owner_id' => ['nullable', Rule::exists('users', 'id')->where('role', 'reseller')],
                 'max_customers' => 'nullable|integer|min:1|max:1000000',
                 'max_customer_connections' => 'nullable|integer|min:1|max:100',
+                // Only when creating a reseller: credits to start with (empty = no credit limit)
+                'initial_credits' => $user ? 'prohibited' : 'nullable|integer|min:0|max:1000000',
             ];
         }
 

@@ -58,6 +58,7 @@
                                     <div class="cell-sub truncate">
                                         {{ $user->bouquets->pluck('name')->join(', ') ?: __('No bouquets') }}
                                         @if($user->owner && Auth::user()->isAdmin()) · {{ __('Reseller: :name', ['name' => $user->owner->username]) }} @endif
+                                        @if($user->isReseller()) · {{ $user->usesCredits() ? __(':count credits', ['count' => number_format($user->credits)]) : __('Unlimited credits') }} @endif
                                     </div>
                                 </div>
                             </div>
