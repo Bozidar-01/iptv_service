@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
 
 jobs:
@@ -177,3 +177,45 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
             -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
             "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$DEPLOY_PATH' '$GITHUB_SHA'" < scripts/deploy.sh
+
+  # Same checks, then the commit goes to the staging copy of the site (a separate subdomain and database) so a
+  # change can be tried for real before it is merged. Push a branch there with:  git push -f origin <branch>:staging
+  # Needs the DEPLOY_* secrets and STAGING_PATH (the staging project folder); without STAGING_PATH it does nothing.
+  deploy-staging:
+    name: Deploy to staging
+    needs: [tests, quality, browser, mysql, relay]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: true
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      STAGING_PATH: ${{ secrets.STAGING_PATH }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is staging set up?
+        id: config
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$STAGING_PATH" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Staging is not set up (STAGING_PATH or deploy secrets missing): skipping. See docs/deployment.md#staging"
+          fi
+
+      - name: Update staging
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "DEPLOY_RESET=1 bash -s -- '$STAGING_PATH' '$GITHUB_SHA' staging" < scripts/deploy.sh

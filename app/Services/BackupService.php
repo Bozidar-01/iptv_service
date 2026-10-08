@@ -3,13 +3,16 @@
 namespace App\Services;
 
 use App\Models\StreamAlert;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 
 /**
- * Database backups (`iptv:backup`): a gzipped SQL dump written to the backup disk
- * (BACKUP_DISK: local, or an off-site disk such as s3), old dumps removed after BACKUP_KEEP_DAYS.
+ * Database backups (`iptv:backup`): a gzipped SQL dump written to the backup disk (BACKUP_DISK, default
+ * local) and, when BACKUP_COPY_DISK is set, also to a second disk, normally off-site (s3: AWS S3,
+ * Backblaze B2, Cloudflare R2...). Old dumps are removed after BACKUP_KEEP_DAYS on each disk.
  * Data of tables that can be rebuilt (queue, cache, sessions, TV guide programmes) is left out,
  * their structure is kept so the dump restores into a working database.
  * Restore steps: docs/deployment.md#backups.
@@ -17,6 +20,12 @@ use Symfony\Component\Process\Process;
 class BackupService
 {
     public const DIRECTORY = 'backups';
+
+    /** Cache key: when the last backup finished on every configured disk. */
+    public const LAST_SUCCESS_KEY = 'backup:last-success';
+
+    /** Hours without a successful backup before HealthService raises an alert. */
+    public const STALE_HOURS = 36;
 
     /** Tables whose rows aren't worth backing up (rebuilt by the app). */
     public const SKIP_DATA = ['jobs', 'job_batches', 'failed_jobs', 'cache', 'cache_locks', 'sessions', 'epg_programmes'];
@@ -33,20 +42,27 @@ class BackupService
 
             try {
                 $this->dump($tmp);
-                $stream = fopen($tmp, 'rb');
-                $disk = Storage::disk(config('iptv.backup.disk'));
-                $written = $disk->writeStream(self::DIRECTORY.'/'.$name, $stream);
-                is_resource($stream) && fclose($stream);
-
-                // Disks don't throw by default: a full disk or bad permissions only return false
-                if (!$written || !$disk->exists(self::DIRECTORY.'/'.$name)) {
-                    throw new RuntimeException('The backup could not be written to the backup disk.');
+                $failed = [];
+                foreach ($this->disks() as $diskName) {
+                    try {
+                        $this->store($diskName, $tmp, $name);
+                    } catch (\Throwable $e) {
+                        // Keep going: the other disk may still get its copy
+                        report($e);
+                        $failed[] = $diskName;
+                    }
                 }
             } finally {
                 @unlink($tmp);
             }
 
             $this->prune();
+
+            if ($failed) {
+                throw new RuntimeException('Not written to: '.implode(', ', $failed));
+            }
+
+            Cache::forever(self::LAST_SUCCESS_KEY, now()->timestamp);
 
             return $name;
         } catch (\Throwable $e) {
@@ -57,14 +73,46 @@ class BackupService
         }
     }
 
+    /** The disks a backup goes to: the main one, and the off-site copy when configured. */
+    public function disks(): array
+    {
+        return array_values(array_unique(array_filter([config('iptv.backup.disk'), config('iptv.backup.copy_disk')])));
+    }
+
+    /** When the last backup succeeded on every disk, or null when none has been recorded yet. */
+    public function lastSuccess(): ?Carbon
+    {
+        $at = Cache::get(self::LAST_SUCCESS_KEY);
+
+        return $at ? Carbon::createFromTimestamp($at) : null;
+    }
+
+    private function store(string $diskName, string $file, string $name): void
+    {
+        $disk = Storage::disk($diskName);
+        $stream = fopen($file, 'rb');
+        $written = $disk->writeStream(self::DIRECTORY.'/'.$name, $stream);
+        is_resource($stream) && fclose($stream);
+
+        // Disks don't throw by default: a full disk, bad permissions or a wrong bucket only return false
+        if (!$written || !$disk->exists(self::DIRECTORY.'/'.$name)) {
+            throw new RuntimeException("The backup could not be written to the disk \"{$diskName}\".");
+        }
+    }
+
     /**
-     * Delete backups older than BACKUP_KEEP_DAYS, but never the newest one.
+     * Delete backups older than BACKUP_KEEP_DAYS on every disk, but never the newest one.
      *
      * @return int files deleted
      */
     public function prune(): int
     {
-        $disk = Storage::disk(config('iptv.backup.disk'));
+        return array_sum(array_map(fn ($diskName) => $this->pruneDisk($diskName), $this->disks()));
+    }
+
+    private function pruneDisk(string $diskName): int
+    {
+        $disk = Storage::disk($diskName);
         $files = collect($disk->files(self::DIRECTORY))
             ->filter(fn ($path) => preg_match('/iptv-\d{8}-\d{6}\.sql\.gz$/', $path))
             ->sort()

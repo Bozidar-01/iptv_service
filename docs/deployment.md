@@ -119,7 +119,20 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 `php artisan iptv:backup` runs every night at 02:30 (the same cron job). It writes a gzipped SQL dump to `storage/app/private/backups/iptv-YYYYMMDD-HHMMSS.sql.gz` and deletes dumps older than `BACKUP_KEEP_DAYS` (14, the newest is always kept). The dump has all your data except what the app rebuilds by itself (queue, cache, sessions, TV guide programmes, which the nightly guide import refills). If it fails, an alert appears in the panel and email.
 
 - **Needs `mysqldump`** on the server (Hostinger has it; the Docker image installs it). Set `BACKUP_MYSQLDUMP=/full/path` if it isn't on the PATH, and `BACKUP_DUMP_OPTIONS=--skip-ssl` if the database uses a self-signed certificate (the Docker setup does this).
-- **Keep a copy off the server.** A backup on the same disk doesn't help when the disk is lost. Point `BACKUP_DISK` at an off-site disk, e.g. an S3-compatible bucket: `composer require league/flysystem-aws-s3-v3 "^3.0"`, add the `AWS_*` variables and set `BACKUP_DISK=s3`. Or download the newest file now and then.
+- **Keep a copy off the server.** A backup on the same disk doesn't help when the disk is lost. Set `BACKUP_COPY_DISK=s3` and every backup is also written to an S3-compatible bucket (the driver is installed; the local copy stays). Cheap or free options: **Backblaze B2** (10 GB free), **Cloudflare R2** (10 GB free), Wasabi, or AWS S3. Create a private bucket and a key that can only write to it, then in `.env`:
+
+```
+BACKUP_COPY_DISK=s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_BUCKET=nebotv-backups
+AWS_DEFAULT_REGION=eu-central-003            # B2: the region in the endpoint; R2: auto
+AWS_ENDPOINT=https://s3.eu-central-003.backblazeb2.com   # leave empty for AWS S3
+AWS_USE_PATH_STYLE_ENDPOINT=true             # B2 / R2 / Wasabi: true; AWS S3: false
+```
+
+  then `php artisan config:cache` and `php artisan iptv:backup`: it must print `Backup written` and the file must appear in the bucket. If the copy fails (wrong key, bucket, endpoint) the command fails and a `backup_failed` alert appears; the local backup is kept. Old backups are removed from both disks after `BACKUP_KEEP_DAYS`. Backups hold your data (and provider logins in channel addresses): keep the bucket private.
+- **A missing backup is noticed.** If no backup succeeded on every configured disk for 36 hours, a `backup_stale` alert appears once a day (panel and email).
 - **Keep `APP_KEY` with your backups.** Source addresses, 2FA secrets and relay secrets are stored encrypted with it: a restore on a new server without the same `APP_KEY` can't read them (sign-in and 2FA then fail until you set them up again).
 - **Restore** (into an empty database, or over an existing one: tables are replaced):
 
@@ -161,6 +174,39 @@ ssh-keygen -t ed25519 -N "" -C "github-deploy" -f ~/.ssh/github_deploy && cat ~/
 3. Delete the private key from the server (`rm ~/.ssh/github_deploy`) once it is in GitHub.
 
 The job uses the `production` environment: in Settings → Environments → production you can require an approval before each deploy. To pause deploying, delete the `DEPLOY_SSH_KEY` secret. To remove access, delete the line `github-deploy` from `~/.ssh/authorized_keys` on the server. Deploy by hand: `bash scripts/deploy.sh "$PWD"` in the project folder.
+
+## Uptime monitor
+
+The **Uptime** workflow (`.github/workflows/uptime.yml`) opens `/login` and `/health` of the live site every 30 minutes (3 tries each) and fails when either does not answer 200. `/health` also fails when the scheduler or queue has stopped. A failed run emails you (GitHub → Settings → Notifications → Actions → "Send notifications for failed workflows only"). It stays off until the repository variable is set:
+
+```bash
+gh variable set SITE_URL --body "https://nebotv.bozidarpejoski.dev"
+```
+
+GitHub runs schedules on a best-effort basis (a run can start a few minutes late). For faster alerts add a free external monitor (UptimeRobot, Better Stack) on the same two addresses.
+
+## Staging
+
+A second copy of the site (own subdomain, own database, own `.env`) to try a change for real before merging it. Push any branch there: `git push -f origin <branch>:staging`; the checks run and then **Deploy to staging** updates the staging folder (`DEPLOY_RESET=1`: the server is moved to that commit with `git reset --hard`, never used for production). Staging never touches the live site or database.
+
+**One-time setup on Hostinger**
+
+1. hPanel → Websites → *Subdomains*: create `staging.yourdomain.com` (note its folder). Databases → create a second MySQL database and user.
+2. Over SSH, in the folder that belongs to the subdomain:
+
+```bash
+git clone <repo-url> nebotv-staging && cd nebotv-staging && cp .env.example .env && php artisan key:generate
+```
+
+3. Edit `.env`: the new `DB_*`, `APP_URL=https://staging.yourdomain.com`, `APP_ENV=staging`, `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`, `QUEUE_SCHEDULED_WORKER=true`, **`MAIL_MAILER=log`** and no `ALERT_MAIL_TO` (staging must not email anyone), no real provider sources, and its **own** `ADMIN_PASSWORD`. Never copy the live `APP_KEY`.
+4. `composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan db:seed --class=AdminSeeder --force`, point the subdomain's web root at `nebotv-staging/public`, add the cron job (see section 4) for it, and (optional) protect it with a password in hPanel (*Password protect directories*) so search engines and strangers stay out.
+5. In GitHub add the secret `STAGING_PATH` = the absolute path of `nebotv-staging` (the other `DEPLOY_*` secrets are shared with production):
+
+```bash
+gh secret set STAGING_PATH --body "/home/u123/domains/yourdomain.com/staging/nebotv-staging"
+```
+
+Without `STAGING_PATH` the staging job does nothing. Data on staging is its own: use throw-away sources and users.
 
 ## Dependencies
 

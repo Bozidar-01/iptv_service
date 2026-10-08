@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\StreamAlert;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -33,6 +34,8 @@ class HealthService
     {
         Cache::forever(self::HEARTBEAT_KEY, now()->timestamp);
 
+        $this->checkBackup();
+
         $waited = $this->oldestJobMinutes();
         if ($waited !== null && $waited >= self::QUEUE_STALE_MINUTES
             && Cache::add('health:queue-alerted', true, now()->addHours(self::QUEUE_ALERT_HOURS))) {
@@ -46,6 +49,20 @@ class HealthService
             if ($failed > 0) {
                 StreamAlert::create(['type' => StreamAlert::TYPE_JOBS_FAILED, 'name' => 'Queue', 'detail' => (string) $failed]);
             }
+        }
+    }
+
+    /**
+     * Alert (once a day) when no backup has succeeded for BackupService::STALE_HOURS. A server that never
+     * recorded one is measured from when it was first seen here, so a new install isn't alerted at once.
+     */
+    private function checkBackup(): void
+    {
+        $since = app(BackupService::class)->lastSuccess() ?? Carbon::createFromTimestamp(Cache::rememberForever('backup:watch-since', fn () => now()->timestamp));
+        $hours = (int) $since->diffInHours(now());
+
+        if ($hours >= BackupService::STALE_HOURS && Cache::add('health:backup-alerted', true, now()->addDay())) {
+            StreamAlert::create(['type' => StreamAlert::TYPE_BACKUP_STALE, 'name' => 'Backup', 'detail' => (string) $hours]);
         }
     }
 
