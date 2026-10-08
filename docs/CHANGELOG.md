@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Automatic deploy
+- New `deploy` job in `.github/workflows/ci.yml`: after every check passed on a push to `main`, SSH to the server and run `scripts/deploy.sh` (fast-forward to the tested commit, database dump, `composer install --no-dev`, migrate, caches, backup check, `/login` answers 200). One deploy at a time, `production` environment, does nothing without the `DEPLOY_*` secrets. Setup: [deployment.md](deployment.md#automatic-deploy).
+- Tested end to end against a throw-away clone (fast-forward, migrations, caches, backup); stops on edited server files and on a failing step, printing how to go back.
+- Files: `scripts/deploy.sh`, `.github/workflows/ci.yml`, `docs/deployment.md`.
+
 ### 2026-10-09 — Remaining review fixes
 - **nginx mode:** an address without `m3u8` is first probed once (first bytes, cached an hour) so an HLS playlist served there is rewritten instead of leaking the provider address; protocol-relative redirects (`//host/x`) are followed.
 - **php mode:** at most `PROXY_STREAMS_PER_DEVICE` (3) running streams per device (`429` + `Retry-After`).

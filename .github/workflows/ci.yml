@@ -133,3 +133,47 @@ jobs:
         with:
           python-version: '3.11'
       - run: python3 relay/test_relay.py
+
+  # Puts the tested commit on the server. Only after every check above passed, only for pushes to
+  # main. Needs the secrets listed in docs/deployment.md#automatic-deploy; without them it does nothing.
+  deploy:
+    name: Deploy to the server
+    needs: [tests, quality, browser, mysql, relay]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    # One deploy at a time; a newer push waits for the running one instead of cutting it off half way
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is deploying set up?
+        id: config
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$DEPLOY_PATH" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Deploying is not set up (secrets missing): skipping. See docs/deployment.md#automatic-deploy"
+          fi
+
+      - name: Update the server
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The script is sent from this checkout, so the server runs the version being deployed
+          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$DEPLOY_PATH' '$GITHUB_SHA'" < scripts/deploy.sh

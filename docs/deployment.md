@@ -104,6 +104,8 @@ A newly added source starts importing within about a minute.
 
 ## 5. Updating
 
+With [Automatic deploy](#automatic-deploy) set up this happens by itself on every push to `main`. By hand:
+
 ```bash
 cd ~/domains/yourdomain.com/nebotv
 git pull
@@ -132,6 +134,33 @@ Test a restore into a scratch database once, so you know it works before you nee
 ## 7. Error tracking (optional)
 
 Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandled errors are reported there. Nothing is sent without a DSN. Calls to providers are not recorded as breadcrumbs or spans (their addresses hold logins), and log lines and other breadcrumbs go through the same cleaning. Before sending, `App\Support\SentryScrubber` hides what must not leave the server: playlist, play and login tokens in addresses, query strings, cookies, and everything after the host in provider addresses inside error messages. Run `php artisan config:cache` after changing `.env`. Logs are written to a file per day and kept for `LOG_DAILY_DAYS` (14).
+
+## Automatic deploy
+
+Every push to `main` is put on the server by the **Deploy to the server** job in `.github/workflows/ci.yml`, but only after all checks (tests, style, analysis, browser tests, MySQL migrations, relay) have passed. It sends `scripts/deploy.sh` over SSH, so the server always runs the script of the commit being deployed. The script: stops if files were changed on the server → fast-forwards to that commit (never rewrites history) → dumps the database to `~/deploy-backups/` (the last 5 are kept) → `composer install --no-dev` → `migrate --force` → rebuilds the caches → `iptv:backup` → opens `APP_URL/login` and expects 200. It stops at the first error and prints how to go back (git can't undo migrations: use `migrate:rollback` or the dump). Pushes are deployed one at a time (a later push waits). Without the secrets below, the job does nothing.
+
+**One-time setup**
+
+1. On the server, make a key just for this and allow it:
+
+```bash
+ssh-keygen -t ed25519 -N "" -C "github-deploy" -f ~/.ssh/github_deploy && cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
+```
+
+2. Add these as GitHub secrets (repository → Settings → Secrets and variables → Actions, or `gh secret set NAME`):
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST` | the server's address (hPanel → SSH access) |
+| `DEPLOY_PORT` | the SSH port (Hostinger: usually `65002`; empty = 22) |
+| `DEPLOY_USER` | the SSH user name |
+| `DEPLOY_PATH` | the project folder on the server, e.g. `/home/u123/domains/example.com/public_html/nebotv` (the folder with `artisan` and `.env`) |
+| `DEPLOY_SSH_KEY` | the content of the **private** key file `~/.ssh/github_deploy` |
+| `DEPLOY_KNOWN_HOSTS` | the server's host key, from `ssh-keyscan -p PORT HOST` run on your computer (so a fake server can't receive the key) |
+
+3. Delete the private key from the server (`rm ~/.ssh/github_deploy`) once it is in GitHub.
+
+The job uses the `production` environment: in Settings → Environments → production you can require an approval before each deploy. To pause deploying, delete the `DEPLOY_SSH_KEY` secret. To remove access, delete the line `github-deploy` from `~/.ssh/authorized_keys` on the server. Deploy by hand: `bash scripts/deploy.sh "$PWD"` in the project folder.
 
 ## Hide provider address (on your own server)
 
