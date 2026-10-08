@@ -20,9 +20,10 @@ use Illuminate\Support\Str;
  * @property Carbon|null $expiration_date
  * @property Carbon|null $two_factor_confirmed_at
  * @property Carbon|null $created_at
+ * @property int|null $credits
  */
-#[Fillable(['username', 'password', 'email', 'locale', 'status', 'role', 'expiration_date', 'max_connections', 'owner_id', 'max_customers', 'max_customer_connections'])]
-#[Hidden(['password', 'remember_token', 'playlist_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
+#[Fillable(['username', 'password', 'password_plain', 'email', 'locale', 'status', 'role', 'expiration_date', 'max_connections', 'owner_id', 'max_customers', 'max_customer_connections'])]
+#[Hidden(['password', 'password_plain', 'remember_token', 'playlist_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -45,7 +46,9 @@ class User extends Authenticatable
         return [
             'expiration_date' => 'datetime',
             'password' => 'hashed',
+            'password_plain' => 'encrypted',
             'two_factor_confirmed_at' => 'datetime',
+            'credits' => 'integer',
         ];
     }
 
@@ -131,6 +134,18 @@ class User extends Authenticatable
             $actor?->isReseller() => $query->where('owner_id', $actor->id)->where('role', 'user'),
             default => $query->whereRaw('1 = 0'),
         };
+    }
+
+    /** Is this reseller limited by credits? (no balance = unlimited, as before credits existed) */
+    public function usesCredits(): bool
+    {
+        return $this->isReseller() && $this->credits !== null;
+    }
+
+    /** @return HasMany<CreditTransaction, $this> */
+    public function creditTransactions(): HasMany
+    {
+        return $this->hasMany(CreditTransaction::class);
     }
 
     /** Can a reseller still add a customer? (admins and resellers without a limit: always) */

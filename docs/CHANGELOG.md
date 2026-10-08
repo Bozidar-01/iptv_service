@@ -4,6 +4,18 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Reseller credits
+- Admins give **credits** to resellers; a reseller with credits can only give as many subscriptions as they can pay for. **1 credit = 1 month** of subscription for one user: creating a user or moving their end date later costs the whole months added (from the day the user's subscription runs out, or from today when it already ended), shortening or keeping it costs nothing. One extra day is not charged (a reseller's date can differ from the server's by a day: time zones) but any longer subscription costs at least 1 credit.
+- A reseller **without** a balance (the default for existing resellers) is not limited, as before. Giving credits switches the limit on; *Make unlimited* switches it off. A reseller with credits must give an end date (no "Never"); the form shows the price while typing and a refused save changes nothing (user and credits are saved together under a lock on the reseller's row).
+- New **Credits** page (reseller: own balance and history; admin: everyone's or one reseller's), a credits panel on a reseller's page (give / take back with a note, never below 0), *Starting credits* when creating a reseller. Every change is kept in `credit_transactions` (who, what, for which user, balance after).
+- Fix found by the browser test: the end-date shortcuts (+1 month …) built the date in UTC, which could be a day off for a browser west of UTC; they now use the browser's own date and the same month rule as the server.
+- Schema: `users.credits` (nullable), `credit_transactions`. Tests: `CreditTest`, `e2e/credits.spec.js`.
+- Files: `app/Support/Credits.php`, `app/Services/CreditService.php`, `app/Models/CreditTransaction.php`, `app/Http/Controllers/Admin/{CreditController,UserController}.php`, `app/Exceptions/*`, `database/migrations/2026_10_09_000006_*`, `resources/views/admin/{credits/index,users/_form,users/show,users/index,dashboard-reseller}.blade.php`, `resources/views/layouts/admin.blade.php`, `routes/web.php`, `lang/mk.json`, `docs/**`.
+
+### 2026-10-09 — Show a user's password on the edit page
+- **Edit user** has a *Show current password* button (for the Xtream Codes login). Passwords were only stored as hashes, so a new `users.password_plain` column keeps an encrypted copy (`encrypted` cast, hidden from serialisation), written whenever a password is set through `UserService`. Users saved before this have none: the page says so; setting a new password fills it in. Resellers see it only for their own users (existing access rule). Anyone with the database and `APP_KEY` can read these passwords.
+- Files: migration `…000007_add_password_plain_to_users`, `User`, `UserService`, `admin/users/_form`, `layouts/admin` (reveal button script), `lang/mk.json`.
+
 ### 2026-10-09 — Fix: Statistics page failed with a 500 on the second visit
 - **Cause:** the report was cached with a date object (`Carbon`) inside. The real (database) cache refuses to rebuild objects (`cache.serializable_classes` is `false`), so the second request got a `__PHP_Incomplete_Class` and the page returned 500, for the 5 minutes the entry lived, in both languages (switching language reloads the page, which is how it showed). The first visit worked because nothing was cached yet, and the tests didn't catch it because the test cache keeps objects as they are.
 - **Fix:** only plain values are cached (`from` is a date string); the cache key is versioned (`statistics:v2:`) so entries written by the old code are never read.

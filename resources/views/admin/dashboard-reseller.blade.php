@@ -32,6 +32,17 @@
         <div class="stat-meta">{{ __(':count already expired', ['count' => number_format($stats['expired'])]) }}</div>
     </div>
     <div class="card stat">
+        <div class="stat-label"><x-icon name="package" /> {{ __('Your credits') }}</div>
+        <div class="stat-value">{{ $reseller->usesCredits() ? number_format($reseller->credits) : __('Unlimited') }}</div>
+        <div class="stat-meta">
+            @if($reseller->usesCredits())
+                {{ __('1 credit = 1 month for one user') }} · <a href="{{ route('admin.credits.index') }}">{{ __('History') }}</a>
+            @else
+                {{ __('not limited by credits') }}
+            @endif
+        </div>
+    </div>
+    <div class="card stat">
         <div class="stat-label"><x-icon name="signal" /> {{ __('Watching now') }}</div>
         <div class="stat-value">{{ number_format($stats['watching_now']) }}</div>
         <div class="stat-meta">{{ __(':count plays in the last 24 hours', ['count' => number_format($stats['plays_today'])]) }}</div>

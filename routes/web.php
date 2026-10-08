@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\BouquetController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChannelController;
+use App\Http\Controllers\Admin\CreditController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpgSourceController;
 use App\Http\Controllers\Admin\LogController;
@@ -45,6 +46,7 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+    Route::get('credits', [CreditController::class, 'index'])->name('credits.index');
 
     Route::get('security', [SecurityController::class, 'index'])->name('security.index');
     Route::post('security/two-factor', [SecurityController::class, 'start'])->name('security.start');
@@ -72,6 +74,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
+
+    // Giving and taking back credits is for admins only
+    Route::post('users/{user}/credits', [CreditController::class, 'store'])->name('users.credits.store');
+    Route::post('users/{user}/credits/unlimited', [CreditController::class, 'unlimited'])->name('users.credits.unlimited');
 });
 
 // Player endpoints (M3U, play, Xtream Codes API) are in routes/player.php

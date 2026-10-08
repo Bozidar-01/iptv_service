@@ -22,6 +22,7 @@
         ['section' => __('Subscribers')],
         ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => __('Users')],
         ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => __('Activity')],
+        ['route' => 'admin.credits.index', 'match' => 'admin.credits.*', 'icon' => 'package', 'label' => __('Credits')],
         ['route' => 'admin.statistics.index', 'match' => 'admin.statistics.*', 'icon' => 'signal', 'label' => __('Statistics')],
         ['route' => 'admin.alerts.index', 'match' => 'admin.alerts.*', 'icon' => 'bell', 'label' => __('Alerts')],
         ['section' => __('Account')],
@@ -30,7 +31,7 @@
 
     // A reseller gets only their own part of the panel: dashboard, users, activity, alerts, security
     if (!Auth::user()->isAdmin()) {
-        $allowed = ['admin.dashboard', 'admin.users.index', 'admin.logs.index', 'admin.alerts.index', 'admin.security.index'];
+        $allowed = ['admin.dashboard', 'admin.users.index', 'admin.logs.index', 'admin.credits.index', 'admin.alerts.index', 'admin.security.index'];
         $nav = array_values(array_filter($nav, fn ($item) => isset($item['section']) || in_array($item['route'], $allowed, true)));
         // drop section headings that ended up without a link below them
         $nav = array_values(array_filter($nav, fn ($item, $i) => !isset($item['section']) || (isset($nav[$i + 1]) && !isset($nav[$i + 1]['section'])), ARRAY_FILTER_USE_BOTH));
@@ -111,6 +112,17 @@
             label.textContent = @json(__('Copied'));
             setTimeout(() => label.textContent = original, 1500);
         }
+    });
+
+    // Show/hide a password field: <button data-reveal="#input-id">
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-reveal]');
+        if (!button) return;
+        const input = document.querySelector(button.dataset.reveal);
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        const label = button.querySelector('[data-reveal-label]');
+        if (label) label.textContent = show ? @json(__('Hide current password')) : @json(__('Show current password'));
     });
 
     // Confirm destructive actions: <form data-confirm="Are you sure?">

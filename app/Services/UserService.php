@@ -39,6 +39,7 @@ class UserService
 
     public function createUser(array $data)
     {
+        $data['password_plain'] = $data['password'];
         $data['password'] = Hash::make($data['password']);
         $user = User::create($data);
         if (isset($data['bouquets'])) {
@@ -51,6 +52,7 @@ class UserService
     public function updateUser(User $user, array $data)
     {
         if (isset($data['password']) && $data['password']) {
+            $data['password_plain'] = $data['password'];
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);

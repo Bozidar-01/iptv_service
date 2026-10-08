@@ -200,6 +200,42 @@
         @endif
     </div>
 
+    @if($user->isReseller() && Auth::user()->isAdmin())
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>{{ __('Credits') }}</h2>
+                    <p>{{ __('1 credit = 1 month of subscription for one user. Giving credits switches the limit on.') }}</p>
+                </div>
+                <a href="{{ route('admin.credits.index', ['reseller' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('History') }}</a>
+            </div>
+            <div class="card-body stack" style="gap: 16px">
+                <div class="stat-value" style="margin: 0">{{ $user->usesCredits() ? number_format($user->credits) : __('Unlimited') }}</div>
+
+                <form method="POST" action="{{ route('admin.users.credits.store', $user) }}" class="form-grid">
+                    @csrf
+                    <div class="field">
+                        <label class="label" for="credit-amount">{{ __('Give or take back') }}</label>
+                        <input class="input" id="credit-amount" name="amount" type="number" step="1" min="-1000000" max="1000000" placeholder="10" required>
+                        <span class="help">{{ __('A positive number gives credits, a negative one takes them back.') }}</span>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="credit-note">{{ __('Note') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                        <input class="input" id="credit-note" name="note" maxlength="255">
+                    </div>
+                    <div class="field full"><div><button class="btn btn-primary" type="submit"><x-icon name="package" /> {{ __('Save') }}</button></div></div>
+                </form>
+
+                @if($user->usesCredits())
+                    <form method="POST" action="{{ route('admin.users.credits.unlimited', $user) }}" data-confirm="{{ __('Remove the credit limit of this reseller? They can then give any number of subscriptions.') }}">
+                        @csrf
+                        <button class="btn btn-danger-ghost btn-sm" type="submit">{{ __('Make unlimited') }}</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-header"><h2>{{ __('Subscription') }}</h2></div>
         <div class="card-body">

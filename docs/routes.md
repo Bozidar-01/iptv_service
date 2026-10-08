@@ -59,6 +59,9 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/alerts` | `admin.alerts.index` | `AlertController@index` |
 | POST | `/admin/alerts/read` | `admin.alerts.read` | `AlertController@markAllRead` |
 | GET | `/admin/logs` | `admin.logs.index` | `LogController@index` |
+| GET | `/admin/credits` | `admin.credits.index` | `CreditController@index`: history; a reseller sees own, an admin all or `?reseller=<id>` (staff group) |
+| POST | `/admin/users/{user}/credits` | `admin.users.credits.store` | `CreditController@store`: `amount` (non-zero integer, negative takes back), `note`; admin only, reseller accounts only |
+| POST | `/admin/users/{user}/credits/unlimited` | `admin.users.credits.unlimited` | `CreditController@unlimited`: remove the credit limit; admin only |
 | GET | `/admin/statistics` | `admin.statistics.index` | `StatisticsController@index`: `?days=7\|30\|90` |
 | GET | `/admin/security` | `admin.security.index` | `SecurityController@index`: two-factor status / setup and recent sign-ins |
 | POST | `/admin/security/two-factor` | `admin.security.start` | `SecurityController@start`: new secret + QR code |
