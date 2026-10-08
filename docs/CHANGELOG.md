@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Branch workflow skills
+- New project skills `start-work` (every task starts on a branch from `origin/main`, never on `main`) and `ship-to-main` (readiness checklist, pull request, CI, explicit go-ahead, merge = deploy, verify, how to go back). Rule added to `CLAUDE.md`; process in `docs/deployment.md#branches-and-releases`.
+- Files: `.claude/skills/{start-work,ship-to-main}/SKILL.md`, `CLAUDE.md`, `docs/deployment.md`.
+
 ### 2026-10-09 — Automatic deploy
 - New `deploy` job in `.github/workflows/ci.yml`: after every check passed on a push to `main`, SSH to the server and run `scripts/deploy.sh` (fast-forward to the tested commit, database dump, `composer install --no-dev`, migrate, caches, backup check, `/login` answers 200). One deploy at a time, `production` environment, does nothing without the `DEPLOY_*` secrets. Setup: [deployment.md](deployment.md#automatic-deploy).
 - Tested end to end against a throw-away clone (fast-forward, migrations, caches, backup); stops on edited server files and on a failing step, printing how to go back.

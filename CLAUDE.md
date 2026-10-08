@@ -58,8 +58,14 @@ Without Docker: `composer dev` (server + queue + logs), `php artisan schedule:wo
 - `Http::fake` with a static response reuses one body stream. Use `fn () => Http::response(...)` when a test downloads twice.
 - Check `docs/known-issues.md` before debugging.
 
+## Workflow: branches, `main` is production
+
+**`main` deploys to the live server on every push** (checks pass → `scripts/deploy.sh`: backup, migrate, caches). So never commit or push to `main`. Every feature, fix, refactor or docs change goes on its own branch (`feature/…`, `fix/…`, `docs/…`, `chore/…`) created from `origin/main` (`start-work` skill), and reaches `main` only when it is 100% ready and the user says to ship it, through a pull request with green checks (`ship-to-main` skill). The deploy never edits the server's `.env`: say which new variables the user must add before merging. Details: [docs/deployment.md](docs/deployment.md#branches-and-releases).
+
 ## Skills
 
+- `start-work` — begin every task on a new branch from `origin/main`, never on `main`.
+- `ship-to-main` — readiness checklist, pull request, CI, user go-ahead, merge (= deploy), verify.
 - `update-docs` — update docs/changelog after any change.
 - `run-app` — start, inspect and debug the Docker stack; verify in the browser.
 - `add-admin-resource` — scaffold a new admin CRUD (migration → model → service → controller → routes → views → tests → docs).
