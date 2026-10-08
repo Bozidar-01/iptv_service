@@ -22,7 +22,7 @@ _None currently known._
 - **Upstream URLs are exposed:** `/play` redirects (302) to the provider URL, which often contains the provider username/password. Anyone with a playlist can see it. Fixing this needs a stream proxy.
 - **Provider credentials are stored in plain text** in `sources.url` and `channels.stream_url`.
 - **Credentials in query string** for `/m3u?username=&password=` (standard for IPTV, but they end up in server/proxy logs). Prefer the `/playlist/{token}.m3u` link.
-- **No overall request limit:** wrong passwords are limited (admin sign-in and app logins), but `/playlist/{token}.m3u` and `/play` have no request limit.
+- **Request limits are per minute, not per user:** `/play`, `/playlist` and `/epg` are limited per link + IP and per IP (`THROTTLE_*`), but `/live` and `/player_api.php` only have the wrong-password limit.
 - **No Macedonian guide data:** the free iptv-epg.org Macedonia file only has "No Data" entries, so Macedonian channels show no programmes until a better XMLTV source is added on the TV guide page.
 - **Guide times in the panel are UTC:** apps get exact timestamps, but *On now* on the channel form shows UTC (`APP_TIMEZONE` isn't set).
 - **The receiver's own guide isn't used:** Enigma2 only has guide data for channels it has tuned. A `/epg.xml` relay endpoint could export it once the box collects EPG (e.g. with an EPG import plugin).
@@ -32,12 +32,12 @@ _None currently known._
 - **Old admin password in git history:** commit `82be74b` put a real-looking admin password in `AdminSeeder.php`. The seeder now reads `.env`, but that password is still in the history: change it on any server that used it.
 - **Devices are told apart by IP + user agent:** two identical TVs with the same app version behind one router look like one device and share a slot. Suggested fix: a per-device token or a stream proxy.
 - **No heartbeat:** a session only stays "active" for 5 minutes after the last `/play` request, so long viewing frees the slot.
-- **Channel identity is group + name:** if a provider renames a channel or moves it to another group, it is re-created (new ID, bouquet membership only restored via the source's bouquet).
+- **Channels without a tvg-id are keyed by group + name:** if a provider renames such a channel or moves it to another group, it is re-created (new ID).
 - **Bulk-deleted imported channels come back** on the next sync. Disable them instead.
-- **No EPG:** `tvg-id` is passed through, but there is no `url-tvg` / XMLTV support.
 - **Xtream Codes API is live TV only:** VOD, series, catch-up and EPG actions return empty data.
 - **Xtream password checks are not cached:** every `player_api.php` and `/live` request runs `Hash::check` (bcrypt). Fine for a few users. With many, cache the result briefly or lower the bcrypt cost.
 - **Docker setup is development-grade:** code is bind-mounted, `APP_DEBUG` comes from `.env`, MySQL passwords are fixed in `docker-compose.yml`, and there's no HTTPS.
 - **Partly translated:** `/m3u`, `/playlist` and `/play` error bodies and `sources.last_error` are always English; numbers use English separators (`1,234`) in Macedonian too. Laravel's Macedonian plural rule treats 11 like 1 ("11 канал").
 - **Unused:** Vite/Tailwind setup (`resources/css`, `resources/js`, `vite.config.js`).
 - **Not covered by tests:** category CRUD, the user status toggle, and any browser-level JS (bulk selection, dialogs, copy button). Verified manually.
+- **No Content-Security-Policy:** panel pages send basic security headers, but the views use inline scripts, so a CSP is not set yet.

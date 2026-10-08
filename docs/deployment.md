@@ -95,7 +95,7 @@ This runs everything in `routes/console.php`:
 | `iptv:check-receivers` | every 5 minutes (satellite receiver relays) |
 | `iptv:sync-epg` | daily at 03:30 (TV guides) |
 | `iptv:expiry-reminders` | daily at 08:00 |
-| `model:prune` for `ActiveSession` | every 15 minutes |
+| `model:prune` for `ActiveSession` and `StreamLog` | every 15 minutes |
 
 A newly added source starts importing within about a minute.
 
@@ -114,5 +114,5 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 ## Limits to expect
 
 - **Very large playlists** (roughly 50k–100k entries) may be stopped by the host's CPU/process limits. The source is then marked **Failed** with "The import was stopped before it finished." (`SyncSource::failed`, after `DB_QUEUE_RETRY_AFTER`). Channels written so far are kept and nothing is deleted, because removing vanished channels is the last step. Tick **Skip VOD** to shrink the playlist, or run that source over SSH: `php artisan iptv:sync-sources <id> --now`.
-- **HTTPS:** enable the free SSL certificate in hPanel; playlist and play links use the request host, so they follow your domain.
+- **HTTPS:** enable the free SSL certificate in hPanel; playlist and play links use the request host, so they follow your domain. Then set `SESSION_SECURE_COOKIE=true` in `.env` so the sign-in cookie is only sent over HTTPS (the panel also sends HSTS on HTTPS).
 - **Terms of service:** hosts forbid distributing content you don't have rights to. Only use provider streams you are licensed to redistribute.

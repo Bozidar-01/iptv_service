@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Support\Theme;
 use Illuminate\Foundation\Application;
@@ -18,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [SetLocale::class]);
+        $middleware->web(append: [SetLocale::class, SecurityHeaders::class]);
         $middleware->alias(['admin' => \App\Http\Middleware\EnsureAdmin::class]);
         // Written by the theme switcher's JS, so it can't be encrypted
         $middleware->encryptCookies(except: [Theme::COOKIE]);

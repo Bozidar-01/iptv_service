@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 use App\Models\StreamAlert;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +25,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Request limit for /play, /playlist/{token}.m3u and /epg/{token}.xml
+        RateLimiter::for('player', fn (Request $request) => [
+            Limit::perMinute(config('iptv.throttle_per_token'))
+                ->by('token:'.$request->route('token').'|'.$request->ip()),
+            Limit::perMinute(config('iptv.throttle_per_ip'))->by('ip:'.$request->ip()),
+        ]);
+
         // Header bell (admin.partials.notifications)
         View::composer('layouts.admin', function ($view) {
             $view->with('alertMenu', Auth::check() ? [

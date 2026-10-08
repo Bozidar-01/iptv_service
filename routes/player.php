@@ -16,9 +16,12 @@ Route::get('/health', HealthController::class)->name('health');
 
 // M3U playlist link and username/password playlist
 Route::get('/m3u', [M3uController::class, 'generate'])->name('m3u');
-Route::get('/playlist/{token}.m3u', [M3uController::class, 'playlist'])->name('playlist');
-Route::get('/play/{channel_id}/{token}', [PlayController::class, 'play'])->name('play');
-Route::get('/epg/{token}.xml', [M3uController::class, 'epg'])->name('epg');
+// Links with a token are limited per minute (limiter "player", see AppServiceProvider)
+Route::middleware('throttle:player')->group(function () {
+    Route::get('/playlist/{token}.m3u', [M3uController::class, 'playlist'])->name('playlist');
+    Route::get('/play/{channel_id}/{token}', [PlayController::class, 'play'])->name('play');
+    Route::get('/epg/{token}.xml', [M3uController::class, 'epg'])->name('epg');
+});
 
 // Xtream Codes API: apps log in with server URL + username + password
 Route::match(['get', 'post'], '/player_api.php', [XtreamController::class, 'api'])->name('xtream.api');

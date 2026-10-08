@@ -3,11 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 
 #[Fillable(['user_id', 'channel_id', 'ip', 'user_agent', 'started_at'])]
 class StreamLog extends Model
 {
+    use Prunable;
+
     public $timestamps = false;
 
     protected function casts(): array
@@ -15,6 +19,14 @@ class StreamLog extends Model
         return [
             'started_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Old plays are deleted by `php artisan model:prune` (scheduled in routes/console.php).
+     */
+    public function prunable(): Builder
+    {
+        return static::where('started_at', '<', now()->subDays(config('iptv.log_retention_days')));
     }
 
     public function user()

@@ -25,4 +25,16 @@ return [
     */
     'epg_days' => (int) env('EPG_DAYS', 3),
 
+    /*
+    | Days of play history (stream_logs) kept; older rows are deleted by model:prune.
+    */
+    'log_retention_days' => (int) env('LOG_RETENTION_DAYS', 90),
+
+    /*
+    | Requests per minute for the player links (AppServiceProvider). Per link + IP, and per IP
+    | overall (TVs behind one router share an IP, so that one is generous).
+    */
+    'throttle_per_token' => (int) env('THROTTLE_PER_TOKEN', 60),
+    'throttle_per_ip' => (int) env('THROTTLE_PER_IP', 300),
+
 ];

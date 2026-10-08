@@ -14,6 +14,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/theme` | `theme.update` | `ThemeController@update` | body: `theme` (`light`/`dark`/`system`); sets or clears the unencrypted `theme` cookie, redirects back. Only used without JS |
 ## Player (`routes/player.php`)
 
+`/play`, `/playlist/{token}.m3u` and `/epg/{token}.xml` use the `player` request limiter (429 when exceeded): `THROTTLE_PER_TOKEN` a minute per link + IP and `THROTTLE_PER_IP` per IP.
+
 | Method | URI | Name | Handler | Notes |
 |---|---|---|---|---|
 | GET | `/health` | `health` | `HealthController` | `200`/`503` JSON for an uptime monitor |
@@ -64,5 +66,5 @@ Admin resource routes are limited with `->only()` / `->except()` so that only im
 | `iptv:check-receivers` | every 5 minutes |
 | `iptv:sync-epg {--now}` | daily at 03:30 |
 | `iptv:expiry-reminders` | daily at 08:00 |
-| `model:prune --model=App\Models\ActiveSession` | every 15 minutes |
+| `model:prune --model=App\Models\ActiveSession --model=App\Models\StreamLog` | every 15 minutes (stale sessions, play history past `LOG_RETENTION_DAYS`) |
 | `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` | every minute, only when `QUEUE_SCHEDULED_WORKER=true` (shared hosting); `withoutOverlapping(15)`, in the background |

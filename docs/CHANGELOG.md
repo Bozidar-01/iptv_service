@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-08 — Play history limits, request limits, security headers
+- **Play history:** `stream_logs` older than `LOG_RETENTION_DAYS` (default 90) are deleted by `model:prune` (now also run for `StreamLog`). New indexes: `stream_logs.started_at` and `active_sessions (user_id, last_activity_at)` for the dashboard, Logs page and the connection-limit check.
+- **Request limits:** `/play`, `/playlist/{token}.m3u` and `/epg/{token}.xml` answer 429 after `THROTTLE_PER_TOKEN` (60) requests a minute per link + IP, or `THROTTLE_PER_IP` (300) per IP.
+- **Security headers** on panel pages (`SecurityHeaders`): `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, and HSTS over HTTPS. `.env.example` now lists `SESSION_SECURE_COOKIE`.
+- Known issues: removed "No overall request limit" and the outdated "No EPG" entry.
+- Tests: `SecurityHeadersTest`, limit and pruning tests in `PlayTest`. 256 tests.
+- Files: `app/Http/Middleware/SecurityHeaders.php`, `app/Models/StreamLog.php`, `app/Providers/AppServiceProvider.php`, `bootstrap/app.php`, `config/iptv.php`, `routes/{player,console}.php`, `database/migrations/2026_10_08_000004_add_play_indexes.php`, `.env.example`, `docs/**`, `tests/**`.
+
 ### 2026-10-08 — TV guide, backup streams, stable channel IDs, expiry reminders
 - **TV guide (EPG):**
   - New **TV guide** page with XMLTV sources (`epg_sources`), stored as `epg_channels` / `epg_programmes`. Imported nightly by `iptv:sync-epg` (`SyncEpgSource`, streaming `XMLReader`, gz, `EPG_DAYS` window, filler titles skipped).

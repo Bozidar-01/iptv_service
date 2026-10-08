@@ -195,3 +195,39 @@ it('accepts play URLs with a stream extension', function () {
 
     $this->get('/play/'.$channel->id.'/'.tokenFor($user).'.ts')->assertRedirect($channel->stream_url);
 });
+
+it('limits requests per link', function () {
+    config(['iptv.throttle_per_token' => 3]);
+    $user = User::factory()->create();
+    $channel = subscribedChannel($user);
+    $url = route('play', ['channel_id' => $channel->id, 'token' => tokenFor($user)]);
+
+    foreach (range(1, 3) as $i) {
+        $this->get($url)->assertRedirect();
+    }
+
+    $this->get($url)->assertStatus(429);
+});
+
+it('limits requests per IP across links', function () {
+    config(['iptv.throttle_per_ip' => 2]);
+
+    foreach (range(1, 2) as $i) {
+        $this->get(route('play', ['channel_id' => 1, 'token' => 'guess'.$i]))->assertStatus(401);
+    }
+
+    $this->get(route('play', ['channel_id' => 1, 'token' => 'guess3']))->assertStatus(429);
+});
+
+it('deletes play history older than the retention time', function () {
+    config(['iptv.log_retention_days' => 30]);
+    $user = User::factory()->create();
+    $channel = subscribedChannel($user);
+
+    StreamLog::create(['user_id' => $user->id, 'channel_id' => $channel->id, 'started_at' => now()->subDays(31)]);
+    StreamLog::create(['user_id' => $user->id, 'channel_id' => $channel->id, 'started_at' => now()->subDays(29)]);
+
+    $this->artisan('model:prune', ['--model' => [StreamLog::class]])->assertSuccessful();
+
+    expect(StreamLog::count())->toBe(1);
+});

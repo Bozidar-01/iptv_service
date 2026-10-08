@@ -108,10 +108,10 @@ Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem
 `id`, `user_id` FK cascade, `token` (unique, 32 random chars), `expires_at`, timestamps. Created on first `/m3u` call, valid 1 month.
 
 ### active_sessions
-`id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent` (nullable; together they identify the device), `started_at`, `last_activity_at`. No Laravel timestamps. One row per user + device, upserted on each play; `channel_id` is what that device watched last. Counted as "active" if `last_activity_at` is within `StreamService::SESSION_TIMEOUT_MINUTES` (5). Stale rows are pruned by `model:prune` (model is `Prunable`).
+`id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent` (nullable; together they identify the device), `started_at`, `last_activity_at`. No Laravel timestamps. One row per user + device, upserted on each play; `channel_id` is what that device watched last. Counted as "active" if `last_activity_at` is within `StreamService::SESSION_TIMEOUT_MINUTES` (5). Stale rows are pruned by `model:prune` (model is `Prunable`). Index on `(user_id, last_activity_at)` for the connection-limit check.
 
 ### stream_logs
-`id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent`, `started_at`. One row per successful play request.
+`id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent`, `started_at`. One row per successful play request. Index on `started_at`. Rows older than `LOG_RETENTION_DAYS` (90) are deleted by `model:prune` (`Prunable`).
 
 ### Framework tables
 `sessions`, `password_reset_tokens`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`.
