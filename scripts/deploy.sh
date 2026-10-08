@@ -3,9 +3,11 @@
 # started per request). Used by the "deploy" job in .github/workflows/ci.yml, which sends this file
 # over SSH, so the script that runs is always the one from the commit being deployed:
 #
-#   ssh user@host "bash -s -- /path/to/project <commit>" < scripts/deploy.sh
+#   ssh user@host "bash -s -- /path/to/project <commit> [branch]" < scripts/deploy.sh
 #
 # By hand, on the server:   bash scripts/deploy.sh "$PWD"      (latest main)
+# Staging: DEPLOY_RESET=1 and branch `staging`, which is force-pushed: the server is moved to the commit
+# with `git reset --hard` instead of a fast-forward (never use it for production).
 #
 # Steps: stop if files were changed on the server → fetch the commit → back up the database →
 # composer install → migrate → rebuild caches → backup check → open /login to see it answers.
@@ -14,7 +16,8 @@
 set -euo pipefail
 
 APP_DIR="${1:?usage: deploy.sh <project folder> [commit]}"
-TARGET="${2:-origin/main}"
+BRANCH="${3:-main}"
+TARGET="${2:-origin/$BRANCH}"
 
 cd "$APP_DIR"
 test -f artisan || { echo "STOP: no artisan file in $APP_DIR"; exit 1; }
@@ -48,8 +51,12 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 # 2. The new code (fast-forward only: never rewrites history on the server)
-git fetch --quiet origin main
-git merge --ff-only --quiet "$TARGET"
+git fetch --quiet origin "$BRANCH"
+if [ "${DEPLOY_RESET:-0}" = "1" ]; then
+    git reset --hard --quiet "$TARGET"
+else
+    git merge --ff-only --quiet "$TARGET"
+fi
 NEW=$(git rev-parse --short HEAD)
 echo ">> Version new: $NEW"
 
