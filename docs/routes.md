@@ -66,5 +66,6 @@ Admin resource routes are limited with `->only()` / `->except()` so that only im
 | `iptv:check-receivers` | every 5 minutes |
 | `iptv:sync-epg {--now}` | daily at 03:30 |
 | `iptv:expiry-reminders` | daily at 08:00 |
+| `iptv:backup` | daily at 02:30: database dump to `BACKUP_DISK`, old ones removed after `BACKUP_KEEP_DAYS` |
 | `model:prune --model=App\Models\ActiveSession --model=App\Models\StreamLog` | every 15 minutes (stale sessions, play history past `LOG_RETENTION_DAYS`) |
 | `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` | every minute, only when `QUEUE_SCHEDULED_WORKER=true` (shared hosting); `withoutOverlapping(15)`, in the background |

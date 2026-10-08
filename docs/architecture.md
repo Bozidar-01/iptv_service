@@ -28,6 +28,7 @@ routes/web.php, routes/console.php
 | `SourceSyncService` | Download/read a playlist, upsert channels, prune vanished ones, attach to bouquet, record status |
 | `M3uParser` | Streaming M3U parser and VOD detection |
 | `TokenService` | Access tokens, playback token reuse, M3U output |
+| `BackupService` | Database dump to the backup disk and removal of old dumps (`iptv:backup`) |
 | `StreamService` | Authorise playback, connection limit, session upsert, stream log |
 | `StreamPreviewService` | Admin **Watch** player proxy: signed proxied URLs, HLS playlist rewriting (segment lines and `URI="…"`), streaming media through with a VLC user agent |
 | `XtreamService` | Xtream Codes API: authenticate, login/server info, live categories and streams |

@@ -4,6 +4,8 @@ FROM php:8.4-fpm-alpine
 # PHP extensions Laravel + MySQL need; pcntl lets queue:work stop jobs cleanly on timeout
 COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
 RUN install-php-extensions pdo_mysql intl zip pcntl bcmath opcache
+# mysqldump for iptv:backup
+RUN apk add --no-cache mariadb-client mariadb-connector-c
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

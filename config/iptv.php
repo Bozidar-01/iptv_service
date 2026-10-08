@@ -37,4 +37,18 @@ return [
     'throttle_per_token' => (int) env('THROTTLE_PER_TOKEN', 60),
     'throttle_per_ip' => (int) env('THROTTLE_PER_IP', 300),
 
+    /*
+    | Database backups (iptv:backup, BackupService): where they go (any filesystem disk, e.g. an
+    | s3 disk for off-site copies), how long they are kept, and the mysqldump program.
+    */
+    'backup' => [
+        'disk' => env('BACKUP_DISK', 'local'),
+        // Database connection to dump (null = the default one)
+        'connection' => null,
+        'keep_days' => (int) env('BACKUP_KEEP_DAYS', 14),
+        'mysqldump' => env('BACKUP_MYSQLDUMP', 'mysqldump'),
+        // Extra mysqldump flags, comma-separated (e.g. --skip-ssl)
+        'dump_options' => array_values(array_filter(array_map('trim', explode(',', (string) env('BACKUP_DUMP_OPTIONS', ''))))),
+    ],
+
 ];

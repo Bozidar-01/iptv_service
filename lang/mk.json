@@ -349,6 +349,7 @@
     "Problem": "Проблем",
     "Too many sign-in attempts. Try again in :seconds seconds.": "Премногу обиди за најава. Обидете се повторно за :seconds секунди.",
     ":name stopped working: :reason": ":name престана да работи: :reason",
+    "The database backup failed": "Бекапот на базата не успеа",
     "Background jobs are not running: the oldest has waited :minutes minutes": "Позадинските задачи не работат: најстарата чека :minutes минути",
     ":count background job failed|:count background jobs failed": ":count позадинска задача не успеа|:count позадински задачи не успеаја",
     "Refused or blocked in this country (HTTP :code)": "Одбиено или блокирано во оваа земја (HTTP :code)",

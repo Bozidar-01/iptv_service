@@ -25,5 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: [Theme::COOKIE]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Report errors to Sentry when SENTRY_LARAVEL_DSN is set (see config/sentry.php)
+        \Sentry\Laravel\Integration::handles($exceptions);
     })->create();

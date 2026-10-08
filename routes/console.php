@@ -32,6 +32,9 @@ Schedule::command('iptv:sync-epg')->dailyAt('03:30');
 Schedule::command('iptv:check-streams')->dailyAt('04:00');
 Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();
 
+// Back up the database every night (BackupService); failures raise an alert
+Schedule::command('iptv:backup')->dailyAt('02:30');
+
 // Email new alerts as one digest (ALERT_MAIL_TO, see docs/features/alerts.md)
 Schedule::command('iptv:send-alerts')->everyFiveMinutes()->withoutOverlapping();
 

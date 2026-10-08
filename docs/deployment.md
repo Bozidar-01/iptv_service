@@ -96,6 +96,7 @@ This runs everything in `routes/console.php`:
 | `iptv:sync-epg` | daily at 03:30 (TV guides) |
 | `iptv:expiry-reminders` | daily at 08:00 |
 | `model:prune` for `ActiveSession` and `StreamLog` | every 15 minutes |
+| `iptv:backup` | daily at 02:30 |
 
 A newly added source starts importing within about a minute.
 
@@ -110,6 +111,30 @@ composer install --no-dev --optimize-autoloader
 php artisan migrate --force
 php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
+
+## 6. Backups
+
+`php artisan iptv:backup` runs every night at 02:30 (the same cron job). It writes a gzipped SQL dump to `storage/app/private/backups/iptv-YYYYMMDD-HHMMSS.sql.gz` and deletes dumps older than `BACKUP_KEEP_DAYS` (14, the newest is always kept). The dump has all your data except what the app rebuilds by itself (queue, cache, sessions, TV guide programmes, which the nightly guide import refills). If it fails, an alert appears in the panel and email.
+
+- **Needs `mysqldump`** on the server (Hostinger has it; the Docker image installs it). Set `BACKUP_MYSQLDUMP=/full/path` if it isn't on the PATH, and `BACKUP_DUMP_OPTIONS=--skip-ssl` if the database uses a self-signed certificate (the Docker setup does this).
+- **Keep a copy off the server.** A backup on the same disk doesn't help when the disk is lost. Point `BACKUP_DISK` at an off-site disk, e.g. an S3-compatible bucket: `composer require league/flysystem-aws-s3-v3 "^3.0"`, add the `AWS_*` variables and set `BACKUP_DISK=s3`. Or download the newest file now and then.
+- **Restore** (into an empty database, or over an existing one: tables are replaced):
+
+```bash
+gunzip -c storage/app/private/backups/iptv-20261008-025000.sql.gz | mysql -u USER -p DATABASE
+php artisan migrate --force   # in case the backup is older than the code
+php artisan iptv:sync-epg --now   # refill the TV guide
+```
+
+Test a restore into a scratch database once, so you know it works before you need it.
+
+## 7. Error tracking (optional)
+
+Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandled errors are reported there. Nothing is sent without a DSN. Before sending, `App\Support\SentryScrubber` hides what must not leave the server: playlist, play and login tokens in addresses, query strings, cookies, and everything after the host in provider addresses inside error messages. Run `php artisan config:cache` after changing `.env`. Logs are written to a file per day and kept for `LOG_DAILY_DAYS` (14).
+
+## Automated checks (CI)
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and every pull request: the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
 
 ## Limits to expect
 

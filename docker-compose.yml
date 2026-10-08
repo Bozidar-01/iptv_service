@@ -17,6 +17,8 @@ x-app: &app
     DB_USERNAME: iptv
     DB_PASSWORD: iptv
     QUEUE_CONNECTION: database
+    # The dev MySQL has a self-signed certificate
+    BACKUP_DUMP_OPTIONS: --skip-ssl
     # Imports can run up to 10 minutes; must exceed SyncSource::$timeout
     DB_QUEUE_RETRY_AFTER: 900
   depends_on:

@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-08 — CI, backups, error tracking
+- **CI:** GitHub Actions run the tests, the relay tests and a MySQL job (migrate up / reset / up, seed, backup) on every push to `main` and every pull request.
+- **Backups:** `iptv:backup` (nightly 02:30, `BackupService`) writes a gzipped `mysqldump` to `BACKUP_DISK` (local or off-site), skips the data of rebuildable tables, keeps `BACKUP_KEEP_DAYS` (14) and always the newest. Failure → `backup_failed` alert. The Docker image now has the MariaDB client + connector (needed for MySQL 8.4's password plugin). Restore tested into a scratch database. SQLite files are copied too (local dev).
+- **Error tracking:** `sentry/sentry-laravel`, off without `SENTRY_LARAVEL_DSN`. `SentryScrubber` removes tokens, passwords, cookies and provider login/paths before sending.
+- **Logs:** `.env.example` uses daily log files kept 14 days (`LOG_STACK=daily`).
+- Tests: `BackupTest`, `SentryScrubberTest`. 263 tests.
+- Files: `.github/workflows/ci.yml`, `app/Services/BackupService.php`, `app/Console/Commands/BackupCommand.php`, `app/Support/SentryScrubber.php`, `app/Models/StreamAlert.php`, `config/{iptv,sentry}.php`, `bootstrap/app.php`, `routes/console.php`, `Dockerfile`, `docker-compose.yml`, `.env.example`, `composer.{json,lock}`, `lang/mk.json`, `docs/**`, `tests/**`.
+
 ### 2026-10-08 — Playlist is streamed
 - `/m3u`, `/get.php` and `/playlist/{token}.m3u` send the playlist in 64 KB chunks (`TokenService::writeM3u`) instead of building one big string. Play URLs come from a single route template, not one `route()` call per channel. Output is unchanged, but there is no `Content-Length` header.
 - Tests: playlist tests read `streamedContent()`; new test for chunking 1,500 channels.
