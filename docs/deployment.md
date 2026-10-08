@@ -162,6 +162,10 @@ ssh-keygen -t ed25519 -N "" -C "github-deploy" -f ~/.ssh/github_deploy && cat ~/
 
 The job uses the `production` environment: in Settings → Environments → production you can require an approval before each deploy. To pause deploying, delete the `DEPLOY_SSH_KEY` secret. To remove access, delete the line `github-deploy` from `~/.ssh/authorized_keys` on the server. Deploy by hand: `bash scripts/deploy.sh "$PWD"` in the project folder.
 
+## Dependencies
+
+`composer audit` reports known security advisories. The **Dependency audit** workflow (`.github/workflows/audit.yml`) runs it every Monday and whenever `composer.lock` changes; it is not a required check (a new advisory would block unrelated work), so a red run is your signal. Dependabot (`.github/dependabot.yml`) opens a weekly pull request for PHP packages, one for the browser-test tools and one for GitHub Actions. Updating by hand: branch, `composer update`, `composer check` + `npm run e2e`, try playing a channel through *Hide provider address* in both modes (the proxy uses Guzzle directly), then ship as usual.
+
 ## Branches and releases
 
 `main` is production: a push to it deploys. Work therefore happens on branches and reaches `main` only when finished:
