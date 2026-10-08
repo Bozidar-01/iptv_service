@@ -172,7 +172,7 @@ The job uses the `production` environment: in Settings → Environments → prod
 4. **Merge** (`gh pr merge --squash --delete-branch`) only when everything is green and you decided it is ready: this is the release. The deploy job then updates the server.
 5. **Verify** the deploy log (`Done: old -> new`, `/login answers 200`) and the live site. Going back: revert on a new branch and ship that, plus `migrate:rollback` or the dump from `~/deploy-backups/` if a migration ran.
 
-The Claude Code skills `start-work` and `ship-to-main` (`.claude/skills/`) follow exactly these steps. Optional extra protection (GitHub → Settings): *Branches* → protect `main` (require a pull request and the five checks, no direct pushes), and *Environments* → `production` → required reviewer (a click to approve each deploy).
+The Claude Code skills `start-work` and `ship-to-main` (`.claude/skills/`) follow exactly these steps. **Protection on GitHub (turned on 2026-10-09):** `main` accepts changes only through a pull request whose five checks (*Tests (PHP 8.4)*, *Code style and static analysis*, *Browser tests*, *Migrations on MySQL*, *Receiver relay*) are green and whose branch is up to date with `main`; no direct pushes (also not for the owner), no force pushes, no deleting `main`, linear history (squash merges). Settings → Branches → rule for `main`. In a real emergency untick *Do not allow bypassing the above settings* there, push the fix, and turn it back on. A required reviewer for the `production` environment (a click to approve each deploy) would be the next step, but GitHub offers it for private repositories only on a paid plan; until then the go-ahead is given to Claude / yourself when merging.
 
 ## Hide provider address (on your own server)
 
