@@ -29,6 +29,10 @@
     --info: #0b6bcb;
     --info-soft: #e8f2fc;
 
+    /* QR codes must stay black on white in dark mode to be scanned */
+    --qr-bg: #ffffff;
+    --qr-fg: #000000;
+
     --sidebar-bg: #111827;
     --sidebar-text: #aab2c3;
     --sidebar-text-active: #ffffff;
@@ -79,6 +83,8 @@
         --danger-soft: rgba(249, 112, 102, 0.12);
         --info: #53a8f5;
         --info-soft: rgba(83, 168, 245, 0.12);
+        --qr-bg: #ffffff;
+        --qr-fg: #000000;
 
         --sidebar-bg: #0e1117;
         --shadow-sm: none;
@@ -115,6 +121,8 @@
     --danger-soft: rgba(249, 112, 102, 0.12);
     --info: #53a8f5;
     --info-soft: rgba(83, 168, 245, 0.12);
+    --qr-bg: #ffffff;
+    --qr-fg: #000000;
 
     --sidebar-bg: #0e1117;
     --shadow-sm: none;
@@ -876,3 +884,12 @@ dialog.modal-wide { width: min(880px, calc(100vw - 32px)); }
     .stats { grid-template-columns: minmax(0, 1fr); }
     .copy-field { flex-direction: column; }
 }
+
+/* Two-factor setup: QR code and recovery codes */
+.qr { display: inline-block; padding: 12px; background: var(--qr-bg); border-radius: var(--radius); line-height: 0; }
+.qr svg { width: 200px; height: 200px; max-width: 100%; }
+.qr svg rect { fill: var(--qr-bg); }
+.qr svg path { fill: var(--qr-fg); }
+.recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 16px; background: var(--surface-2); border-radius: var(--radius); font-family: var(--mono); font-size: 14px; list-style: none; }
+.code-input { max-width: 200px; letter-spacing: 0.2em; text-align: center; font-family: var(--mono); }
+.setup-grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }

@@ -95,7 +95,7 @@ This runs everything in `routes/console.php`:
 | `iptv:check-receivers` | every 5 minutes (satellite receiver relays) |
 | `iptv:sync-epg` | daily at 03:30 (TV guides) |
 | `iptv:expiry-reminders` | daily at 08:00 |
-| `model:prune` for `ActiveSession` and `StreamLog` | every 15 minutes |
+| `model:prune` for `ActiveSession`, `StreamLog` and `LoginEvent` | every 15 minutes |
 | `iptv:backup` | daily at 02:30 |
 
 A newly added source starts importing within about a minute.

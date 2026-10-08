@@ -27,6 +27,8 @@ class Source extends Model
             'skip_vod' => 'boolean',
             'auto_sync' => 'boolean',
             'check_streams' => 'boolean',
+            // Provider addresses contain the provider login
+            'url' => 'encrypted',
             'relay_secret' => 'encrypted',
             'transcode' => 'boolean',
             'receiver_online' => 'boolean',

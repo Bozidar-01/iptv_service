@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 
 #[Fillable(['username', 'password', 'status', 'role', 'expiration_date', 'max_connections'])]
-#[Hidden(['password', 'remember_token', 'playlist_token'])]
+#[Hidden(['password', 'remember_token', 'playlist_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -35,6 +35,7 @@ class User extends Authenticatable
         return [
             'expiration_date' => 'datetime',
             'password' => 'hashed',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 

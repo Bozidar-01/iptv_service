@@ -8,7 +8,9 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 |---|---|---|---|---|
 | GET | `/` | – | closure | redirects to `login` |
 | GET | `/login` | `login` | `AuthController@showLogin` | redirects admins to dashboard |
-| POST | `/login` | – | `AuthController@login` | admins only |
+| POST | `/login` | – | `AuthController@login` | admins only; with two-factor on, continues at `/two-factor` |
+| GET | `/two-factor` | `two-factor.show` | `AuthController@showTwoFactor` | code form; back to `/login` when no password was given or it took over 5 minutes |
+| POST | `/two-factor` | `two-factor.verify` | `AuthController@twoFactor` | `code` = app code or recovery code; limited to 5 wrong tries |
 | POST | `/logout` | `logout` | `AuthController@logout` | |
 | POST | `/locale` | `locale.update` | `LocaleController@update` | body: `locale` (`en`/`mk`); sets the `locale` cookie, redirects back |
 | POST | `/theme` | `theme.update` | `ThemeController@update` | body: `theme` (`light`/`dark`/`system`); sets or clears the unencrypted `theme` cookie, redirects back. Only used without JS |
@@ -52,6 +54,11 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/alerts` | `admin.alerts.index` | `AlertController@index` |
 | POST | `/admin/alerts/read` | `admin.alerts.read` | `AlertController@markAllRead` |
 | GET | `/admin/logs` | `admin.logs.index` | `LogController@index` |
+| GET | `/admin/security` | `admin.security.index` | `SecurityController@index`: two-factor status / setup and recent sign-ins |
+| POST | `/admin/security/two-factor` | `admin.security.start` | `SecurityController@start`: new secret + QR code |
+| POST | `/admin/security/two-factor/confirm` | `admin.security.confirm` | `code`; turns on and shows the recovery codes once |
+| POST | `/admin/security/two-factor/recovery-codes` | `admin.security.recovery-codes` | `password`; new recovery codes |
+| POST | `/admin/security/two-factor/disable` | `admin.security.disable` | `password` |
 
 Admin resource routes are limited with `->only()` / `->except()` so that only implemented controller methods are registered.
 
@@ -67,5 +74,5 @@ Admin resource routes are limited with `->only()` / `->except()` so that only im
 | `iptv:sync-epg {--now}` | daily at 03:30 |
 | `iptv:expiry-reminders` | daily at 08:00 |
 | `iptv:backup` | daily at 02:30: database dump to `BACKUP_DISK`, old ones removed after `BACKUP_KEEP_DAYS` |
-| `model:prune --model=App\Models\ActiveSession --model=App\Models\StreamLog` | every 15 minutes (stale sessions, play history past `LOG_RETENTION_DAYS`) |
+| `model:prune --model=App\Models\ActiveSession --model=App\Models\StreamLog --model=App\Models\LoginEvent` | every 15 minutes (stale sessions, play history past `LOG_RETENTION_DAYS`, sign-in history past 180 days) |
 | `queue:work --stop-when-empty --tries=1 --timeout=600 --max-time=240` | every minute, only when `QUEUE_SCHEDULED_WORKER=true` (shared hosting); `withoutOverlapping(15)`, in the background |

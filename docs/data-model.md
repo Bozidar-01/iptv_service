@@ -15,9 +15,16 @@ Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..
 | expiration_date | datetime, nullable | null = never expires |
 | max_connections | int | default 1 |
 | playlist_token | string(64), unique, nullable | secret for `/playlist/{token}.m3u`; set on create (`User::booted`), backfilled by migration, hidden from serialization |
+| two_factor_secret | text, nullable | authenticator secret, encrypted with `APP_KEY` (`TwoFactorService`); hidden |
+| two_factor_recovery_codes | text, nullable | JSON list of HMAC hashes of unused recovery codes; hidden |
+| two_factor_confirmed_at | timestamp, nullable | set when the first code was confirmed; null = two-factor off |
+| two_factor_last_step | bigint, nullable | last accepted 30 s time step (a code works once) |
 | remember_token, timestamps | | |
 
 Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `isExpired()`, `regeneratePlaylistToken()`. Relations: `bouquets`, `accessTokens`, `activeSessions`, `streamLogs`.
+
+### login_events
+`id`, `user_id` FK nullable (`SET NULL`), `username` (what was typed), `event` (`success`, `failed`, `denied`, `two_factor_failed`, `two_factor_enabled`, `two_factor_disabled`), `ip`, `user_agent`, `created_at` (indexed). Written by `AuthController` / `SecurityController`; pruned after 180 days (`Prunable`).
 
 ### categories
 `id`, `name`, timestamps. Has many channels.
@@ -27,7 +34,7 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 |---|---|---|
 | name | string | |
 | type | string(20): `url`, `file`, `receiver` | `receiver` = satellite receiver behind the NeboTV relay ([receiver.md](features/receiver.md)) |
-| url | string(2048), nullable | provider M3U URL (often contains provider credentials) |
+| url | text, nullable, **encrypted** (`encrypted` cast) | provider M3U URL (often contains provider credentials); stored encrypted with `APP_KEY`, so keep `APP_KEY` safe and backed up |
 | file_path | string, nullable | path on the default disk, `sources/{uuid}.m3u` |
 | relay_secret | text, nullable, `encrypted` cast, hidden | receiver: shared secret for signed links and the relay's playlist/status |
 | transcode | bool, default false | receiver: play the 720p transcoded stream (relay port 8002) |

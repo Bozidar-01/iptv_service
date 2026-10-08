@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Two-factor sign-in, sign-in history, encrypted source addresses
+- **Two-factor sign-in for admins** (optional): authenticator-app codes (`Totp`, RFC 6238) and 8 one-time recovery codes, set up on the new **Security** page with a QR code. Codes work once, wrong codes are limited, changing the setting asks for the password again. Secret encrypted, recovery codes hashed.
+- **Sign-in history:** `login_events` records every panel sign-in attempt (IP, browser); last 30 on the Security page, pruned after 180 days.
+- **`sources.url` is encrypted** (`encrypted` cast, column is now `text`; the migration encrypts existing rows and `down` decrypts them).
+- Schema: `users.two_factor_*`, `login_events`, `sources.url` text. New dependency `bacon/bacon-qr-code`. New CSS tokens `--qr-bg` / `--qr-fg` (same in light and dark: QR codes need black on white).
+- Tests: `TotpTest` (RFC test vectors), `TwoFactorTest`. 286 tests.
+- Files: `app/Support/Totp.php`, `app/Services/TwoFactorService.php`, `app/Models/{LoginEvent,User,Source}.php`, `app/Http/Controllers/{Auth/AuthController,Admin/SecurityController}.php`, `database/migrations/2026_10_09_*`, `routes/{web,console}.php`, `resources/views/{auth/two-factor,admin/security/index,layouts/admin,components/icon}.blade.php`, `public/css/admin.css`, `lang/mk.json`, `lang/mk/validation.php`, `composer.{json,lock}`, `docs/**`, `tests/**`.
+
 ### 2026-10-08 — CI, backups, error tracking
 - **CI:** GitHub Actions run the tests, the relay tests and a MySQL job (migrate up / reset / up, seed, backup) on every push to `main` and every pull request.
 - **Backups:** `iptv:backup` (nightly 02:30, `BackupService`) writes a gzipped `mysqldump` to `BACKUP_DISK` (local or off-site), skips the data of rebuildable tables, keeps `BACKUP_KEEP_DAYS` (14) and always the newest. Failure → `backup_failed` alert. The Docker image now has the MariaDB client + connector (needed for MySQL 8.4's password plugin). Restore tested into a scratch database. SQLite files are copied too (local dev).

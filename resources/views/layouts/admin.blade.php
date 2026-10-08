@@ -23,6 +23,8 @@
         ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => __('Users')],
         ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => __('Activity')],
         ['route' => 'admin.alerts.index', 'match' => 'admin.alerts.*', 'icon' => 'bell', 'label' => __('Alerts')],
+        ['section' => __('Account')],
+        ['route' => 'admin.security.index', 'match' => 'admin.security.*', 'icon' => 'shield', 'label' => __('Security')],
     ];
 @endphp
 <div class="shell">

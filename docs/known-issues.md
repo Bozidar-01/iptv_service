@@ -20,7 +20,7 @@ _None currently known._
 - **Multi-genre categories:** iptv-org lists use `group-title` values like `General;News`, which become separate categories. Suggested fix: an option per source to keep only the first group.
 
 - **Upstream URLs are exposed:** `/play` redirects (302) to the provider URL, which often contains the provider username/password. Anyone with a playlist can see it. Fixing this needs a stream proxy.
-- **Provider credentials are stored in plain text** in `sources.url` and `channels.stream_url`.
+- **Provider credentials in `channels.stream_url` are plain text:** `sources.url` is encrypted (lost `APP_KEY` = lost addresses), but channel stream links are searched and updated in bulk, so they are not. A database backup still contains them: protect backups like passwords.
 - **Credentials in query string** for `/m3u?username=&password=` (standard for IPTV, but they end up in server/proxy logs). Prefer the `/playlist/{token}.m3u` link.
 - **Request limits are per minute, not per user:** `/play`, `/playlist` and `/epg` are limited per link + IP and per IP (`THROTTLE_*`), but `/live` and `/player_api.php` only have the wrong-password limit.
 - **No Macedonian guide data:** the free iptv-epg.org Macedonia file only has "No Data" entries, so Macedonian channels show no programmes until a better XMLTV source is added on the TV guide page.

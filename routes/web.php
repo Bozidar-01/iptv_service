@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ChannelController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpgSourceController;
 use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
@@ -21,6 +22,8 @@ Route::get('/', function () {
 // Authentication Routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/two-factor', [AuthController::class, 'showTwoFactor'])->name('two-factor.show');
+Route::post('/two-factor', [AuthController::class, 'twoFactor'])->name('two-factor.verify');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Panel language and light/dark mode (cookies), available before and after sign-in
@@ -54,6 +57,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+
+    Route::get('security', [SecurityController::class, 'index'])->name('security.index');
+    Route::post('security/two-factor', [SecurityController::class, 'start'])->name('security.start');
+    Route::post('security/two-factor/confirm', [SecurityController::class, 'confirm'])->name('security.confirm');
+    Route::post('security/two-factor/recovery-codes', [SecurityController::class, 'recoveryCodes'])->name('security.recovery-codes');
+    Route::post('security/two-factor/disable', [SecurityController::class, 'disable'])->name('security.disable');
 });
 
 // Player endpoints (M3U, play, Xtream Codes API) are in routes/player.php

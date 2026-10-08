@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoginEvent;
+use App\Models\User;
+use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -12,6 +15,16 @@ class AuthController extends Controller
 {
     /** Failed sign-ins allowed per username + IP before a one-minute wait. */
     public const MAX_ATTEMPTS = 5;
+
+    /** Minutes to enter the two-factor code after the password was right. */
+    public const TWO_FACTOR_MINUTES = 5;
+
+    protected $twoFactor;
+
+    public function __construct(TwoFactorService $twoFactor)
+    {
+        $this->twoFactor = $twoFactor;
+    }
 
     public function showLogin()
     {
@@ -35,27 +48,74 @@ class AuthController extends Controller
             ])->onlyInput('username');
         }
 
-        if (Auth::attempt(['username' => $credentials['username'], 'password' => $credentials['password']], $request->boolean('remember'))) {
-            $user = Auth::user();
-            
+        $provider = Auth::guard()->getProvider();
+        $user = $provider->retrieveByCredentials(['username' => $credentials['username']]);
+
+        if ($user && $provider->validateCredentials($user, ['password' => $credentials['password']])) {
             if ($user->role !== 'admin') {
-                Auth::logout();
+                LoginEvent::record(LoginEvent::DENIED, $credentials['username'], $user, $request);
+
                 return back()->withErrors([
                     'username' => __('Unauthorized access.'),
                 ]);
             }
 
             RateLimiter::clear($throttleKey);
-            $request->session()->regenerate();
 
-            return redirect()->intended(route('admin.dashboard'));
+            // Password is right but the account needs a code from the authenticator app
+            if ($this->twoFactor->isEnabled($user)) {
+                $request->session()->put('two_factor', [
+                    'id' => $user->id,
+                    'remember' => $request->boolean('remember'),
+                    'expires' => now()->addMinutes(self::TWO_FACTOR_MINUTES)->timestamp,
+                ]);
+
+                return redirect()->route('two-factor.show');
+            }
+
+            return $this->signIn($request, $user, $request->boolean('remember'));
         }
 
+        LoginEvent::record(LoginEvent::FAILED, $credentials['username'], $user, $request);
         RateLimiter::hit($throttleKey, 60);
 
         return back()->withErrors([
             'username' => __('The provided credentials do not match our records.'),
         ])->onlyInput('username');
+    }
+
+    public function showTwoFactor(Request $request)
+    {
+        return $this->pendingUser($request) ? view('auth.two-factor') : redirect()->route('login');
+    }
+
+    public function twoFactor(Request $request)
+    {
+        $user = $this->pendingUser($request);
+        if (!$user) {
+            return redirect()->route('login')->withErrors(['username' => __('The sign-in took too long. Please start again.')]);
+        }
+
+        $request->validate(['code' => ['required', 'string', 'max:20']]);
+
+        $throttleKey = 'two-factor:'.$user->id.'|'.$request->ip();
+        if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
+            return back()->withErrors([
+                'code' => __('Too many sign-in attempts. Try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($throttleKey)]),
+            ]);
+        }
+
+        if (!$this->twoFactor->verify($user, $request->input('code'))) {
+            LoginEvent::record(LoginEvent::TWO_FACTOR_FAILED, $user->username, $user, $request);
+            RateLimiter::hit($throttleKey, 60);
+
+            return back()->withErrors(['code' => __('That code is not right.')]);
+        }
+
+        RateLimiter::clear($throttleKey);
+        $remember = $request->session()->pull('two_factor')['remember'];
+
+        return $this->signIn($request, $user, $remember);
     }
 
     public function logout(Request $request)
@@ -66,5 +126,31 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function signIn(Request $request, User $user, bool $remember)
+    {
+        Auth::login($user, $remember);
+        $request->session()->regenerate();
+        LoginEvent::record(LoginEvent::SUCCESS, $user->username, $user, $request);
+
+        return redirect()->intended(route('admin.dashboard'));
+    }
+
+    /**
+     * The admin whose password was just accepted and who still has to give a code.
+     */
+    private function pendingUser(Request $request): ?User
+    {
+        $pending = $request->session()->get('two_factor');
+        if (!$pending || $pending['expires'] < now()->timestamp) {
+            $request->session()->forget('two_factor');
+
+            return null;
+        }
+
+        $user = User::find($pending['id']);
+
+        return $user && $user->isAdmin() && $this->twoFactor->isEnabled($user) ? $user : null;
     }
 }
