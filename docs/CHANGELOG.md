@@ -4,6 +4,16 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Hide provider address (stream proxy)
+- **New source option *Hide provider address*** (`sources.proxy_streams`) with server setting `STREAM_PROXY` = `off` (default) / `php` / `nginx`. `/play` and Xtream `/live` then pass the stream on instead of redirecting to the provider, so viewers can't read the provider login. `StreamProxyService`; the existing preview proxy (`StreamPreviewService`) is reused.
+  - `php`: works anywhere, holds a PHP worker per live viewer. `nginx`: PHP checks access, nginx passes the stream on (`X-Accel-Redirect`, `docker/nginx/stream-proxy.conf`: follows up to 3 redirects including relative ones, hides provider headers). Falls back to `php` when the nginx rules aren't there.
+  - HLS: playlists rewritten, segments/keys through `GET /stream/{channel}/{token}?u=` with **encrypted** provider addresses and their own request limit (`THROTTLE_STREAM_PER_TOKEN`, 600).
+  - Channel `http_user_agent` / `http_referrer` are sent to the provider (also fixes those channels in Xtream apps and the admin Watch player). Sessions stay alive while data flows (`StreamService::touch`, every 30 s in `php` mode, per segment for HLS).
+  - Receivers are never proxied.
+- Tested end to end in Docker with a fake provider (redirect chain incl. a relative redirect, headers, cookies, HLS).
+- Schema: `sources.proxy_streams`. Tests: `StreamProxyTest` (17). 303 tests.
+- Files: `app/Services/{StreamProxyService,StreamPreviewService,StreamService}.php`, `app/Http/Controllers/{PlayController,XtreamController,Admin/SourceController}.php`, `app/Models/Source.php`, `app/Providers/AppServiceProvider.php`, `routes/player.php`, `config/iptv.php`, `database/migrations/2026_10_09_000003_*`, `docker/nginx/{default,stream-proxy,stream-proxy-common}.conf`, `docker-compose.yml`, `resources/views/admin/sources/_form.blade.php`, `lang/mk.json`, `.env.example`, `CLAUDE.md`, `docs/**`, `tests/**`.
+
 ### 2026-10-09 — Two-factor sign-in, sign-in history, encrypted source addresses
 - **Two-factor sign-in for admins** (optional): authenticator-app codes (`Totp`, RFC 6238) and 8 one-time recovery codes, set up on the new **Security** page with a QR code. Codes work once, wrong codes are limited, changing the setting asks for the password again. Secret encrypted, recovery codes hashed.
 - **Sign-in history:** `login_events` records every panel sign-in attempt (IP, browser); last 30 on the Security page, pruned after 180 days.

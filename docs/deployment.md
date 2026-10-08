@@ -132,6 +132,24 @@ Test a restore into a scratch database once, so you know it works before you nee
 
 Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandled errors are reported there. Nothing is sent without a DSN. Before sending, `App\Support\SentryScrubber` hides what must not leave the server: playlist, play and login tokens in addresses, query strings, cookies, and everything after the host in provider addresses inside error messages. Run `php artisan config:cache` after changing `.env`. Logs are written to a file per day and kept for `LOG_DAILY_DAYS` (14).
 
+## Hide provider address (on your own server)
+
+Per source, **Hide provider address** plays channels through your server so viewers can't read the provider's login, see [playlist-and-streaming.md](features/playlist-and-streaming.md#hide-provider-address-stream-proxy). Set `STREAM_PROXY` in `.env`:
+
+- **Hostinger / shared hosting: `php`, and only for a few viewers.** Each viewer of a live MPEG-TS channel keeps one PHP process busy for as long as they watch, and shared plans have only a handful. Your upload bandwidth is also the video bandwidth. If the site slows down, turn the source's option off.
+- **Your own server (nginx): `nginx`.** Add the two files to nginx and include them in the `server` block (the Docker setup does this already):
+
+```nginx
+location ~ \.php$ {
+    # ...your usual fastcgi settings, plus:
+    fastcgi_param STREAM_PROXY_ENGINE nginx;
+}
+include /etc/nginx/stream-proxy.conf;   # copy docker/nginx/stream-proxy.conf and stream-proxy-common.conf there
+```
+
+  Edit the `resolver` lines in `stream-proxy.conf` to a DNS server your host can reach (Docker's `127.0.0.11` only exists inside Docker). Check with `nginx -t`, then play a channel of a source with the option on and confirm the address bar / app shows only your domain. Plan for the bandwidth: 20 viewers of a 5 Mbit/s channel is 100 Mbit/s out of your server and 5 Mbit/s in per distinct channel.
+- Behind HTTPS (Caddy, a load balancer): nothing extra, but turn off any response buffering for `/play`, `/live` and `/stream`.
+
 ## Automated checks (CI)
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and every pull request: the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.

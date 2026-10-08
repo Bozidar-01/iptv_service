@@ -30,6 +30,9 @@ class StreamPreviewService
     /** A live MPEG-TS stream never ends; stop passing it on after this many seconds. */
     public const MAX_SECONDS = 1800;
 
+    /** Seconds between calls of the `onTick` callback of proxy(). */
+    private const TICK_SECONDS = 30;
+
     /**
      * The panel URL that plays $target (default: the channel's stream) through the proxy.
      */
@@ -41,9 +44,15 @@ class StreamPreviewService
 
         return route('admin.channels.preview', [
             'channel' => $channel,
-            'u' => rtrim(strtr(base64_encode($target), '+/', '-_'), '='),
+            'u' => $this->encode($target),
             's' => $this->sign($channel, $target),
         ], false);
+    }
+
+    /** The URL-safe form of an address, as put in the `u` parameter. */
+    public function encode(string $target): string
+    {
+        return rtrim(strtr(base64_encode($target), '+/', '-_'), '=');
     }
 
     /**
@@ -66,15 +75,25 @@ class StreamPreviewService
 
     /**
      * Fetch $target and pass it on: playlists rewritten, media streamed as it arrives.
+     *
+     * The upstream request sends the playing channel's own User-Agent / Referer when it has them.
+     *
+     * @param  ?callable(string): string  $urlFor  address a playlist entry is rewritten to (default: the admin preview)
+     * @param  ?callable(): void  $onTick  called about every 30 seconds while media is passed on (keeps a viewing session alive)
+     * @param  ?int  $maxSeconds  stop passing media on after this long (default MAX_SECONDS)
      */
-    public function proxy(Channel $channel, string $target): Response
+    public function proxy(Channel $channel, string $target, ?callable $urlFor = null, ?callable $onTick = null, ?int $maxSeconds = null): Response
     {
+        $maxSeconds ??= self::MAX_SECONDS;
+        $playing = $channel->playbackChannel();
+
         if (!preg_match('#^https?://#i', $target)) {
             return $this->error(__('This stream address can not be played in the browser.'), 422);
         }
 
         try {
-            $upstream = Http::withUserAgent(self::USER_AGENT)
+            $upstream = Http::withUserAgent($playing->http_user_agent ?: self::USER_AGENT)
+                ->withHeaders($playing->http_referrer ? ['Referer' => $playing->http_referrer] : [])
                 ->connectTimeout(self::CONNECT_TIMEOUT)
                 ->timeout(0)
                 ->withOptions([
@@ -99,7 +118,7 @@ class StreamPreviewService
             $redirects = $upstream->toPsrResponse()->getHeader('X-Guzzle-Redirect-History');
             $base = $redirects ? end($redirects) : $target;
 
-            return response($this->rewritePlaylist($channel, $first.$this->readRest($body), $base), 200, [
+            return response($this->rewritePlaylist($channel, $first.$this->readRest($body), $base, $urlFor), 200, [
                 'Content-Type' => 'application/vnd.apple.mpegurl',
                 'Cache-Control' => 'no-store',
             ]);
@@ -111,9 +130,10 @@ class StreamPreviewService
             return $this->error(__('The provider sent a web page instead of a stream.'));
         }
 
-        return new StreamedResponse(function () use ($body, $first) {
-            set_time_limit(self::MAX_SECONDS + 60);
-            $stopAt = time() + self::MAX_SECONDS;
+        return new StreamedResponse(function () use ($body, $first, $maxSeconds, $onTick) {
+            set_time_limit($maxSeconds + 60);
+            $stopAt = time() + $maxSeconds;
+            $nextTick = time() + self::TICK_SECONDS;
 
             $send = function (string $data) {
                 echo $data;
@@ -130,6 +150,11 @@ class StreamPreviewService
                 if ($chunk !== '') {
                     $send($chunk);
                 }
+
+                if ($onTick && time() >= $nextTick) {
+                    $onTick();
+                    $nextTick = time() + self::TICK_SECONDS;
+                }
             }
 
             $body->close();
@@ -143,10 +168,11 @@ class StreamPreviewService
     /**
      * Point every URI in an HLS playlist (lines and URI="…" attributes) at the proxy.
      */
-    public function rewritePlaylist(Channel $channel, string $playlist, string $base): string
+    public function rewritePlaylist(Channel $channel, string $playlist, string $base, ?callable $urlFor = null): string
     {
         $baseUri = new Uri($base);
-        $proxy = fn (string $uri) => $this->url($channel, (string) UriResolver::resolve($baseUri, new Uri(trim($uri))));
+        $urlFor ??= fn (string $target) => $this->url($channel, $target);
+        $proxy = fn (string $uri) => $urlFor((string) UriResolver::resolve($baseUri, new Uri(trim($uri))));
 
         $lines = preg_split('/\r\n|\n|\r/', $playlist);
 

@@ -35,7 +35,7 @@ class StreamService
         ]);
 
         // 2. Manage session
-        $this->updateSession($user, $channel);
+        $this->touch($user, $channel);
 
         // 3. Return target URL: the stream itself, or a signed link for receiver channels
         return $this->receiverService->playUrl($channel->playbackChannel());
@@ -73,7 +73,11 @@ class StreamService
         return true;
     }
 
-    private function updateSession(User $user, Channel $channel)
+    /**
+     * Record that the requesting device is watching $channel right now (keeps its slot taken).
+     * Called on every play, and again for each part of a proxied stream.
+     */
+    public function touch(User $user, Channel $channel): void
     {
         // One row per device: switching channels updates it
         $session = $this->whereDevice(ActiveSession::where('user_id', $user->id))->first()

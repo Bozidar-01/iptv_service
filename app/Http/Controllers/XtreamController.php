@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Services\EpgService;
+use App\Services\StreamProxyService;
 use App\Services\StreamService;
+use App\Services\TokenService;
 use App\Services\XtreamService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -58,7 +60,7 @@ class XtreamController extends Controller
     /**
      * GET /live/{username}/{password}/{id}.{ts|m3u8}: same checks, logging and limits as /play.
      */
-    public function live(string $username, string $password, string $stream)
+    public function live(Request $request, StreamProxyService $proxy, TokenService $tokens, string $username, string $password, string $stream)
     {
         $user = $this->xtreamService->authenticate($username, $password);
         if (!$user) {
@@ -74,7 +76,8 @@ class XtreamController extends Controller
             return response('Access denied or connection limit reached', 403);
         }
 
-        return redirect()->away($this->streamService->getStreamUrl($user, $channel));
+        // Redirect to the stream, or pass it on for sources that hide the provider address
+        return $proxy->respond($request, $user, $channel, $tokens->playbackToken($user)->token, $this->streamService->getStreamUrl($user, $channel));
     }
 
     /**

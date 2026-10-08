@@ -24,7 +24,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/m3u` | `m3u` | `M3uController@generate` | query: `username`, `password` |
 | GET | `/playlist/{token}.m3u` | `playlist` | `M3uController@playlist` | per-user playlist link |
 | GET | `/epg/{token}.xml` | `epg` | `M3uController@epg` | XMLTV guide for the playlist link |
-| GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream; token may end in `.m3u8`/`.ts`/… |
+| GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream, or the stream itself for sources with *Hide provider address*; token may end in `.m3u8`/`.ts`/… |
+| GET | `/stream/{channel_id}/{token}?u=` | `stream` | `PlayController@stream` | one part (segment, key, variant) of a proxied stream; `u` = encrypted provider address; own limit `THROTTLE_STREAM_PER_TOKEN` |
 | GET, POST | `/player_api.php` | `xtream.api` | `XtreamController@api` | Xtream Codes API: `username`, `password`, optional `action`, `category_id` |
 | GET, POST | `/get.php` | `xtream.playlist` | `M3uController@generate` | Xtream Codes M3U |
 | GET | `/xmltv.php` | `xtream.xmltv` | `XtreamController@xmltv` | XMLTV guide (username + password) |

@@ -451,5 +451,8 @@
     "Two-factor sign-in is on. Save your recovery codes now.": "Најавата во два чекора е вклучена. Зачувајте ги кодовите за враќање сега.",
     "New recovery codes created. The old ones no longer work.": "Создадени се нови кодови за враќање. Старите повеќе не важат.",
     "Two-factor sign-in is off.": "Најавата во два чекора е исклучена.",
-    "The password is not right.": "Лозинката не е точна."
+    "The password is not right.": "Лозинката не е точна.",
+    "Hide provider address": "Сокриј ја адресата на провајдерот",
+    "Play these channels through this server, so viewers never see the provider address or login. All the video then uses this server's internet connection.": "Пуштај ги овие канали преку овој сервер, за гледачите никогаш да не ја видат адресата или најавата на провајдерот. Целото видео тогаш ја користи интернет-врската на овој сервер.",
+    "This is switched off for the whole server. Set STREAM_PROXY in the .env file to turn it on.": "Ова е исклучено за целиот сервер. Поставете STREAM_PROXY во .env датотеката за да го вклучите."
 }

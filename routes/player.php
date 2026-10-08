@@ -23,6 +23,9 @@ Route::middleware('throttle:player')->group(function () {
     Route::get('/epg/{token}.xml', [M3uController::class, 'epg'])->name('epg');
 });
 
+// Parts (segments, keys) of a stream played through the server; higher limit, see StreamProxyService
+Route::get('/stream/{channel_id}/{token}', [PlayController::class, 'stream'])->middleware('throttle:stream')->name('stream');
+
 // Xtream Codes API: apps log in with server URL + username + password
 Route::match(['get', 'post'], '/player_api.php', [XtreamController::class, 'api'])->name('xtream.api');
 Route::match(['get', 'post'], '/get.php', [M3uController::class, 'generate'])->name('xtream.playlist');

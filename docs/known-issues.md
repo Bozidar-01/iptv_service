@@ -13,13 +13,14 @@ _None currently known._
 ## Design gaps / risks
 
 - **Stream check is from the server's location:** `StreamCheckService` treats geo-blocked streams (403) as offline. A channel that plays in the viewer's country but not the server's is switched off (884 channels on 2026-10-07). Turn **Check streams** off on the source to keep those channels on, at the cost of keeping really dead ones too.
-- **Xtream logins can't send stream headers:** channels that need `http_user_agent` / `http_referrer` play through the M3U link but may fail through the Xtream API, which has no field for them. Fix: proxy those streams.
+- **Xtream logins can't send stream headers unless the source hides its address:** channels that need `http_user_agent` / `http_referrer` play through the M3U link, but through the Xtream API only when the source has **Hide provider address** on (the server then sends the headers itself).
 - **Bundled Macedonian lists go stale:** `database/seeders/playlists/*.m3u` are static. The stream check switches dead entries off, but new links have to be added by hand.
 - **Watch player ties up a PHP worker:** a live MPEG-TS preview keeps one PHP-FPM worker busy while it plays (up to 30 minutes). On shared hosting with few workers, several open players can slow the panel down. HLS previews only use a worker per segment request. Suggested fix: lower `StreamPreviewService::MAX_SECONDS` there.
 - **Some streams don't play in the browser:** HEVC, AC-3 audio, RTMP/UDP links and YouTube/Twitch pages work in VLC but not in the Watch player. The dialog says so and shows the address to copy.
 - **Multi-genre categories:** iptv-org lists use `group-title` values like `General;News`, which become separate categories. Suggested fix: an option per source to keep only the first group.
 
-- **Upstream URLs are exposed:** `/play` redirects (302) to the provider URL, which often contains the provider username/password. Anyone with a playlist can see it. Fixing this needs a stream proxy.
+- **Upstream URLs are exposed unless the source hides them:** `/play` redirects (302) to the provider URL, which often contains the provider username/password. Turn on **Hide provider address** on the source to play through the server instead (uses its bandwidth, see [playlist-and-streaming.md](features/playlist-and-streaming.md#hide-provider-address-stream-proxy)). Receivers are never proxied.
+- **Stream proxy limits:** in `php` mode every MPEG-TS viewer holds a PHP worker; in `nginx` mode a running MPEG-TS stream can't keep its session alive (frees after 5 minutes); an HLS provider address without `m3u8` in it is treated as MPEG-TS in `nginx` mode; providers see one connection per viewer from the server's IP, so their connection limit applies to the whole server.
 - **Provider credentials in `channels.stream_url` are plain text:** `sources.url` is encrypted (lost `APP_KEY` = lost addresses), but channel stream links are searched and updated in bulk, so they are not. A database backup still contains them: protect backups like passwords.
 - **Credentials in query string** for `/m3u?username=&password=` (standard for IPTV, but they end up in server/proxy logs). Prefer the `/playlist/{token}.m3u` link.
 - **Request limits are per minute, not per user:** `/play`, `/playlist` and `/epg` are limited per link + IP and per IP (`THROTTLE_*`), but `/live` and `/player_api.php` only have the wrong-password limit.
@@ -30,8 +31,8 @@ _None currently known._
 - **Relay is wiped by image updates:** flashing OpenATV removes `/usr/bin/nebotv-relay.py` and the init script unless they are in the image backup ([receiver.md](receiver.md#after-an-openatv-image-update)).
 - **Relay uses plain HTTP:** links carry signatures, not passwords, but streams aren't encrypted in transit.
 - **Old admin password in git history:** commit `82be74b` put a real-looking admin password in `AdminSeeder.php`. The seeder now reads `.env`, but that password is still in the history: change it on any server that used it.
-- **Devices are told apart by IP + user agent:** two identical TVs with the same app version behind one router look like one device and share a slot. Suggested fix: a per-device token or a stream proxy.
-- **No heartbeat:** a session only stays "active" for 5 minutes after the last `/play` request, so long viewing frees the slot.
+- **Devices are told apart by IP + user agent:** two identical TVs with the same app version behind one router look like one device and share a slot. Suggested fix: a per-device token.
+- **No heartbeat without the proxy:** a session only stays "active" for 5 minutes after the last `/play` request, so long viewing frees the slot. With **Hide provider address** (`php` mode, or HLS) the session is kept alive while data flows.
 - **Channels without a tvg-id are keyed by group + name:** if a provider renames such a channel or moves it to another group, it is re-created (new ID).
 - **Bulk-deleted imported channels come back** on the next sync. Disable them instead.
 - **Xtream Codes API is live TV only:** VOD, series, catch-up and EPG actions return empty data.

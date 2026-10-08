@@ -36,6 +36,14 @@ return [
     */
     'throttle_per_token' => (int) env('THROTTLE_PER_TOKEN', 60),
     'throttle_per_ip' => (int) env('THROTTLE_PER_IP', 300),
+    // Parts of a proxied stream (HLS segments): many requests per viewing
+    'throttle_stream_per_token' => (int) env('THROTTLE_STREAM_PER_TOKEN', 600),
+
+    /*
+    | Playing through the server instead of redirecting to the provider (StreamProxyService), for
+    | sources that have "Hide provider address" on. off | php | nginx.
+    */
+    'stream_proxy' => env('STREAM_PROXY', 'off'),
 
     /*
     | Database backups (iptv:backup, BackupService): where they go (any filesystem disk, e.g. an

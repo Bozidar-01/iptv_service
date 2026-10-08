@@ -47,7 +47,25 @@ Then, for both:
 4. `StreamService::getStreamUrl`:
    - inserts a `stream_logs` row (IP, user agent, time)
    - upserts the device's `active_sessions` row (user + IP + user agent): `channel_id` = this channel, `last_activity_at` = now; `started_at` is reset for a new device, a channel change, or when the session had gone stale
-5. `302` redirect to `channel.stream_url`.
+5. `302` redirect to `channel.stream_url`, or, for a source with **Hide provider address** on, the stream itself (see [Hide provider address](#hide-provider-address-stream-proxy)).
+
+### Hide provider address (stream proxy)
+
+`StreamProxyService`. By default a play request redirects the app to the provider address, which often contains the provider's username and password, so anyone with a playlist can read it. For a source with **Hide provider address** (`sources.proxy_streams`) turned on, `/play` and Xtream `/live` pass the stream on instead: the app only ever sees this server. It also sends the channel's own `http_user_agent` / `http_referrer` to the provider (so those channels now work through the Xtream API too) and keeps the viewing alive while data flows. **All video then uses this server's internet connection**, so only turn it on where you need it.
+
+It works only when `STREAM_PROXY` in `.env` is not `off`:
+
+| `STREAM_PROXY` | How | Good for |
+|---|---|---|
+| `off` (default) | redirect, as before | |
+| `php` | PHP fetches the stream and passes it on (`StreamPreviewService::proxy`) | any host, a few viewers. Every viewer of a live MPEG-TS stream keeps one PHP worker busy (no limit except the host's), so on shared hosting a few viewers can use them all |
+| `nginx` | PHP checks access, logs and answers `X-Accel-Redirect: /_proxy`; nginx fetches the stream and passes it on | a VPS or the Docker setup. No PHP worker is held. Needs `docker/nginx/stream-proxy.conf` (see [deployment.md](../deployment.md#hide-provider-address-on-your-own-server)). The nginx rules announce themselves to PHP (`STREAM_PROXY_ENGINE`); without them the mode falls back to `php` rather than leaking the address in a header |
+
+- **Receiver channels are never proxied** (they already use signed relay links), and neither are non-http addresses.
+- **HLS** (an address containing `m3u8`): always fetched by PHP, because the playlist has to be rewritten. Every segment, key and sub-playlist address becomes `/stream/{channel}/{token}?u=…`, where `u` is an **encrypted** payload (channel id + provider address, `APP_KEY`), so the provider address and any token inside it can't be read from the playlist. In `nginx` mode the segments themselves are passed on by nginx. Other addresses are treated as MPEG-TS and sent to nginx directly, so a provider that answers an address without `m3u8` with an HLS playlist needs `php` mode.
+- **`GET /stream/{channel_id}/{token}?u=`** (`stream`): same token, bouquet and connection-limit checks as `/play`, no new `stream_logs` row, but it refreshes the device's session (`StreamService::touch`). Separate, higher request limit: `THROTTLE_STREAM_PER_TOKEN` (600 a minute per link + IP).
+- **Session heartbeat:** in `php` mode a running MPEG-TS stream refreshes its session every 30 seconds and may run up to 24 hours; HLS refreshes it with every segment. In `nginx` mode a running MPEG-TS stream can't refresh it, so its slot frees after 5 minutes as without the proxy.
+- Provider redirects are followed (nginx: up to three, relative ones too; PHP: five). The provider's `Location`, `Set-Cookie` and `Server` headers are never passed on. A provider that limits connections sees one connection per viewer, from this server's IP.
 
 ## 3. Xtream Codes API (login with server + username + password)
 

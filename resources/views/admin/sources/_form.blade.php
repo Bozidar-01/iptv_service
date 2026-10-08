@@ -84,6 +84,17 @@
                 <input type="checkbox" name="check_streams" value="1" @checked(old('check_streams', $source->check_streams ?? true))>
                 <div><strong>{{ __('Check streams') }}</strong><span>{{ __('Disable channels whose stream stops working, and turn them back on when it works again. Turn this off for channels that only play in some countries, since the check runs from the server.') }}</span></div>
             </label>
+            <input type="hidden" name="proxy_streams" value="0">
+            <label class="check" data-type="url file" @if($type === 'receiver') hidden @endif>
+                <input type="checkbox" name="proxy_streams" value="1" @checked(old('proxy_streams', $source->proxy_streams ?? false))>
+                <div>
+                    <strong>{{ __('Hide provider address') }}</strong>
+                    <span>{{ __('Play these channels through this server, so viewers never see the provider address or login. All the video then uses this server\'s internet connection.') }}</span>
+                    @if(config('iptv.stream_proxy') === 'off')
+                        <span>{{ __('This is switched off for the whole server. Set STREAM_PROXY in the .env file to turn it on.') }}</span>
+                    @endif
+                </div>
+            </label>
             <input type="hidden" name="alert_on_down" value="0">
             <label class="check">
                 <input type="checkbox" name="alert_on_down" value="1" @checked(old('alert_on_down', $source->alert_on_down ?? false))>

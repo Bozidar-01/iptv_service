@@ -32,6 +32,13 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(config('iptv.throttle_per_ip'))->by('ip:'.$request->ip()),
         ]);
 
+        // Parts of a proxied stream: one viewer asks for a segment every few seconds
+        RateLimiter::for('stream', fn (Request $request) => [
+            Limit::perMinute(config('iptv.throttle_stream_per_token'))
+                ->by('stream:'.$request->route('token').'|'.$request->ip()),
+            Limit::perMinute(config('iptv.throttle_per_ip') * 5)->by('stream-ip:'.$request->ip()),
+        ]);
+
         // Header bell (admin.partials.notifications)
         View::composer('layouts.admin', function ($view) {
             $view->with('alertMenu', Auth::check() ? [

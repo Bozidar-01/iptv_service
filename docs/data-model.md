@@ -43,6 +43,7 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 | bouquet_id | FK → bouquets, nullable, `ON DELETE SET NULL` | imported channels are added here |
 | skip_vod | bool, default true | |
 | auto_sync | bool, default true | re-sync every 24 h |
+| proxy_streams | bool, default false | play this source's channels through the server (`StreamProxyService`); off for receivers |
 | check_streams | bool, default true | include its channels in the stream check; turning it off re-enables channels the check switched off |
 | alert_on_down | bool, default false | alerts for all its channels and for failed imports ([alerts.md](features/alerts.md)) |
 | status | string | `pending`, `queued`, `syncing`, `success`, `failed` (`Source::STATUS_*`) |

@@ -13,6 +13,7 @@ A source is a provider playlist (by URL or uploaded file). Syncing it imports th
 | Add channels to bouquet | `new` (default on create) creates/reuses a bouquet named after the source; an existing bouquet; or none |
 | Live TV only (`skip_vod`, default on) | Skips VOD entries (see below) |
 | Refresh automatically (`auto_sync`, default on) | Re-sync every 24 h (`Source::AUTO_SYNC_HOURS`) |
+| Hide provider address (`proxy_streams`, default off) | Play the source's channels through this server so viewers never see the provider address or login. Needs `STREAM_PROXY` in `.env`; uses this server's bandwidth. Not for satellite receivers. See [playlist-and-streaming.md](playlist-and-streaming.md#hide-provider-address-stream-proxy) |
 
 Saving a new source queues a sync immediately. Editing doesn't; use **Sync** to apply changes.
 

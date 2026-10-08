@@ -99,6 +99,7 @@ class SourceController extends Controller
             'skip_vod' => ['boolean'],
             'auto_sync' => ['boolean'],
             'check_streams' => ['boolean'],
+            'proxy_streams' => ['boolean'],
             'alert_on_down' => ['boolean'],
         ]);
 
@@ -106,6 +107,7 @@ class SourceController extends Controller
         $data['skip_vod'] = $request->boolean('skip_vod');
         $data['auto_sync'] = $request->boolean('auto_sync');
         $data['check_streams'] = $request->boolean('check_streams');
+        $data['proxy_streams'] = $request->boolean('proxy_streams');
         $data['alert_on_down'] = $request->boolean('alert_on_down');
         $data['transcode'] = $request->boolean('transcode');
         if ($data['type'] === 'file') {
@@ -115,6 +117,7 @@ class SourceController extends Controller
             $data['url'] = rtrim($data['relay_url'], '/');
             // Checking receiver channels would tune the receiver; the relay is checked instead
             $data['check_streams'] = false;
+            $data['proxy_streams'] = false;
             $data['skip_vod'] = false;
         }
         if (blank($data['relay_secret'] ?? null) || $data['type'] !== 'receiver') {

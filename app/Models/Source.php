@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 
 #[Hidden(['relay_secret'])]
-#[Fillable(['name', 'type', 'url', 'file_path', 'relay_secret', 'transcode', 'receiver_online', 'receiver_checked_at', 'bouquet_id', 'skip_vod', 'auto_sync', 'check_streams', 'alert_on_down', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
+#[Fillable(['name', 'type', 'url', 'file_path', 'relay_secret', 'transcode', 'receiver_online', 'receiver_checked_at', 'bouquet_id', 'skip_vod', 'auto_sync', 'check_streams', 'proxy_streams', 'alert_on_down', 'status', 'last_error', 'channel_count', 'last_synced_at'])]
 class Source extends Model
 {
     public const STATUS_PENDING = 'pending';
@@ -27,6 +27,7 @@ class Source extends Model
             'skip_vod' => 'boolean',
             'auto_sync' => 'boolean',
             'check_streams' => 'boolean',
+            'proxy_streams' => 'boolean',
             // Provider addresses contain the provider login
             'url' => 'encrypted',
             'relay_secret' => 'encrypted',
