@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\EpgSourceController;
 use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
+use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
@@ -59,6 +60,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+    Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
 
     Route::get('security', [SecurityController::class, 'index'])->name('security.index');
     Route::post('security/two-factor', [SecurityController::class, 'start'])->name('security.start');

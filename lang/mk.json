@@ -466,5 +466,21 @@
     "Disconnect all devices of this user? They can not start a stream for :minutes minutes.": "Да се исклучат ли сите уреди на овој корисник? Нема да можат да започнат стрим :minutes минути.",
     "Disconnect this device? It can not start a stream for :minutes minutes.": "Да се исклучи ли овој уред? Нема да може да започне стрим :minutes минути.",
     "Device disconnected. It can not start a stream for :minutes minutes.": "Уредот е исклучен. Нема да може да започне стрим :minutes минути.",
-    ":count device disconnected. It can not start a stream for :minutes minutes.|:count devices disconnected. They can not start a stream for :minutes minutes.": ":count уред е исклучен. Нема да може да започне стрим :minutes минути.|:count уреди се исклучени. Нема да можат да започнат стрим :minutes минути."
+    ":count device disconnected. It can not start a stream for :minutes minutes.|:count devices disconnected. They can not start a stream for :minutes minutes.": ":count уред е исклучен. Нема да може да започне стрим :minutes минути.|:count уреди се исклучени. Нема да можат да започнат стрим :minutes минути.",
+    "Statistics": "Статистика",
+    "What your users watch. A play is one stream start; switching channel counts again. Times are :timezone.": "Што гледаат вашите корисници. Пуштање е еден почеток на стрим; менувањето канал се брои повторно. Времињата се во :timezone.",
+    "Period": "Период",
+    "Last :days days": "Последни :days дена",
+    ":count a day on average": "просечно :count дневно",
+    "Viewers": "Гледачи",
+    "users who watched something": "корисници што гледале нешто",
+    "Channels watched": "Гледани канали",
+    "different channels played": "различни пуштени канали",
+    "No plays in this period": "Нема пуштања во овој период",
+    "Plays per day": "Пуштања по ден",
+    ":count play|:count plays": ":count пуштање|:count пуштања",
+    "Busiest day: :count plays": "Најзафатен ден: :count пуштања",
+    "Busiest hours": "Најзафатени часови",
+    "Most played channels": "Најпуштани канали",
+    "Most active users": "Најактивни корисници"
 }

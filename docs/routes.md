@@ -57,6 +57,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/alerts` | `admin.alerts.index` | `AlertController@index` |
 | POST | `/admin/alerts/read` | `admin.alerts.read` | `AlertController@markAllRead` |
 | GET | `/admin/logs` | `admin.logs.index` | `LogController@index` |
+| GET | `/admin/statistics` | `admin.statistics.index` | `StatisticsController@index`: `?days=7\|30\|90` |
 | GET | `/admin/security` | `admin.security.index` | `SecurityController@index`: two-factor status / setup and recent sign-ins |
 | POST | `/admin/security/two-factor` | `admin.security.start` | `SecurityController@start`: new secret + QR code |
 | POST | `/admin/security/two-factor/confirm` | `admin.security.confirm` | `code`; turns on and shows the recovery codes once |

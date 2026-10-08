@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Usage statistics
+- New **Statistics** page (sidebar, under Users): plays, viewers and channels watched for the last 7 / 30 / 90 days, plays per day and per hour as column charts, top 10 channels and top 10 users. `StatisticsService`: grouped queries only (a fixed number whatever the history size), 5-minute cache; MySQL and SQLite expressions for day and hour. Runs on the existing `stream_logs` data, no schema change.
+- CSS: `.chart`, `.chart-axis`, `.bar` (theme tokens only; looked at in light and dark).
+- Tests: `StatisticsTest` (9), 362 tests.
+- Files: `app/Services/StatisticsService.php`, `app/Http/Controllers/Admin/StatisticsController.php`, `resources/views/admin/statistics/index.blade.php`, `resources/views/layouts/admin.blade.php`, `public/css/admin.css`, `routes/web.php`, `lang/mk.json`, `docs/**`, `tests/Feature/Admin/StatisticsTest.php`.
+
 ### 2026-10-09 — Disconnect a device
 - The user page lists the **devices watching now** with **Disconnect** (and **Disconnect all**). It ends the device's session and blocks that device (IP + player) from starting a stream for 15 minutes (`StreamService::disconnect`, cache). Proxied streams stop (HLS parts refused; a running MPEG-TS stream stops at the next tick, `onTick` returning `false`); direct redirect streams can't be cut and end when the player reconnects.
 - "Active now" on the user page counts only sessions from the last 5 minutes (`ActiveSession::active()`).
