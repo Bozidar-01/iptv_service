@@ -162,6 +162,18 @@ ssh-keygen -t ed25519 -N "" -C "github-deploy" -f ~/.ssh/github_deploy && cat ~/
 
 The job uses the `production` environment: in Settings → Environments → production you can require an approval before each deploy. To pause deploying, delete the `DEPLOY_SSH_KEY` secret. To remove access, delete the line `github-deploy` from `~/.ssh/authorized_keys` on the server. Deploy by hand: `bash scripts/deploy.sh "$PWD"` in the project folder.
 
+## Branches and releases
+
+`main` is production: a push to it deploys. Work therefore happens on branches and reaches `main` only when finished:
+
+1. **Start:** `git fetch && git switch -c feature/short-name origin/main` (or `fix/…`, `docs/…`, `chore/…`). Commit as often as you like; branch pushes never deploy.
+2. **Check:** `composer check` (Pint, PHPStan, tests), `npm run e2e` for UI changes, migrations tried up and down on MySQL, docs and translations updated.
+3. **Pull request:** `gh pr create --base main`. The same five checks run on it. Write down in the description what the server needs (migrations, new `.env` variables: the deploy never edits the server's `.env`, add them *before* merging).
+4. **Merge** (`gh pr merge --squash --delete-branch`) only when everything is green and you decided it is ready: this is the release. The deploy job then updates the server.
+5. **Verify** the deploy log (`Done: old -> new`, `/login answers 200`) and the live site. Going back: revert on a new branch and ship that, plus `migrate:rollback` or the dump from `~/deploy-backups/` if a migration ran.
+
+The Claude Code skills `start-work` and `ship-to-main` (`.claude/skills/`) follow exactly these steps. Optional extra protection (GitHub → Settings): *Branches* → protect `main` (require a pull request and the five checks, no direct pushes), and *Environments* → `production` → required reviewer (a click to approve each deploy).
+
 ## Hide provider address (on your own server)
 
 Per source, **Hide provider address** plays channels through your server so viewers can't read the provider's login, see [playlist-and-streaming.md](features/playlist-and-streaming.md#hide-provider-address-stream-proxy). Set `STREAM_PROXY` in `.env`:
