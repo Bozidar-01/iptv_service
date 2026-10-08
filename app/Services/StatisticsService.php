@@ -38,21 +38,21 @@ class StatisticsService
         $logs = fn () => StreamLog::where('started_at', '>=', $from);
 
         $perDay = array_fill_keys(array_map(fn ($i) => $from->copy()->addDays($i)->toDateString(), range(0, $days - 1)), 0);
-        foreach ($logs()->select(DB::raw($this->dayExpression().' as day'), DB::raw('count(*) as plays'))->groupBy('day')->get() as $row) {
+        foreach ($logs()->select(DB::raw($this->dayExpression().' as day'), DB::raw('count(*) as plays'))->groupBy('day')->toBase()->get() as $row) {
             $perDay[(string) $row->day] = (int) $row->plays;
         }
 
         $perHour = array_fill(0, 24, 0);
-        foreach ($logs()->select(DB::raw($this->hourExpression().' as hour'), DB::raw('count(*) as plays'))->groupBy('hour')->get() as $row) {
+        foreach ($logs()->select(DB::raw($this->hourExpression().' as hour'), DB::raw('count(*) as plays'))->groupBy('hour')->toBase()->get() as $row) {
             $perHour[(int) $row->hour] = (int) $row->plays;
         }
 
         $topChannels = $logs()->select('channel_id', DB::raw('count(*) as plays'), DB::raw('count(distinct user_id) as viewers'))
-            ->groupBy('channel_id')->orderByDesc('plays')->orderBy('channel_id')->limit(10)->get();
+            ->groupBy('channel_id')->orderByDesc('plays')->orderBy('channel_id')->limit(10)->toBase()->get();
         $names = Channel::whereIn('id', $topChannels->pluck('channel_id'))->pluck('name', 'id');
 
         $topUsers = $logs()->select('user_id', DB::raw('count(*) as plays'), DB::raw('count(distinct channel_id) as channels'))
-            ->groupBy('user_id')->orderByDesc('plays')->orderBy('user_id')->limit(10)->get();
+            ->groupBy('user_id')->orderByDesc('plays')->orderBy('user_id')->limit(10)->toBase()->get();
         $usernames = User::whereIn('id', $topUsers->pluck('user_id'))->pluck('username', 'id');
 
         return [
