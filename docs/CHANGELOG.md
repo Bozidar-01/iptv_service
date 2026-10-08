@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fix: Credits page showed "Unlimited" for resellers that have credits
+- On the Credits page for **all resellers** every card said *Unlimited*, though the balance was saved (the history showed it). The page loaded each reseller with only `id`, `username` and `credits`, and "limited by credits" also needs the role, so every reseller looked like an account without a limit. It now loads the role too. Only the display was wrong: balances, charging and the history were correct.
+- Test: the all-resellers page shows each reseller's real balance (fails on the old code).
+- Files: `app/Http/Controllers/Admin/CreditController.php`, `tests/Feature/CreditTest.php`.
+
 ### 2026-10-09 — Reseller credits
 - Admins give **credits** to resellers; a reseller with credits can only give as many subscriptions as they can pay for. **1 credit = 1 month** of subscription for one user: creating a user or moving their end date later costs the whole months added (from the day the user's subscription runs out, or from today when it already ended), shortening or keeping it costs nothing. One extra day is not charged (a reseller's date can differ from the server's by a day: time zones) but any longer subscription costs at least 1 credit.
 - A reseller **without** a balance (the default for existing resellers) is not limited, as before. Giving credits switches the limit on; *Make unlimited* switches it off. A reseller with credits must give an end date (no "Never"); the form shows the price while typing and a refused save changes nothing (user and credits are saved together under a lock on the reseller's row).

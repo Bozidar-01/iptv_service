@@ -292,3 +292,15 @@ describe('who sees the credits', function () {
         $this->get(route('admin.credits.index'))->assertOk()->assertSee('New subscription');
     });
 });
+
+it('shows each reseller\'s real balance on the page for all resellers, not "Unlimited"', function () {
+    $other = User::factory()->create(['username' => 'resB', 'role' => 'reseller', 'credits' => null, 'expiration_date' => null]);
+    app(CreditService::class)->adjust($this->admin, $this->reseller, 10);
+
+    $page = $this->actingAs($this->admin)->get(route('admin.credits.index'))->assertOk();
+
+    // resA has 15 (5 + 10); resB has no limit; the cards must say so, each for the right one
+    expect($page->getContent())->toMatch('/resA.*?stat-value">\s*15\s*</s')
+        ->and($page->getContent())->toMatch('/resB.*?stat-value">\s*Unlimited\s*</s');
+    $this->get(route('admin.credits.index', ['reseller' => $this->reseller->id]))->assertSee('15')->assertSee('months of subscription left to give');
+});
