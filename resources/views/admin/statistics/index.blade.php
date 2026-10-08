@@ -56,7 +56,7 @@
                     @endforeach
                 </div>
                 <div class="chart-axis">
-                    <span>{{ $report['from']->translatedFormat('M j') }}</span>
+                    <span>{{ \Illuminate\Support\Carbon::parse($report['from'])->translatedFormat('M j') }}</span>
                     <span>{{ __('Busiest day: :count plays', ['count' => number_format($busiestDay)]) }}</span>
                     <span>{{ now()->translatedFormat('M j') }}</span>
                 </div>

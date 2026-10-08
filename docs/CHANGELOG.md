@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fix: Statistics page failed with a 500 on the second visit
+- **Cause:** the report was cached with a date object (`Carbon`) inside. The real (database) cache refuses to rebuild objects (`cache.serializable_classes` is `false`), so the second request got a `__PHP_Incomplete_Class` and the page returned 500, for the 5 minutes the entry lived, in both languages (switching language reloads the page, which is how it showed). The first visit worked because nothing was cached yet, and the tests didn't catch it because the test cache keeps objects as they are.
+- **Fix:** only plain values are cached (`from` is a date string); the cache key is versioned (`statistics:v2:`) so entries written by the old code are never read.
+- Test: reads the report back through the database cache and loads the page repeatedly in both languages (fails on the old code). Checked nothing else caches an object. 
+- Files: `app/Services/StatisticsService.php`, `resources/views/admin/statistics/index.blade.php`, `tests/Feature/Admin/StatisticsTest.php`.
+
 ### 2026-10-09 — Resellers
 - New role **reseller**: signs in to the panel and sees and manages only their own users. Admin sets *Most users*, *Most streams per user* and the bouquets they may hand out. A reseller gets Dashboard, Users, Activity, Alerts (their users' only) and Security; the rest of the panel is 403. Details in `docs/features/admin-panel.md#resellers`.
 - Access control: `User::scopeVisibleTo` + a scoped `{user}` route binding (someone else's user is a 404 on every route), `EnsureStaff` (admin or an active reseller) and `EnsureAdmin` (reseller → 403) run before the binding; limits and role/owner can't be set by a reseller whatever is posted.

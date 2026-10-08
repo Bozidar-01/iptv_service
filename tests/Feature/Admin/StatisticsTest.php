@@ -4,6 +4,7 @@ use App\Models\Channel;
 use App\Models\StreamLog;
 use App\Models\User;
 use App\Services\StatisticsService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
@@ -122,4 +123,34 @@ it('is cached for a few minutes', function () {
 it('is for admins only', function () {
     $this->get(route('admin.statistics.index'))->assertRedirect(route('login'));
     $this->actingAs($this->anna)->get(route('admin.statistics.index'))->assertRedirect();
+});
+
+it('survives being read back from a cache that serializes, in either language', function () {
+    // The default test cache keeps objects as they are; the real (database) one serializes and refuses objects
+    config(['cache.default' => 'database']);
+    play($this->anna, $this->news, now()->subDay(), 3);
+    $this->actingAs($this->admin);
+
+    $first = app(StatisticsService::class)->report(30);
+    $second = app(StatisticsService::class)->report(30); // read back from the database
+
+    expect($second)->toBe($first)->and($second['from'])->toBeString();
+
+    $this->get(route('admin.statistics.index'))->assertOk()->assertSee('News 24');
+    $this->get(route('admin.statistics.index'))->assertOk(); // the request that used to fail
+
+    // Switching language is what reloaded the page in the failing case: both languages must keep working
+    $this->withCookie('locale', 'mk')->get(route('admin.statistics.index'))->assertOk()->assertSee('Статистика');
+    $this->withCookie('locale', 'en')->get(route('admin.statistics.index'))->assertOk()->assertSee('Statistics');
+});
+
+it('holds nothing but plain values in the cache', function () {
+    play($this->anna, $this->news, now()->subDay());
+    app(StatisticsService::class)->report(30);
+
+    $walk = function ($value) use (&$walk) {
+        expect(is_object($value))->toBeFalse();
+        is_array($value) && array_map($walk, $value);
+    };
+    $walk(Cache::get('statistics:v2:30'));
 });
