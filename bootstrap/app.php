@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind a load balancer / Cloudflare / TLS proxy: TRUSTED_PROXIES=* or a comma-separated list, so the real client IP
+        // (rate limits, sign-in history, device slots) and https are seen. Empty = trust none.
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
+        }
         $middleware->web(append: [SetLocale::class, SecurityHeaders::class]);
         $middleware->alias(['admin' => EnsureAdmin::class]);
         // Written by the theme switcher's JS, so it can't be encrypted

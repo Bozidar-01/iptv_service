@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Sentry\Breadcrumb;
 use Sentry\Event;
 use Sentry\EventHint;
 
@@ -38,6 +39,22 @@ class SentryScrubber
     }
 
     /**
+     * Removes the same from breadcrumbs (log lines, HTTP calls, queries): messages and string values.
+     */
+    public static function beforeBreadcrumb(Breadcrumb $breadcrumb): ?Breadcrumb
+    {
+        $breadcrumb = $breadcrumb->withMessage(self::text($breadcrumb->getMessage()));
+
+        foreach ($breadcrumb->getMetadata() as $key => $value) {
+            if (is_string($value)) {
+                $breadcrumb = $breadcrumb->withMetadata($key, self::text($value));
+            }
+        }
+
+        return $breadcrumb;
+    }
+
+    /**
      * Keep only scheme, host and the route's fixed first segment of one of our own addresses.
      */
     public static function url(string $url): string
@@ -49,7 +66,7 @@ class SentryScrubber
 
         $path = $parts['path'] ?? '/';
         // /play/{id}/{token}, /playlist/{token}.m3u, /epg/{token}.xml, /live/{user}/{pass}/{id}, /xmltv.php ...
-        if (preg_match('~^/(play|playlist|epg|live)(/|\.|$)~', $path, $m)) {
+        if (preg_match('~^/(play|playlist|epg|live|stream)(/|\.|$)~', $path, $m)) {
             $path = '/'.$m[1].'/'.self::MASK;
         }
 
@@ -65,10 +82,13 @@ class SentryScrubber
             return null;
         }
 
-        return preg_replace_callback('~\b([a-z][a-z0-9+.-]*)://[^\s"\'<>]*[^\s"\'<>.,:;)\]]~i', function ($m) {
+        $text = preg_replace_callback('~\b([a-z][a-z0-9+.-]*)://[^\s"\'<>]*[^\s"\'<>.,:;)\]]~i', function ($m) {
             $host = parse_url($m[0], PHP_URL_HOST);
 
             return $host ? $m[1].'://'.$host.'/'.self::MASK : $m[0];
         }, $text);
+
+        // Logins that are not part of an address (SQL text, log lines)
+        return preg_replace('~\b(password|passwd|username|token|secret|key)=[^&\s"\']+~i', '$1='.self::MASK, $text);
     }
 }

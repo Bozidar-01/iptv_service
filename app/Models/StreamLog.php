@@ -4,14 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['user_id', 'channel_id', 'ip', 'user_agent', 'started_at'])]
 class StreamLog extends Model
 {
-    use Prunable;
+    use MassPrunable;
 
     public $timestamps = false;
 

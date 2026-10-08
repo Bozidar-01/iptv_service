@@ -28,7 +28,7 @@ class StreamService
             'user_id' => $user->id,
             'channel_id' => $channel->id,
             'ip' => Request::ip(),
-            'user_agent' => Request::userAgent(),
+            'user_agent' => $this->userAgent(),
             'started_at' => now(),
         ]);
 

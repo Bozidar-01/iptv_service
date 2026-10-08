@@ -435,7 +435,7 @@
     "Enter the 6 digits the app shows.": "Внесете ги 6-те цифри што ги прикажува апликацијата.",
     "Turn on": "Вклучи",
     "Set up two-factor sign-in": "Поставете најава во два чекора",
-    "Recent sign-ins": "Скорашни најави",
+    "Recent sign-ins": "Последни најави",
     "The last 30 attempts to sign in to the panel.": "Последните 30 обиди за најава во панелот.",
     "No sign-ins recorded yet.": "Сè уште нема запишани најави.",
     "What happened": "Што се случи",
@@ -454,5 +454,6 @@
     "The password is not right.": "Лозинката не е точна.",
     "Hide provider address": "Сокриј ја адресата на провајдерот",
     "Play these channels through this server, so viewers never see the provider address or login. All the video then uses this server's internet connection.": "Пуштај ги овие канали преку овој сервер, за гледачите никогаш да не ја видат адресата или најавата на провајдерот. Целото видео тогаш ја користи интернет-врската на овој сервер.",
-    "This is switched off for the whole server. Set STREAM_PROXY in the .env file to turn it on.": "Ова е исклучено за целиот сервер. Поставете STREAM_PROXY во .env датотеката за да го вклучите."
+    "This is switched off for the whole server. Set STREAM_PROXY in the .env file to turn it on.": "Ова е исклучено за целиот сервер. Поставете STREAM_PROXY во .env датотеката за да го вклучите.",
+    "The provider sent a playlist this server can not read.": "Провајдерот испрати плејлиста што овој сервер не може да ја прочита."
 }

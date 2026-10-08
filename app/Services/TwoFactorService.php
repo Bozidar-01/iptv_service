@@ -9,6 +9,7 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -95,9 +96,12 @@ class TwoFactorService
 
         $step = Totp::verify(Crypt::decryptString($user->two_factor_secret), $input, $user->two_factor_last_step);
         if ($step !== null) {
-            $user->forceFill(['two_factor_last_step' => $step])->save();
+            // One atomic update: of two requests with the same code, only one changes a row
+            $claimed = User::whereKey($user->id)
+                ->where(fn ($query) => $query->whereNull('two_factor_last_step')->orWhere('two_factor_last_step', '<', $step))
+                ->update(['two_factor_last_step' => $step]);
 
-            return true;
+            return $claimed === 1;
         }
 
         return $this->useRecoveryCode($user, $input);
@@ -130,22 +134,26 @@ class TwoFactorService
         }
 
         $hash = $this->hashCode($input);
-        $hashes = $this->storedHashes($user);
-        $match = null;
-        foreach ($hashes as $index => $stored) {
-            if (hash_equals($stored, $hash)) {
-                $match = $index;
+
+        // Read and write under a row lock: a code can't be used twice by two parallel requests
+        return DB::transaction(function () use ($user, $hash) {
+            $hashes = $this->storedHashes(User::whereKey($user->id)->lockForUpdate()->firstOrFail());
+            $match = null;
+            foreach ($hashes as $index => $stored) {
+                if (hash_equals($stored, $hash)) {
+                    $match = $index;
+                }
             }
-        }
 
-        if ($match === null) {
-            return false;
-        }
+            if ($match === null) {
+                return false;
+            }
 
-        unset($hashes[$match]);
-        $user->forceFill(['two_factor_recovery_codes' => json_encode(array_values($hashes))])->save();
+            unset($hashes[$match]);
+            $user->forceFill(['two_factor_recovery_codes' => json_encode(array_values($hashes))])->save();
 
-        return true;
+            return true;
+        });
     }
 
     /** @return list<string> */

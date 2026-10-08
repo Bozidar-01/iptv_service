@@ -231,3 +231,30 @@ it('deletes play history older than the retention time', function () {
 
     expect(StreamLog::count())->toBe(1);
 });
+
+it('plays with a very long user agent', function () {
+    $user = User::factory()->create();
+    $channel = subscribedChannel($user);
+
+    $this->withHeader('User-Agent', str_repeat('x', 600))
+        ->get(route('play', ['channel_id' => $channel->id, 'token' => tokenFor($user)]))
+        ->assertRedirect($channel->stream_url);
+
+    expect(strlen(StreamLog::where('user_id', $user->id)->value('user_agent')))->toBe(255);
+});
+
+it('prunes more than one chunk of old play history and leaves recent rows', function () {
+    config(['iptv.log_retention_days' => 30]);
+    $user = User::factory()->create();
+    $channel = subscribedChannel($user);
+    $rows = fn (int $count, $at) => array_fill(0, $count, ['user_id' => $user->id, 'channel_id' => $channel->id, 'started_at' => $at]);
+    foreach (array_chunk($rows(2500, now()->subDays(40)), 500) as $chunk) {
+        StreamLog::insert($chunk);
+    }
+    StreamLog::insert($rows(5, now()->subDays(2)));
+
+    $this->artisan('model:prune', ['--model' => [StreamLog::class]])->assertSuccessful();
+    $this->artisan('model:prune', ['--model' => [StreamLog::class]])->assertSuccessful();
+
+    expect(StreamLog::count())->toBe(5);
+});

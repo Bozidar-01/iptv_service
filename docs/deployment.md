@@ -118,6 +118,7 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 - **Needs `mysqldump`** on the server (Hostinger has it; the Docker image installs it). Set `BACKUP_MYSQLDUMP=/full/path` if it isn't on the PATH, and `BACKUP_DUMP_OPTIONS=--skip-ssl` if the database uses a self-signed certificate (the Docker setup does this).
 - **Keep a copy off the server.** A backup on the same disk doesn't help when the disk is lost. Point `BACKUP_DISK` at an off-site disk, e.g. an S3-compatible bucket: `composer require league/flysystem-aws-s3-v3 "^3.0"`, add the `AWS_*` variables and set `BACKUP_DISK=s3`. Or download the newest file now and then.
+- **Keep `APP_KEY` with your backups.** Source addresses, 2FA secrets and relay secrets are stored encrypted with it: a restore on a new server without the same `APP_KEY` can't read them (sign-in and 2FA then fail until you set them up again).
 - **Restore** (into an empty database, or over an existing one: tables are replaced):
 
 ```bash
@@ -130,7 +131,7 @@ Test a restore into a scratch database once, so you know it works before you nee
 
 ## 7. Error tracking (optional)
 
-Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandled errors are reported there. Nothing is sent without a DSN. Before sending, `App\Support\SentryScrubber` hides what must not leave the server: playlist, play and login tokens in addresses, query strings, cookies, and everything after the host in provider addresses inside error messages. Run `php artisan config:cache` after changing `.env`. Logs are written to a file per day and kept for `LOG_DAILY_DAYS` (14).
+Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandled errors are reported there. Nothing is sent without a DSN. Calls to providers are not recorded as breadcrumbs or spans (their addresses hold logins), and log lines and other breadcrumbs go through the same cleaning. Before sending, `App\Support\SentryScrubber` hides what must not leave the server: playlist, play and login tokens in addresses, query strings, cookies, and everything after the host in provider addresses inside error messages. Run `php artisan config:cache` after changing `.env`. Logs are written to a file per day and kept for `LOG_DAILY_DAYS` (14).
 
 ## Hide provider address (on your own server)
 
@@ -148,7 +149,11 @@ include /etc/nginx/stream-proxy.conf;   # copy docker/nginx/stream-proxy.conf an
 ```
 
   Edit the `resolver` lines in `stream-proxy.conf` to a DNS server your host can reach (Docker's `127.0.0.11` only exists inside Docker). Check with `nginx -t`, then play a channel of a source with the option on and confirm the address bar / app shows only your domain. Plan for the bandwidth: 20 viewers of a 5 Mbit/s channel is 100 Mbit/s out of your server and 5 Mbit/s in per distinct channel.
-- Behind HTTPS (Caddy, a load balancer): nothing extra, but turn off any response buffering for `/play`, `/live` and `/stream`.
+- Behind HTTPS (Caddy, a load balancer): turn off any response buffering for `/play`, `/live` and `/stream`.
+
+## Behind a load balancer, Cloudflare or another proxy
+
+Set `TRUSTED_PROXIES` in `.env` (`*` or a comma-separated list of the proxy IPs). Without it the app sees the proxy's address as every visitor's: the sign-in limits, request limits and device slots then apply to everyone together, the sign-in history shows the wrong IP, and HTTPS isn't noticed (no HSTS). Leave it empty when visitors reach the server directly.
 
 ## Automated checks (CI)
 

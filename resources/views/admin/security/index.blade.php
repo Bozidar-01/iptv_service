@@ -79,9 +79,14 @@
                     </div>
                 </div>
             @else
-                <form method="POST" action="{{ route('admin.security.start') }}">
+                <form method="POST" action="{{ route('admin.security.start') }}" class="stack" style="gap: 12px">
                     @csrf
-                    <button class="btn btn-primary" type="submit"><x-icon name="shield" /> {{ __('Set up two-factor sign-in') }}</button>
+                    <div class="field">
+                        <label class="label" for="password-start">{{ __('Password') }}</label>
+                        <input class="input" style="max-width: 280px" id="password-start" type="password" name="password" required autocomplete="current-password">
+                        @error('password')<span class="field-error">{{ $message }}</span>@enderror
+                    </div>
+                    <div><button class="btn btn-primary" type="submit"><x-icon name="shield" /> {{ __('Set up two-factor sign-in') }}</button></div>
                 </form>
             @endif
         </div>

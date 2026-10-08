@@ -7,6 +7,7 @@ test('two-factor sign-in from set-up to turning it off', async ({ page }) => {
     await page.goto('/admin/security');
 
     // Set up: QR code and key, wrong code first
+    await page.getByLabel('Password').fill(ADMIN.password);
     await page.getByRole('button', { name: 'Set up two-factor sign-in' }).click();
     await expect(page.locator('.qr svg')).toBeVisible();
     const secret = (await page.locator('code').first().textContent()).trim();

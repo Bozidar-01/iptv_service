@@ -87,7 +87,7 @@ it('never stores the secret in an import error', function () {
 
     expect(fn () => app(SourceSyncService::class)->sync($source))->toThrow(ConnectionException::class);
 
-    expect($source->fresh()->last_error)->not->toContain(RELAY_SECRET)->toContain('***');
+    expect($source->fresh()->last_error)->not->toContain(RELAY_SECRET)->not->toContain('playlist.m3u')->toContain('[hidden]');
 });
 
 it('never checks receiver channels with the stream check', function () {

@@ -43,6 +43,8 @@ return [
     | sources that have "Hide provider address" on. off | php | nginx.
     */
     'stream_proxy' => env('STREAM_PROXY', 'off'),
+    // The proxy refuses addresses on private / local networks (PublicAddress); true when a provider is on your LAN
+    'proxy_allow_private' => (bool) env('PROXY_ALLOW_PRIVATE', false),
 
     /*
     | Database backups (iptv:backup, BackupService): where they go (any filesystem disk, e.g. an

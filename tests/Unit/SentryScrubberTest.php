@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\SentryScrubber;
+use Sentry\Breadcrumb;
 use Sentry\Event;
 
 it('hides tokens, passwords and provider logins in addresses', function () {
@@ -33,4 +34,20 @@ it('cleans a whole event', function () {
 
     expect($clean->getRequest())->toBe(['url' => 'https://tv.example.com/m3u', 'headers' => ['accept' => '*/*']])
         ->and($clean->getMessage())->toBe('Failed https://provider.test/[hidden]');
+});
+
+it('hides stream part tokens in addresses and logins that are not part of an address', function () {
+    expect(SentryScrubber::url('https://tv.example.com/stream/12/SECRETTOKEN?u=abc'))->toBe('https://tv.example.com/stream/[hidden]')
+        ->and(SentryScrubber::text('SQLSTATE: where username = x ... get.php?username=bob&password=hunter2 failed'))->not->toContain('hunter2')->not->toContain('bob')
+        ->and(SentryScrubber::text('token=abc123 key=zzz'))->toBe('token=[hidden] key=[hidden]');
+});
+
+it('cleans breadcrumbs', function () {
+    $crumb = new Breadcrumb(Breadcrumb::LEVEL_INFO, Breadcrumb::TYPE_DEFAULT, 'http', 'GET https://provider.test/get.php?username=u&password=p', ['http.query' => 'username=u&password=p', 'status' => 200]);
+
+    $clean = SentryScrubber::beforeBreadcrumb($crumb);
+
+    expect($clean->getMessage())->not->toContain('password=p')->not->toContain('get.php')
+        ->and($clean->getMetadata()['http.query'])->toBe('username=[hidden]&password=[hidden]')
+        ->and($clean->getMetadata()['status'])->toBe(200);
 });

@@ -9,6 +9,7 @@ use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class SecurityController extends Controller
 {
@@ -36,6 +37,10 @@ class SecurityController extends Controller
     /** Start setting up: shows the QR code. */
     public function start(Request $request)
     {
+        if ($error = $this->checkPassword($request)) {
+            return $error;
+        }
+
         if (!$this->twoFactor->isEnabled($request->user())) {
             $this->twoFactor->begin($request->user());
         }
@@ -53,6 +58,7 @@ class SecurityController extends Controller
         }
 
         LoginEvent::record(LoginEvent::TWO_FACTOR_ENABLED, $request->user()->username, $request->user(), $request);
+        $this->forgetRememberedLogins($request);
 
         return redirect()->route('admin.security.index')
             ->with('success', __('Two-factor sign-in is on. Save your recovery codes now.'))
@@ -82,8 +88,17 @@ class SecurityController extends Controller
 
         $this->twoFactor->disable($request->user());
         LoginEvent::record(LoginEvent::TWO_FACTOR_DISABLED, $request->user()->username, $request->user(), $request);
+        $this->forgetRememberedLogins($request);
 
         return redirect()->route('admin.security.index')->with('success', __('Two-factor sign-in is off.'));
+    }
+
+    /**
+     * "Keep me signed in" cookies made before the change (maybe without a code) stop working.
+     */
+    private function forgetRememberedLogins(Request $request): void
+    {
+        $request->user()->forceFill(['remember_token' => Str::random(60)])->save();
     }
 
     /**

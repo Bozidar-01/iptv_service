@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\SourceSyncService;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -296,4 +297,13 @@ describe('stable channel ids', function () {
         expect(Channel::orderBy('id')->pluck('external_key')->all())
             ->toBe([sha1('news|news 24'), 'tvg:'.sha1('same.it'), 'tvg:'.sha1('same.it').'-2']);
     });
+});
+
+it('does not keep a provider login in the import error', function () {
+    Http::fake(['provider.test/*' => fn () => throw new ConnectionException('cURL error 28: Operation timed out for http://provider.test/get.php?username=bob&password=hunter2&type=m3u')]);
+    $source = Source::create(['name' => 'P', 'type' => 'url', 'url' => 'http://provider.test/get.php?username=bob&password=hunter2&type=m3u']);
+
+    expect(fn () => app(SourceSyncService::class)->sync($source))->toThrow(ConnectionException::class);
+
+    expect($source->fresh()->last_error)->not->toContain('hunter2')->not->toContain('bob')->toContain('provider.test');
 });

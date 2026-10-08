@@ -34,8 +34,14 @@ class BackupService
             try {
                 $this->dump($tmp);
                 $stream = fopen($tmp, 'rb');
-                Storage::disk(config('iptv.backup.disk'))->writeStream(self::DIRECTORY.'/'.$name, $stream);
+                $disk = Storage::disk(config('iptv.backup.disk'));
+                $written = $disk->writeStream(self::DIRECTORY.'/'.$name, $stream);
                 is_resource($stream) && fclose($stream);
+
+                // Disks don't throw by default: a full disk or bad permissions only return false
+                if (!$written || !$disk->exists(self::DIRECTORY.'/'.$name)) {
+                    throw new RuntimeException('The backup could not be written to the backup disk.');
+                }
             } finally {
                 @unlink($tmp);
             }
@@ -111,8 +117,8 @@ class BackupService
 
         $process = new Process($command, null, ['MYSQL_PWD' => (string) $config['password']], null, 600);
         $process->run(function ($type, $buffer) use ($out) {
-            if ($type === Process::OUT) {
-                gzwrite($out, $buffer);
+            if ($type === Process::OUT && gzwrite($out, $buffer) === 0) {
+                throw new RuntimeException('Could not write the backup file (disk full?).');
             }
         });
 

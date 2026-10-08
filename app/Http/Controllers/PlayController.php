@@ -66,12 +66,12 @@ class PlayController extends Controller
             return response('Channel not found', 404);
         }
 
-        $target = $this->proxyService->decodePart($channel, $request->query('u'));
+        $user = $accessToken->user;
+        $target = $this->proxyService->decodePart($channel, $user, $request->query('u'));
         if ($target === null) {
             return response('Forbidden', 403);
         }
 
-        $user = $accessToken->user;
         if (!$this->streamService->isAllowed($user, $channel)) {
             return response('Access denied or connection limit reached', 403);
         }

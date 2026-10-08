@@ -6,6 +6,7 @@ use App\Models\EpgChannel;
 use App\Models\EpgProgramme;
 use App\Models\EpgSource;
 use App\Models\Source;
+use App\Support\SentryScrubber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -42,7 +43,7 @@ class EpgImportService
                 'last_synced_at' => now(),
             ]);
         } catch (Throwable $e) {
-            $source->update(['status' => Source::STATUS_FAILED, 'last_error' => mb_substr($e->getMessage(), 0, 1000)]);
+            $source->update(['status' => Source::STATUS_FAILED, 'last_error' => mb_substr(SentryScrubber::text($e->getMessage()), 0, 1000)]);
 
             throw $e;
         } finally {

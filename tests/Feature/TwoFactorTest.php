@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthController;
 use App\Models\LoginEvent;
 use App\Models\Source;
 use App\Models\User;
@@ -28,7 +29,10 @@ describe('setup', function () {
         $admin = User::factory()->admin()->create();
         $this->actingAs($admin);
 
-        $this->post(route('admin.security.start'))->assertRedirect(route('admin.security.index'));
+        $this->post(route('admin.security.start'), ['password' => 'wrong'])->assertSessionHasErrors('password');
+        expect(app(TwoFactorService::class)->pendingSecret($admin->fresh()))->toBeNull();
+
+        $this->post(route('admin.security.start'), ['password' => 'password'])->assertRedirect(route('admin.security.index'));
         $secret = app(TwoFactorService::class)->pendingSecret($admin->fresh());
 
         $this->get(route('admin.security.index'))->assertOk()->assertSee('<svg', false)->assertSee($secret);
@@ -200,4 +204,50 @@ it('stores source addresses encrypted', function () {
 
     expect($raw)->not->toContain('secret')->not->toContain('p.test')
         ->and($source->fresh()->url)->toBe('http://p.test/get.php?username=u&password=secret');
+});
+
+describe('hardening', function () {
+    it('ends remembered logins when two-factor is turned on or off', function () {
+        $admin = User::factory()->admin()->create(['remember_token' => 'old-remember-token']);
+        $this->actingAs($admin);
+        $service = app(TwoFactorService::class);
+        $secret = $service->begin($admin);
+
+        $this->post(route('admin.security.confirm'), ['code' => Totp::code($secret, Totp::step())]);
+        expect($admin->fresh()->remember_token)->not->toBe('old-remember-token');
+
+        $token = $admin->fresh()->remember_token;
+        $this->post(route('admin.security.disable'), ['password' => 'password']);
+        expect($admin->fresh()->remember_token)->not->toBe($token);
+    });
+
+    it('lets only one of two requests with the same code through', function () {
+        [$admin, $secret] = adminWithTwoFactor();
+        $code = Totp::code($secret, Totp::step());
+        $stale = User::find($admin->id); // both requests read the same old state
+
+        expect(app(TwoFactorService::class)->verify($admin, $code))->toBeTrue()
+            ->and(app(TwoFactorService::class)->verify($stale, $code))->toBeFalse();
+    });
+
+    it('stops trying many usernames from one address', function () {
+        foreach (range(1, AuthController::MAX_ATTEMPTS_PER_IP) as $i) {
+            $this->post('/login', ['username' => "ghost{$i}", 'password' => 'nope'])->assertSessionHasErrors('username');
+        }
+
+        $admin = User::factory()->admin()->create();
+        $this->post('/login', ['username' => $admin->username, 'password' => 'password'])->assertSessionHasErrors('username');
+        $this->assertGuest();
+    });
+
+    it('counts a subscriber guessing the panel login as a failed attempt', function () {
+        $user = User::factory()->create();
+
+        foreach (range(1, AuthController::MAX_ATTEMPTS) as $i) {
+            $this->post('/login', ['username' => $user->username, 'password' => 'password']);
+        }
+
+        $this->post('/login', ['username' => $user->username, 'password' => 'password'])->assertSessionHasErrors('username');
+        expect(session('errors')->first('username'))->toContain('Too many sign-in attempts');
+    });
 });

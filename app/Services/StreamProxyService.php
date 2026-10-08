@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Models\User;
+use App\Support\PublicAddress;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -25,6 +26,9 @@ use Symfony\Component\HttpFoundation\Response;
 class StreamProxyService
 {
     public const MODES = ['off', 'php', 'nginx'];
+
+    /** Hours a link to a part (segment, key) of a stream stays valid. */
+    private const PART_LINK_HOURS = 6;
 
     /** Longest a single viewing is passed on in php mode. */
     private const MAX_SECONDS = 86400;
@@ -57,13 +61,14 @@ class StreamProxyService
     /**
      * The address of a signed part of $channel's stream, as written into rewritten playlists.
      */
-    public function partUrl(Channel $channel, string $token, string $target): string
+    public function partUrl(Channel $channel, string $token, string $target, int $userId): string
     {
-        // Encrypted, not just signed: the address of a segment can contain the provider login
+        // Encrypted, not just signed: the address of a segment can contain the provider login.
+        // Made for one channel and one user, and only good for a while (playlists are fetched again all the time)
         return route('stream', [
             'channel_id' => $channel->id,
             'token' => $token,
-            'u' => Crypt::encryptString(json_encode(['c' => $channel->id, 't' => $target])),
+            'u' => Crypt::encryptString(json_encode(['c' => $channel->id, 'u' => $userId, 'e' => now()->addHours(self::PART_LINK_HOURS)->timestamp, 't' => $target])),
         ], false);
     }
 
@@ -71,7 +76,7 @@ class StreamProxyService
      * The provider address inside the `u` parameter of a part link, or null when it is not one
      * of ours (wrong key, altered, or made for another channel).
      */
-    public function decodePart(Channel $channel, ?string $encrypted): ?string
+    public function decodePart(Channel $channel, User $user, ?string $encrypted): ?string
     {
         try {
             $data = json_decode(Crypt::decryptString((string) $encrypted), true);
@@ -79,7 +84,13 @@ class StreamProxyService
             return null;
         }
 
-        return is_array($data) && ($data['c'] ?? null) === $channel->id && is_string($data['t'] ?? null) ? $data['t'] : null;
+        $valid = is_array($data)
+            && ($data['c'] ?? null) === $channel->id
+            && ($data['u'] ?? null) === $user->id
+            && ($data['e'] ?? 0) >= now()->timestamp
+            && is_string($data['t'] ?? null);
+
+        return $valid ? $data['t'] : null;
     }
 
     public function shouldProxy(Channel $playing, string $streamUrl): bool
@@ -111,6 +122,16 @@ class StreamProxyService
 
     private function pass(Request $request, User $user, Channel $channel, string $token, string $target): Response
     {
+        // A playlist must not be able to aim the proxy at this server's own network
+        if (!PublicAddress::allows($target)) {
+            return response('This stream can not be played.', 502, ['Content-Type' => 'text/plain; charset=UTF-8']);
+        }
+
+        // HEAD would open (and hold) the provider stream just to throw it away
+        if ($request->isMethod('HEAD')) {
+            return response('', 200, ['Content-Type' => $this->isPlaylist($target) ? 'application/vnd.apple.mpegurl' : 'video/mp2t', 'Cache-Control' => 'no-store']);
+        }
+
         if ($this->mode() === 'nginx' && !$this->isPlaylist($target)) {
             $playing = $channel->playbackChannel();
 
@@ -127,9 +148,10 @@ class StreamProxyService
         return $this->preview->proxy(
             $channel,
             $target,
-            fn (string $part) => $this->partUrl($channel, $token, $part),
+            fn (string $part) => $this->partUrl($channel, $token, $part, $user->id),
             fn () => $this->streams->touch($user, $channel),
             self::MAX_SECONDS,
+            publicOnly: true,
         );
     }
 

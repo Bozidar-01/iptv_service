@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Models\StreamAlert;
+use App\Support\SentryScrubber;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -56,8 +57,8 @@ class SourceSyncService
         } catch (Throwable $e) {
             $source->update([
                 'status' => Source::STATUS_FAILED,
-                // Never store a relay secret that a connection error message may contain
-                'last_error' => mb_substr($source->relay_secret ? str_replace([$source->relay_secret, urlencode($source->relay_secret)], '***', $e->getMessage()) : $e->getMessage(), 0, 1000),
+                // Never store a relay secret or a provider login (in the address) that a connection error message may contain
+                'last_error' => mb_substr(SentryScrubber::text($source->relay_secret ? str_replace([$source->relay_secret, urlencode($source->relay_secret)], '***', $e->getMessage()) : $e->getMessage()), 0, 1000),
             ]);
 
             if ($source->alert_on_down) {

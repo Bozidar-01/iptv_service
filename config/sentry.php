@@ -16,5 +16,11 @@ return [
     // Tokens, passwords and provider logins are removed from addresses and messages
     // (a class callable instead of a closure, so `config:cache` works)
     'before_send' => [SentryScrubber::class, 'beforeSend'],
+    'before_send_transaction' => [SentryScrubber::class, 'beforeSend'],
+    'before_breadcrumb' => [SentryScrubber::class, 'beforeBreadcrumb'],
+
+    // Calls to providers carry their login in the address: don't record them at all
+    'breadcrumbs' => ['http_client_requests' => false],
+    'tracing' => ['http_client_requests' => false],
 
 ];

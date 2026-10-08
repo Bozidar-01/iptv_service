@@ -30,4 +30,4 @@ Route::get('/stream/{channel_id}/{token}', [PlayController::class, 'stream'])->m
 Route::match(['get', 'post'], '/player_api.php', [XtreamController::class, 'api'])->name('xtream.api');
 Route::match(['get', 'post'], '/get.php', [M3uController::class, 'generate'])->name('xtream.playlist');
 Route::get('/xmltv.php', [XtreamController::class, 'xmltv'])->name('xtream.xmltv');
-Route::get('/live/{username}/{password}/{stream}', [XtreamController::class, 'live'])->name('xtream.live');
+Route::get('/live/{username}/{password}/{stream}', [XtreamController::class, 'live'])->middleware('throttle:live')->name('xtream.live');

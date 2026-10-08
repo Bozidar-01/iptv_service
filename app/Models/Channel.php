@@ -46,7 +46,9 @@ class Channel extends Model
     {
         return $query->orderBy(Category::select('name')->whereColumn('categories.id', 'channels.category_id'))
             ->orderBy('sort_order')
-            ->orderBy('name');
+            ->orderBy('name')
+            // Last, so channels that tie on everything keep one fixed order: chunked reads (lazy) page by OFFSET
+            ->orderBy('channels.id');
     }
 
     /** @return BelongsTo<EpgSource, $this> */

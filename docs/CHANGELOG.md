@@ -4,6 +4,15 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fixes from the quality review
+Three independent reviews (security, stream proxy, correctness) found these; all fixed:
+- **Playlist:** channels that tie on category, position and name now have a fixed order (`channels.id` last), so chunked reading can't skip or repeat one. Prune models use `MassPrunable` (one `DELETE` per chunk) and the prune job can't overlap itself. The play log truncates very long user agents (was a 500 on MySQL).
+- **Secrets:** Sentry no longer records provider calls (breadcrumbs / spans), cleans breadcrumbs, transactions, `/stream/…` addresses and `password=` / `token=` text. `sources.last_error` and `epg_sources.last_error` no longer keep a provider login (addresses are cut to the host). Backups fail loudly when the file can't be written (disks don't throw by default).
+- **Sign-in:** limit per IP across usernames (20 a minute), subscribers guessing the panel login are counted, unknown usernames cost a password check, setting up two-factor needs the password, turning it on/off ends "Keep me signed in" logins, TOTP codes and recovery codes are claimed atomically. `TRUSTED_PROXIES` for load balancers.
+- **Stream proxy:** refuses private / local addresses (`PublicAddress`, `PROXY_ALLOW_PRIVATE`), `HEAD` doesn't open the stream, any fetch error becomes a generic 502, part links are bound to the user and expire after 6 hours, `/live` has a request limit, nginx hides more provider headers and replaces provider errors.
+- Tests: 333 PHP + 13 browser. `phpstan` / `pint` clean.
+- Files: `app/Support/{PublicAddress,SentryScrubber}.php`, `app/Services/{StreamProxyService,StreamPreviewService,TwoFactorService,BackupService,SourceSyncService,EpgImportService,StreamService}.php`, `app/Http/Controllers/{PlayController,Auth/AuthController,Admin/SecurityController}.php`, `app/Models/{Channel,ActiveSession,LoginEvent,StreamLog}.php`, `bootstrap/app.php`, `config/{iptv,sentry}.php`, `routes/{player,console}.php`, `docker/nginx/*`, `resources/views/admin/security/index.blade.php`, `lang/mk.json`, `.env.example`, `docs/**`, `tests/**`.
+
 ### 2026-10-09 — Code quality: Pint, PHPStan, browser tests, more tests
 - **Pint** works again (`composer reinstall laravel/pint --prefer-dist`: it had been installed from source, without the phar) with `pint.json` matching the house style. The whole code base was formatted once.
 - **PHPStan + Larastan** level 5 (`phpstan.neon`); 15 analyser-limit findings in `phpstan-baseline.neon`. All model relations now have return types and generics. Real findings fixed: `AdminSeeder` read `env()` directly, which is `null` under `php artisan config:cache` (ADMIN_USERNAME / ADMIN_PASSWORD were ignored on a cached production config) → `config('iptv.admin_*')`; `ChannelService::bulkAction` throws on an unknown action instead of an `UnhandledMatchError`; one `str_replace` got ints.

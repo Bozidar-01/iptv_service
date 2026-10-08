@@ -152,3 +152,17 @@ it('streams a long playlist in chunks with one entry per channel', function () {
         ->and(substr_count($body, '#EXTINF'))->toBe(1500)
         ->and($body)->toStartWith('#EXTM3U');
 });
+
+it('lists channels that tie on category, position and name exactly once, in a fixed order', function () {
+    $user = User::factory()->create();
+    foreach (range(1, 2500) as $i) {
+        subscribedChannel($user, ['name' => 'Same name']);
+    }
+
+    $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
+    preg_match_all('~/play/(\d+)/~', $body, $match);
+
+    expect($match[1])->toHaveCount(2500)
+        ->and(array_unique($match[1]))->toHaveCount(2500)
+        ->and($match[1])->toBe(collect($match[1])->sortBy(fn ($id) => (int) $id)->values()->all());
+});

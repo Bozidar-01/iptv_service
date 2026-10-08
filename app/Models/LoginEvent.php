@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Http\Request;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 #[Fillable(['user_id', 'username', 'event', 'ip', 'user_agent'])]
 class LoginEvent extends Model
 {
-    use Prunable;
+    use MassPrunable;
 
     public const UPDATED_AT = null;
 

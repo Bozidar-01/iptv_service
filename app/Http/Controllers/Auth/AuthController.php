@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\TwoFactorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,12 @@ class AuthController extends Controller
 {
     /** Failed sign-ins allowed per username + IP before a one-minute wait. */
     public const MAX_ATTEMPTS = 5;
+
+    /** A bcrypt hash of a random string, checked when the username doesn't exist. */
+    private const DUMMY_HASH = '$2y$12$6kipqWtnvwyP5XxG.8/Fk.rV4G9f1PME8RDqOJOTJE/Vq3VJKKAsS';
+
+    /** Failed sign-ins allowed per IP (any username) per minute: stops trying many usernames. */
+    public const MAX_ATTEMPTS_PER_IP = 20;
 
     /** Minutes to enter the two-factor code after the password was right. */
     public const TWO_FACTOR_MINUTES = 5;
@@ -49,6 +56,13 @@ class AuthController extends Controller
             ])->onlyInput('username');
         }
 
+        $ipKey = 'login-ip:'.$request->ip();
+        if (RateLimiter::tooManyAttempts($ipKey, self::MAX_ATTEMPTS_PER_IP)) {
+            return back()->withErrors([
+                'username' => __('Too many sign-in attempts. Try again in :seconds seconds.', ['seconds' => RateLimiter::availableIn($ipKey)]),
+            ])->onlyInput('username');
+        }
+
         $provider = Auth::guard()->getProvider();
         /** @var User|null $user */
         $user = $provider->retrieveByCredentials(['username' => $credentials['username']]);
@@ -56,6 +70,8 @@ class AuthController extends Controller
         if ($user && $provider->validateCredentials($user, ['password' => $credentials['password']])) {
             if ($user->role !== 'admin') {
                 LoginEvent::record(LoginEvent::DENIED, $credentials['username'], $user, $request);
+                RateLimiter::hit($throttleKey, 60);
+                RateLimiter::hit($ipKey, 60);
 
                 return back()->withErrors([
                     'username' => __('Unauthorized access.'),
@@ -78,8 +94,14 @@ class AuthController extends Controller
             return $this->signIn($request, $user, $request->boolean('remember'));
         }
 
+        // Unknown username: still spend the time of a password check, so response time doesn't tell
+        if (!$user) {
+            Hash::check($credentials['password'], self::DUMMY_HASH);
+        }
+
         LoginEvent::record(LoginEvent::FAILED, $credentials['username'], $user, $request);
         RateLimiter::hit($throttleKey, 60);
+        RateLimiter::hit($ipKey, 60);
 
         return back()->withErrors([
             'username' => __('The provided credentials do not match our records.'),

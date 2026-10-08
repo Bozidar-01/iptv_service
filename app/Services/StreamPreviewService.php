@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Channel;
+use App\Support\PublicAddress;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Psr\Http\Message\StreamInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -85,8 +85,9 @@ class StreamPreviewService
      * @param  ?callable(string): string  $urlFor  address a playlist entry is rewritten to (default: the admin preview)
      * @param  ?callable(): void  $onTick  called about every 30 seconds while media is passed on (keeps a viewing session alive)
      * @param  ?int  $maxSeconds  stop passing media on after this long (default MAX_SECONDS)
+     * @param  bool  $publicOnly  refuse redirects to private / local addresses (viewers' streams, see PublicAddress)
      */
-    public function proxy(Channel $channel, string $target, ?callable $urlFor = null, ?callable $onTick = null, ?int $maxSeconds = null): Response
+    public function proxy(Channel $channel, string $target, ?callable $urlFor = null, ?callable $onTick = null, ?int $maxSeconds = null, bool $publicOnly = false): Response
     {
         $maxSeconds ??= self::MAX_SECONDS;
         $playing = $channel->playbackChannel();
@@ -103,10 +104,20 @@ class StreamPreviewService
                 ->withOptions([
                     'stream' => true,
                     'read_timeout' => self::READ_TIMEOUT,
-                    'allow_redirects' => ['max' => 5, 'track_redirects' => true],
+                    'allow_redirects' => [
+                        'max' => 5,
+                        'track_redirects' => true,
+                        'on_redirect' => function ($request, $response, $uri) use ($publicOnly) {
+                            if ($publicOnly && !PublicAddress::allows((string) $uri)) {
+                                throw new \RuntimeException('Redirect to a private address.');
+                            }
+                        },
+                    ],
                 ])
                 ->get($target);
-        } catch (ConnectionException) {
+        } catch (\Throwable) {
+            // Not just connection errors: too many redirects, a refused redirect... and none of their
+            // messages may reach the viewer, they contain the provider address
             return $this->error(__('The provider did not answer.'));
         }
 
@@ -122,7 +133,13 @@ class StreamPreviewService
             $redirects = $upstream->toPsrResponse()->getHeader('X-Guzzle-Redirect-History');
             $base = $redirects ? end($redirects) : $target;
 
-            return response($this->rewritePlaylist($channel, $first.$this->readRest($body), $base, $urlFor), 200, [
+            try {
+                $rewritten = $this->rewritePlaylist($channel, $first.$this->readRest($body), $base, $urlFor);
+            } catch (\Throwable) {
+                return $this->error(__('The provider sent a playlist this server can not read.'));
+            }
+
+            return response($rewritten, 200, [
                 'Content-Type' => 'application/vnd.apple.mpegurl',
                 'Cache-Control' => 'no-store',
             ]);

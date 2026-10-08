@@ -23,6 +23,9 @@ function playUrlFor(User $user, Channel $channel): string
     return route('play', ['channel_id' => $channel->id, 'token' => tokenFor($user)]);
 }
 
+// Fake hostnames (provider.test) may resolve to anything on a test machine: the address guard has its own tests below
+beforeEach(fn () => config(['iptv.proxy_allow_private' => true]));
+
 describe('php mode', function () {
     beforeEach(fn () => config(['iptv.stream_proxy' => 'php']));
 
@@ -106,10 +109,12 @@ describe('php mode', function () {
         $other = proxiedChannel($user, 'http://provider.test/hls/other.m3u8');
         $token = tokenFor($user);
 
-        $part = app(StreamProxyService::class)->partUrl($channel, $token, 'http://provider.test/hls/seg.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, $token, 'http://provider.test/hls/seg.ts', $user->id);
         $this->get($part)->assertOk();
 
-        $this->get($part.'x')->assertStatus(403);
+        // Flip one character in the middle of the encrypted address
+        $at = strpos($part, 'u=') + 30;
+        $this->get(substr($part, 0, $at).($part[$at] === 'A' ? 'B' : 'A').substr($part, $at + 1))->assertStatus(403);
         $this->get(str_replace('/stream/'.$channel->id.'/', '/stream/'.$other->id.'/', $part))->assertStatus(403);
         $this->get(str_replace($token, 'nope', $part))->assertStatus(401);
         $this->get(route('stream', ['channel_id' => $channel->id, 'token' => $token]))->assertStatus(403);
@@ -125,7 +130,7 @@ describe('php mode', function () {
         $this->get(playUrlFor($user, $channel))->assertOk();
 
         $this->travel(4)->minutes();
-        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts', $user->id);
         $this->get($part)->assertOk();
 
         expect(ActiveSession::where('user_id', $user->id)->sole()->last_activity_at->diffInSeconds(now()))->toBeLessThan(5)
@@ -146,7 +151,7 @@ describe('php mode', function () {
         config(['iptv.throttle_stream_per_token' => 2]);
         $user = User::factory()->create();
         $channel = proxiedChannel($user, 'http://provider.test/hls/index.m3u8');
-        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts', $user->id);
 
         $this->get($part)->assertOk();
         $this->get($part)->assertOk();
@@ -189,7 +194,7 @@ describe('nginx mode', function () {
         Http::fake();
         $user = User::factory()->create();
         $channel = proxiedChannel($user, 'http://provider.test/hls/index.m3u8');
-        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg1.ts');
+        $part = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg1.ts', $user->id);
 
         $this->withServerVariables(['STREAM_PROXY_ENGINE' => 'nginx'])->get($part)
             ->assertHeader('X-Accel-Redirect', '/_proxy')
@@ -241,4 +246,88 @@ it('saves "Hide provider address" on a source, but never for receivers', functio
     expect(Source::where('name', 'R')->sole()->proxy_streams)->toBeFalse();
 
     $this->get(route('admin.sources.create'))->assertOk()->assertSee('Hide provider address');
+});
+
+describe('hardening', function () {
+    beforeEach(fn () => config(['iptv.stream_proxy' => 'php']));
+
+    it('does not fetch from the server\'s own network', function (string $url) {
+        config(['iptv.proxy_allow_private' => false]);
+        Http::fake();
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user, $url);
+
+        $this->get(playUrlFor($user, $channel))->assertStatus(502);
+
+        Http::assertNothingSent();
+    })->with([
+        'loopback' => 'http://127.0.0.1:3306/x.ts',
+        'localhost' => 'http://localhost/x.ts',
+        'private' => 'http://192.168.1.5/live.ts',
+        'cloud metadata' => 'http://169.254.169.254/latest/meta-data/',
+        'ipv6 loopback' => 'http://[::1]/x.ts',
+    ]);
+
+    it('allows private addresses when the admin says so', function () {
+        Http::fake(['*' => Http::response('lan-bytes', 200, ['Content-Type' => 'video/mp2t'])]);
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user, 'http://192.168.1.5/live.ts');
+
+        expect($this->get(playUrlFor($user, $channel))->assertOk()->streamedContent())->toBe('lan-bytes');
+    });
+
+    it('does not open the provider stream for a HEAD request', function () {
+        Http::fake();
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user);
+
+        $this->call('HEAD', playUrlFor($user, $channel))->assertOk();
+
+        Http::assertNothingSent();
+    });
+
+    it('never shows an exception message that contains the provider address', function () {
+        Http::fake(['provider.test/*' => fn () => throw new RuntimeException('Too many redirects for http://provider.test/live/bob/hunter2/1.ts')]);
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user);
+
+        $response = $this->get(playUrlFor($user, $channel))->assertStatus(502);
+
+        expect($response->getContent())->not->toContain('hunter2')->not->toContain('provider.test');
+    });
+
+    it('refuses a part link after it has expired', function () {
+        Http::fake(['provider.test/*' => Http::response('x')]);
+        $user = User::factory()->create();
+        $channel = proxiedChannel($user, 'http://provider.test/hls/index.m3u8');
+        $token = tokenFor($user);
+        $part = app(StreamProxyService::class)->partUrl($channel, $token, 'http://provider.test/hls/seg.ts', $user->id);
+
+        $this->get($part)->assertOk();
+        $this->travel(7)->hours();
+        $this->get($part)->assertStatus(403);
+    });
+
+    it('refuses a part link made for another user', function () {
+        Http::fake(['provider.test/*' => Http::response('x')]);
+        $user = User::factory()->create(['max_connections' => 2]);
+        $other = User::factory()->create(['max_connections' => 2]);
+        $channel = proxiedChannel($user, 'http://provider.test/hls/index.m3u8');
+        $other->bouquets()->attach($user->bouquets()->first());
+
+        $forOther = app(StreamProxyService::class)->partUrl($channel, tokenFor($user), 'http://provider.test/hls/seg.ts', $other->id);
+
+        $this->get($forOther)->assertStatus(403);
+    });
+
+    it('limits starting streams through Xtream /live like /play', function () {
+        Http::fake(['provider.test/*' => Http::response('x', 200, ['Content-Type' => 'video/mp2t'])]);
+        config(['iptv.throttle_per_token' => 2]);
+        $user = User::factory()->create(['username' => 'tv1', 'password' => bcrypt('secret')]);
+        $channel = proxiedChannel($user);
+
+        $this->get("/live/tv1/secret/{$channel->id}.ts")->assertOk();
+        $this->get("/live/tv1/secret/{$channel->id}.ts")->assertOk();
+        $this->get("/live/tv1/secret/{$channel->id}.ts")->assertStatus(429);
+    });
 });
