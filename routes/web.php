@@ -31,10 +31,30 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 Route::post('/theme', [ThemeController::class, 'update'])->name('theme.update');
 
-// Admin Routes
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+// Panel for admins and resellers. Resellers only ever reach their own customers ({user} is scoped, see
+// AppServiceProvider and User::scopeVisibleTo)
+Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::post('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+    Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
+    Route::post('users/{user}/sessions/disconnect', [UserController::class, 'disconnectAllDevices'])->name('users.sessions.disconnect-all');
+    Route::post('users/{user}/sessions/{session}/disconnect', [UserController::class, 'disconnectDevice'])->name('users.sessions.disconnect');
+    Route::resource('users', UserController::class);
+
+    Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
+    Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+
+    Route::get('security', [SecurityController::class, 'index'])->name('security.index');
+    Route::post('security/two-factor', [SecurityController::class, 'start'])->name('security.start');
+    Route::post('security/two-factor/confirm', [SecurityController::class, 'confirm'])->name('security.confirm');
+    Route::post('security/two-factor/recovery-codes', [SecurityController::class, 'recoveryCodes'])->name('security.recovery-codes');
+    Route::post('security/two-factor/disable', [SecurityController::class, 'disable'])->name('security.disable');
+});
+
+// Admin-only: content, sources, TV guide, statistics
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::post('sources/{source}/sync', [SourceController::class, 'sync'])->name('sources.sync');
     Route::resource('sources', SourceController::class)->except(['show']);
 
@@ -46,27 +66,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::resource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('bouquets', BouquetController::class)->except(['show']);
 
-    Route::post('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
-    Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
-    Route::post('users/{user}/sessions/disconnect', [UserController::class, 'disconnectAllDevices'])->name('users.sessions.disconnect-all');
-    Route::post('users/{user}/sessions/{session}/disconnect', [UserController::class, 'disconnectDevice'])->name('users.sessions.disconnect');
-    Route::resource('users', UserController::class);
-
     Route::get('epg', [EpgSourceController::class, 'index'])->name('epg.index');
     Route::post('epg', [EpgSourceController::class, 'store'])->name('epg.store');
     Route::post('epg/match', [EpgSourceController::class, 'match'])->name('epg.match');
     Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
-    Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
-    Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
-    Route::get('logs', [LogController::class, 'index'])->name('logs.index');
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
-
-    Route::get('security', [SecurityController::class, 'index'])->name('security.index');
-    Route::post('security/two-factor', [SecurityController::class, 'start'])->name('security.start');
-    Route::post('security/two-factor/confirm', [SecurityController::class, 'confirm'])->name('security.confirm');
-    Route::post('security/two-factor/recovery-codes', [SecurityController::class, 'recoveryCodes'])->name('security.recovery-codes');
-    Route::post('security/two-factor/disable', [SecurityController::class, 'disable'])->name('security.disable');
 });
 
 // Player endpoints (M3U, play, Xtream Codes API) are in routes/player.php

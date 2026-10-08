@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\StreamAlert;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // {user} in the panel: a reseller reaches only their own customers (anything else is a 404, same as a
+        // missing id), an admin everyone. See User::scopeVisibleTo.
+        Route::bind('user', fn ($value) => User::visibleTo(Auth::user())->findOrFail($value));
+
         // Request limit for /play, /playlist/{token}.m3u and /epg/{token}.xml
         RateLimiter::for('player', fn (Request $request) => [
             Limit::perMinute(config('iptv.throttle_per_token'))
@@ -56,10 +62,14 @@ class AppServiceProvider extends ServiceProvider
 
         // Header bell (admin.partials.notifications)
         View::composer('layouts.admin', function ($view) {
-            $view->with('alertMenu', Auth::check() ? [
-                'unread' => StreamAlert::unread()->count(),
-                'latest' => StreamAlert::latest('id')->limit(8)->get(),
-            ] : ['unread' => 0, 'latest' => collect()]);
+            $user = Auth::user();
+
+            $view->with('alertMenu', match (true) {
+                $user?->isAdmin() => ['unread' => StreamAlert::unread()->count(), 'latest' => StreamAlert::latest('id')->limit(8)->get()],
+                // A reseller sees the alerts of their own customers; read/unread belongs to the admins, so no unread count
+                $user?->isReseller() => ['unread' => 0, 'latest' => StreamAlert::whereIn('user_id', User::visibleTo($user)->select('id'))->latest('id')->limit(8)->get()],
+                default => ['unread' => 0, 'latest' => collect()],
+            });
         });
     }
 }

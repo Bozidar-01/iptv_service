@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use App\Support\Theme;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 use Sentry\Laravel\Integration;
 
@@ -27,7 +29,13 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)));
         }
         $middleware->web(append: [SetLocale::class, SecurityHeaders::class]);
-        $middleware->alias(['admin' => EnsureAdmin::class]);
+        // Check who is asking before {user} is resolved (the binding is scoped to what the person may see)
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsureAdmin::class);
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: EnsureStaff::class);
+        $middleware->alias([
+            'admin' => EnsureAdmin::class,
+            'staff' => EnsureStaff::class,
+        ]);
         // Written by the theme switcher's JS, so it can't be encrypted
         $middleware->encryptCookies(except: [Theme::COOKIE]);
     })
