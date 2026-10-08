@@ -55,6 +55,8 @@ return [
     */
     'backup' => [
         'disk' => env('BACKUP_DISK', 'local'),
+        // A second disk every backup is also written to, normally off-site (s3, see docs/deployment.md#backups)
+        'copy_disk' => env('BACKUP_COPY_DISK'),
         // Database connection to dump (null = the default one)
         'connection' => null,
         'keep_days' => (int) env('BACKUP_KEEP_DAYS', 14),

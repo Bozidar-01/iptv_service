@@ -1,0 +1,34 @@
+name: Uptime
+
+# Looks at the live site every 30 minutes (GitHub runs it on a best-effort schedule). A failing run emails you
+# (GitHub → Settings → Notifications → Actions). Does nothing until the repository variable SITE_URL is set:
+#   gh variable set SITE_URL --body "https://your-site.example"
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Is the site up?
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check /login and /health
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then echo "SITE_URL is not set: skipping"; exit 0; fi
+          for path in /login /health; do
+            ok=no
+            for try in 1 2 3; do
+              code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 20 "${SITE_URL%/}$path" || true)
+              if [ "$code" = 200 ]; then ok=yes; break; fi
+              sleep 20
+            done
+            if [ "$ok" != yes ]; then
+              echo "::error::${SITE_URL%/}$path answered ${code:-nothing} (3 tries)"
+              head -c 600 /tmp/body || true
+              exit 1
+            fi
+            echo "${SITE_URL%/}$path -> 200"
+          done

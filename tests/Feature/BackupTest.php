@@ -2,6 +2,8 @@
 
 use App\Models\StreamAlert;
 use App\Services\BackupService;
+use App\Services\HealthService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -55,4 +57,80 @@ it('keeps recent backups and removes old ones, but never the newest', function (
     touch($disk->path($newest), now()->subDays(60)->timestamp);
     expect(app(BackupService::class)->prune())->toBe(0)
         ->and($disk->exists($newest))->toBeTrue();
+});
+
+describe('off-site copy', function () {
+    beforeEach(function () {
+        Storage::fake('offsite');
+        $file = tempnam(sys_get_temp_dir(), 'db');
+        file_put_contents($file, 'sqlite contents');
+        config([
+            'database.connections.backup_test' => ['driver' => 'sqlite', 'database' => $file],
+            'iptv.backup.connection' => 'backup_test',
+            'iptv.backup.copy_disk' => 'offsite',
+        ]);
+    });
+
+    it('writes every backup to both disks and records the success', function () {
+        $this->artisan('iptv:backup')->assertSuccessful();
+
+        $local = Storage::disk('backups')->files('backups');
+        $remote = Storage::disk('offsite')->files('backups');
+        expect($local)->toHaveCount(1)->and($remote)->toBe($local)
+            ->and(gzdecode(Storage::disk('offsite')->get($remote[0])))->toBe('sqlite contents')
+            ->and(app(BackupService::class)->lastSuccess())->not->toBeNull();
+    });
+
+    it('fails and alerts when the off-site copy cannot be written, but keeps the local backup', function () {
+        config(['filesystems.disks.broken' => ['driver' => 'local', 'root' => '/dev/null/offsite', 'throw' => false], 'iptv.backup.copy_disk' => 'broken']);
+
+        $this->artisan('iptv:backup')->assertFailed();
+
+        expect(Storage::disk('backups')->files('backups'))->toHaveCount(1)
+            ->and(StreamAlert::where('type', 'backup_failed')->count())->toBe(1)
+            ->and(app(BackupService::class)->lastSuccess())->toBeNull();
+    });
+
+    it('removes old backups from both disks', function () {
+        foreach (['backups', 'offsite'] as $name) {
+            $disk = Storage::disk($name);
+            $disk->put('backups/iptv-20260101-000000.sql.gz', 'x');
+            $disk->put('backups/iptv-'.now()->format('Ymd-His').'.sql.gz', 'x');
+            touch($disk->path('backups/iptv-20260101-000000.sql.gz'), now()->subDays(40)->timestamp);
+        }
+
+        expect(app(BackupService::class)->prune())->toBe(2)
+            ->and(Storage::disk('backups')->files('backups'))->toHaveCount(1)
+            ->and(Storage::disk('offsite')->files('backups'))->toHaveCount(1);
+    });
+});
+
+describe('stale backup alert', function () {
+    it('alerts once a day when no backup succeeded for a day and a half', function () {
+        $health = app(HealthService::class);
+
+        $health->beat(); // first time seen: the clock starts now
+        expect(StreamAlert::where('type', 'backup_stale')->count())->toBe(0);
+
+        $this->travel(37)->hours();
+        $health->beat();
+        $health->beat();
+        expect(StreamAlert::where('type', 'backup_stale')->sole()->message())->toBe('No database backup for 37 hours');
+
+        $this->travel(25)->hours();
+        $health->beat();
+        expect(StreamAlert::where('type', 'backup_stale')->count())->toBe(2);
+    });
+
+    it('stays quiet while backups succeed', function () {
+        $health = app(HealthService::class);
+        $health->beat();
+
+        $this->travel(30)->hours();
+        Cache::forever(BackupService::LAST_SUCCESS_KEY, now()->timestamp);
+        $this->travel(30)->hours();
+        $health->beat();
+
+        expect(StreamAlert::where('type', 'backup_stale')->count())->toBe(0);
+    });
 });
