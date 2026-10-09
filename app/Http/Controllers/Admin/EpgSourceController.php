@@ -7,6 +7,7 @@ use App\Jobs\SyncEpgSource;
 use App\Models\Channel;
 use App\Models\EpgSource;
 use App\Models\Source;
+use App\Services\EpgGuideCatalog;
 use App\Services\EpgService;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,7 @@ use Illuminate\Http\Request;
  */
 class EpgSourceController extends Controller
 {
-    public function index()
+    public function index(EpgGuideCatalog $catalog)
     {
         $sources = EpgSource::orderBy('id')->get();
         $enabled = Channel::where('is_active', true);
@@ -30,7 +31,7 @@ class EpgSourceController extends Controller
                 ->count(),
         ];
 
-        return view('admin.epg.index', compact('sources', 'coverage'));
+        return view('admin.epg.index', ['sources' => $sources, 'coverage' => $coverage, 'suggestions' => $catalog->suggestions()]);
     }
 
     public function store(Request $request)
@@ -44,6 +45,25 @@ class EpgSourceController extends Controller
         SyncEpgSource::dispatch($source);
 
         return back()->with('success', __('Guide added. It is being imported in the background.'));
+    }
+
+    /**
+     * Add the free guides of the countries the channels come from (all suggested ones, or the chosen `countries[]`).
+     */
+    public function addCountries(Request $request, EpgGuideCatalog $catalog)
+    {
+        $data = $request->validate([
+            'countries' => ['nullable', 'array'],
+            'countries.*' => ['string', 'size:2'],
+            'all' => ['nullable', 'boolean'],
+        ]);
+
+        $codes = $request->boolean('all') ? array_column($catalog->suggestions(), 'code') : ($data['countries'] ?? []);
+        $added = $catalog->add($codes);
+
+        return back()->with($added ? 'success' : 'error', $added
+            ? trans_choice(':count guide added. It is being imported in the background.|:count guides added. They are being imported in the background.', $added, ['count' => $added])
+            : __('Nothing to add.'));
     }
 
     public function sync(EpgSource $epgSource)

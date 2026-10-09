@@ -122,7 +122,7 @@ Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem
 `name`, `url`, `status` (as sources), `last_error`, `channel_count`, `programme_count`, `last_synced_at`, timestamps.
 
 ### epg_channels
-`epg_source_id` FK cascade, `xmltv_id` (unique per source), `name`, `name_key` (indexed, `EpgService::nameKey`). No timestamps.
+`epg_source_id` FK cascade, `xmltv_id` (unique per source), `name`, `name_key` (indexed, `EpgService::nameKey`), `alt_keys` (text, nullable: the name keys of the channel's other display names, separated by `|`). No timestamps.
 
 ### epg_programmes
 `epg_source_id` FK cascade, `xmltv_id`, `start`, `stop` (UTC), `title` (500), `description` (nullable). Index `(epg_source_id, xmltv_id, start)`. No timestamps.

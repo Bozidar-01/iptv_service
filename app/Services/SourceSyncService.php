@@ -162,6 +162,7 @@ class SourceSyncService
 
         // New and renamed channels get their TV guide right away
         app(EpgService::class)->matchChannels($source->id);
+        app(EpgService::class)->refreshGuidesMissingProgrammes();
 
         return Channel::where('source_id', $source->id)->count();
     }

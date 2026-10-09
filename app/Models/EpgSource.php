@@ -33,6 +33,12 @@ class EpgSource extends Model
         return $this->hasMany(EpgProgramme::class);
     }
 
+    /** The country of a per-country guide file (https://iptv-epg.org/files/epg-de.xml.gz → "de"), else null. */
+    public function country(): ?string
+    {
+        return preg_match('~/epg-([a-z]{2})\.xml(?:\.gz)?$~i', (string) parse_url($this->url, PHP_URL_PATH), $m) ? strtolower($m[1]) : null;
+    }
+
     public function isBusy(): bool
     {
         return in_array($this->status, [Source::STATUS_QUEUED, Source::STATUS_SYNCING], true);
