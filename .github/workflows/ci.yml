@@ -79,7 +79,7 @@ jobs:
       - run: npm ci --ignore-scripts
       # Uses the Google Chrome that comes with the runner (playwright.config.js: channel "chrome")
       - run: npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
