@@ -31,6 +31,41 @@
         @endif
     </form>
 
+    <form method="POST" action="{{ route('admin.users.bulk') }}" id="bulk-form" class="bulk-bar" hidden>
+        @csrf
+        <input type="hidden" name="scope" value="selected" id="bulk-scope">
+        @foreach(array_filter($filters) as $key => $value)
+            <input type="hidden" name="filters[{{ $key }}]" value="{{ $value }}">
+        @endforeach
+
+        <strong id="bulk-count">{{ __(':count selected', ['count' => 0]) }}</strong>
+        @if($users->total() > $users->count())
+            <button type="button" class="btn btn-ghost btn-sm" id="bulk-all" hidden>{{ __('Select all :count matching', ['count' => number_format($users->total())]) }}</button>
+        @endif
+        <span class="spacer" style="flex: 1"></span>
+        <select class="select" name="action" id="bulk-action" required aria-label="{{ __('Bulk action') }}">
+            <option value="">{{ __('Choose action…') }}</option>
+            <option value="enable">{{ __('Enable') }}</option>
+            <option value="disable">{{ __('Disable') }}</option>
+            <option value="extend">{{ __('Renew') }}</option>
+            <option value="add_bouquet">{{ __('Add a bouquet') }}</option>
+            <option value="remove_bouquet">{{ __('Remove a bouquet') }}</option>
+            <option value="delete">{{ __('Delete') }}</option>
+        </select>
+        <select class="select" name="months" id="bulk-months" hidden aria-label="{{ __('How long') }}">
+            @foreach(\App\Http\Controllers\Admin\UserController::RENEW_MONTHS as $months)
+                <option value="{{ $months }}">{{ trans_choice(':count month|:count months', $months, ['count' => $months]) }}</option>
+            @endforeach
+        </select>
+        <select class="select" name="bouquet_id" id="bulk-bouquet" hidden aria-label="{{ __('Bouquet') }}">
+            <option value="">{{ __('Choose bouquet…') }}</option>
+            @foreach($bulkBouquets as $bouquet)
+                <option value="{{ $bouquet->id }}">{{ $bouquet->name }}</option>
+            @endforeach
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">{{ __('Apply') }}</button>
+    </form>
+
     @if($users->isEmpty())
         <div class="empty">
             <div class="empty-icon"><x-icon name="users" /></div>
@@ -44,11 +79,12 @@
         <div class="table-wrap">
             <table class="table">
                 <thead>
-                <tr><th>{{ __('User') }}</th><th>{{ __('Status') }}</th><th class="hide-sm">{{ __('Expires') }}</th><th class="hide-sm right">{{ __('Connections') }}</th><th></th></tr>
+                <tr><th class="shrink"><input type="checkbox" id="select-page" aria-label="{{ __('Select all on this page') }}" style="accent-color: var(--primary)"></th><th>{{ __('User') }}</th><th>{{ __('Status') }}</th><th class="hide-sm">{{ __('Expires') }}</th><th class="hide-sm right">{{ __('Connections') }}</th><th></th></tr>
                 </thead>
                 <tbody>
                 @foreach($users as $user)
                     <tr>
+                        <td>@if($user->role === 'user')<input type="checkbox" name="ids[]" value="{{ $user->id }}" form="bulk-form" class="row-check" aria-label="{{ __('Select :name', ['name' => $user->username]) }}" style="accent-color: var(--primary)">@endif</td>
                         <td>
                             <div class="cell-flex">
                                 <span class="avatar">{{ strtoupper(substr($user->username, 0, 1)) }}</span>
@@ -98,3 +134,52 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(() => {
+    const form = document.getElementById('bulk-form');
+    if (!form) return;
+    const rows = [...document.querySelectorAll('.row-check')];
+    const pageBox = document.getElementById('select-page');
+    const count = document.getElementById('bulk-count');
+    const scope = document.getElementById('bulk-scope');
+    const allBtn = document.getElementById('bulk-all');
+    const action = document.getElementById('bulk-action');
+    const months = document.getElementById('bulk-months');
+    const bouquet = document.getElementById('bulk-bouquet');
+    const total = {{ $users->total() }};
+    const text = {{ Js::from([
+        'all' => __('All :count matching users selected'),
+        'selected' => __(':count selected'),
+        'confirmDelete' => __('Delete :count users? Their playlists stop working immediately.'),
+    ]) }};
+    const fill = (template, n) => template.replace(':count', n.toLocaleString());
+
+    const update = () => {
+        const selected = rows.filter((r) => r.checked).length;
+        const filtered = scope.value === 'filtered';
+        form.hidden = selected === 0 && !filtered;
+        count.textContent = filtered ? fill(text.all, total) : fill(text.selected, selected);
+        if (pageBox) pageBox.checked = selected === rows.length && rows.length > 0;
+        if (allBtn) allBtn.hidden = filtered || selected !== rows.length || total <= rows.length;
+    };
+
+    rows.forEach((r) => r.addEventListener('change', () => { scope.value = 'selected'; update(); }));
+    pageBox?.addEventListener('change', () => { rows.forEach((r) => { r.checked = pageBox.checked; }); scope.value = 'selected'; update(); });
+    allBtn?.addEventListener('click', () => { scope.value = 'filtered'; update(); });
+    action.addEventListener('change', () => {
+        const needsBouquet = ['add_bouquet', 'remove_bouquet'].includes(action.value);
+        bouquet.hidden = !needsBouquet;
+        bouquet.required = needsBouquet;
+        months.hidden = action.value !== 'extend';
+    });
+    form.addEventListener('submit', (event) => {
+        const n = scope.value === 'filtered' ? total : rows.filter((r) => r.checked).length;
+        if (action.value === 'delete' && !confirm(fill(text.confirmDelete, n))) {
+            event.preventDefault();
+        }
+    });
+})();
+</script>
+@endpush

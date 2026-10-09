@@ -4,6 +4,16 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fix: flaky receiver relay test
+- `test_limits_channels_to_the_tuners` waited a fixed 0.2 s for the first stream to take the tuner and assumed the stream was still open afterwards, so it failed on a slow CI machine (PR checks, not the relay itself). The fake receiver now keeps the first stream open until the test releases it, and the test waits until the relay reports the tuner taken. Passes 15 of 15 runs with all CPU cores busy.
+- Files: `relay/test_relay.py`.
+
+### 2026-10-09 — Bulk actions on users
+- The users list has checkboxes and a bar for **Enable**, **Disable**, **Renew** (1 / 3 / 6 / 12 months), **Add a bouquet**, **Remove a bouquet** and **Delete**, for the selected users or *all N matching* the list filters. Admins and resellers (own users only; a reseller only uses bouquets they hold).
+- Only subscribers are changed. A reseller's renewal costs 1 credit per month per user, all or nothing; users who never expire are skipped. Set-based queries (checked on MySQL), written to the audit log.
+- No schema change. Tests: `UserBulkTest` (13). 639 PHP tests.
+- Files: `app/Services/UserBulkService.php`, `app/Services/UserService.php` (`filteredQuery`), `app/Http/Controllers/Admin/UserController.php`, `resources/views/admin/users/index.blade.php`, `app/Models/AuditLog.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Cleanup rules for channel names and categories
 - New admin page **Cleanup rules** (Content menu): rules that tidy names and categories on every import and on demand (*Apply now*): change channel names (contains / exactly / regex), rename or merge categories, and put channels in a category by name (optionally only for channels in one category). Per source or for all, with *Preview* before saving and ready-made sets: remove `[301]` tags, radio, satellite group names, genres for the *Satellite* group (Sports, News, Kids, Movies, Music, Documentary).
 - The import applies the rules before saving but keeps the channel's identity key from the raw playlist, so rules never create duplicates or lose bouquets. Categories left empty by *Apply now* are deleted. Audit-logged.

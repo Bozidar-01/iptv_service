@@ -63,6 +63,8 @@ class AuditLog extends Model
 
     public const CLEANUP_APPLIED = 'cleanup.applied';
 
+    public const USERS_BULK = 'users.bulk';
+
     protected function casts(): array
     {
         return ['details' => 'array'];
@@ -102,6 +104,7 @@ class AuditLog extends Model
             self::CHANNELS_DELETED => __('Channels deleted'),
             self::CHANNELS_DEDUPLICATED => __('Duplicate channels switched off'),
             self::CLEANUP_APPLIED => __('Cleanup rules applied'),
+            self::USERS_BULK => __('Bulk action on users'),
         ];
     }
 
@@ -115,6 +118,20 @@ class AuditLog extends Model
     {
         $d = $this->details ?? [];
         $parts = [];
+
+        // A bulk action on users: what was done and to how many (and the credits it cost)
+        if ($this->action === self::USERS_BULK) {
+            $what = [
+                'enable' => __('enabled'), 'disable' => __('disabled'), 'add_bouquet' => __('bouquet added'),
+                'remove_bouquet' => __('bouquet removed'), 'extend' => __('renewed'), 'delete' => __('deleted'),
+            ][$d['action'] ?? ''] ?? ($d['action'] ?? '');
+            $parts[] = $what.': '.trans_choice(':count user|:count users', $d['count'] ?? 0, ['count' => number_format($d['count'] ?? 0)]);
+            if (!empty($d['credits_spent'])) {
+                $parts[] = trans_choice(':count credit used|:count credits used', $d['credits_spent'], ['count' => $d['credits_spent']]);
+            }
+
+            return implode(' · ', $parts);
+        }
 
         $fields = [
             'username' => __('Username'), 'status' => __('Status'), 'email' => __('Email'), 'locale' => __('Language'),

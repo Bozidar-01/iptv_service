@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CreditService;
 use App\Services\StreamService;
+use App\Services\UserBulkService;
 use App\Services\UserService;
 use App\Support\Credits;
 use Illuminate\Http\Request;
@@ -45,8 +46,10 @@ class UserController extends Controller
         // Only plain values: ?search[]=x would otherwise reach the query as an array
         $filters = array_filter($request->only(['search', 'status', 'reseller']), 'is_scalar');
         $users = $this->userService->getAllUsers($filters, $request->user());
+        // Bouquets the actor can give or take in a bulk action: all for an admin, the ones they hold for a reseller
+        $bulkBouquets = ($request->user()->isAdmin() ? Bouquet::query() : $request->user()->bouquets())->orderBy('bouquets.name')->get(['bouquets.id', 'bouquets.name']);
 
-        return view('admin.users.index', compact('users', 'filters'));
+        return view('admin.users.index', compact('users', 'filters', 'bulkBouquets'));
     }
 
     public function show(Request $request, User $user)
@@ -75,6 +78,54 @@ class UserController extends Controller
         ];
 
         return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage'));
+    }
+
+    /**
+     * Do the same thing to many subscribers: the selected ones, or everyone matching the list filters.
+     */
+    public function bulk(Request $request, UserBulkService $bulk)
+    {
+        $actor = $request->user();
+        $bouquets = $actor->isAdmin() ? Bouquet::pluck('id')->all() : $actor->bouquets()->pluck('bouquets.id')->all();
+
+        $data = $request->validate([
+            'action' => ['required', Rule::in(UserBulkService::ACTIONS)],
+            'scope' => ['required', Rule::in(['selected', 'filtered'])],
+            'ids' => ['required_if:scope,selected', 'array'],
+            'ids.*' => ['integer'],
+            'filters' => ['nullable', 'array'],
+            'months' => ['required_if:action,extend', 'nullable', Rule::in(self::RENEW_MONTHS)],
+            'bouquet_id' => ['required_if:action,add_bouquet,remove_bouquet', 'nullable', Rule::in($bouquets)],
+        ], [
+            'ids.required_if' => __('Select at least one user.'),
+            'bouquet_id.required_if' => __('Choose a bouquet.'),
+            'months.required_if' => __('Choose how long.'),
+        ]);
+
+        $query = $data['scope'] === 'filtered'
+            ? $this->userService->filteredQuery(array_filter($data['filters'] ?? [], 'is_scalar'), $actor)
+            : User::visibleTo($actor)->whereIn('id', $data['ids']);
+
+        try {
+            $result = $bulk->apply($actor, $data['action'], $query, ['months' => (int) ($data['months'] ?? 0), 'bouquet_id' => (int) ($data['bouquet_id'] ?? 0)]);
+        } catch (InsufficientCredits $e) {
+            return back()->with('error', __('Not enough credits: this needs :needed, you have :balance.', ['needed' => $e->needed, 'balance' => $e->balance]));
+        }
+
+        if ($result['changed'] > 0) {
+            $this->audit->record(AuditLog::USERS_BULK, null, ['action' => $data['action'], 'count' => $result['changed'], 'credits_spent' => $result['spent']]);
+        }
+
+        $message = [
+            'enable' => ':count user enabled.|:count users enabled.',
+            'disable' => ':count user disabled.|:count users disabled.',
+            'add_bouquet' => ':count user got the bouquet.|:count users got the bouquet.',
+            'remove_bouquet' => ':count user lost the bouquet.|:count users lost the bouquet.',
+            'extend' => ':count user renewed.|:count users renewed.',
+            'delete' => ':count user deleted.|:count users deleted.',
+        ][$data['action']];
+
+        return back()->with('success', $this->withCreditNote(trans_choice($message, $result['changed'], ['count' => number_format($result['changed'])]), $actor, $result['spent']));
     }
 
     /**
