@@ -28,13 +28,11 @@ class UserService
     }
 
     /**
-     * Number of distinct active channels the user's bouquets give access to.
+     * Number of distinct active channels the user gets: those in their bouquets that aren't hidden for them.
      */
     public function channelCount(User $user): int
     {
-        return Channel::where('is_active', true)
-            ->whereHas('bouquets', fn ($q) => $q->whereIn('bouquets.id', $user->bouquets()->select('bouquets.id')))
-            ->count();
+        return Channel::availableTo($user)->count();
     }
 
     public function createUser(array $data)

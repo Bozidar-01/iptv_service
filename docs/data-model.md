@@ -33,6 +33,12 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 ### login_events
 `id`, `user_id` FK nullable (`SET NULL`), `username` (what was typed), `event` (`success`, `failed`, `denied`, `two_factor_failed`, `two_factor_enabled`, `two_factor_disabled`), `ip`, `user_agent`, `created_at` (indexed). Written by `AuthController` / `SecurityController`; pruned after 180 days (`MassPrunable`, one DELETE per chunk).
 
+### user_hidden_channels
+`user_id` FK → users, `channel_id` FK → channels (both `ON DELETE CASCADE`), primary key (`user_id`, `channel_id`). A channel hidden for one user; the bouquet is unchanged. See [features/hide-channels.md](features/hide-channels.md).
+
+### owner_hidden_channels
+`id`, `owner_id` FK → users nullable (`ON DELETE CASCADE`; null = the admins' own users, those without a reseller), `channel_id` FK → channels (`CASCADE`), unique (`owner_id`, `channel_id`; MySQL allows several null owners, so `ChannelHideService` skips rows that exist). A channel hidden for all users of that owner.
+
 ### checklist_ticks
 `id`, `item` (key of a manual launch-checklist item, unique), `user_id` FK → users nullable (who ticked it, `SET NULL`), timestamps. Written by `LaunchChecklistService::toggle`; a row means the item is ticked off.
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id'])]
 class Channel extends Model
@@ -31,12 +32,16 @@ class Channel extends Model
     }
 
     /**
-     * Enabled channels in any of the user's bouquets: what their playlist and the Xtream API list.
+     * Enabled channels in any of the user's bouquets that aren't hidden for them (one by one, or for all
+     * users of their owner): what their playlist, the Xtream API, the guide and playback allow.
      */
     public function scopeAvailableTo($query, User $user)
     {
         return $query->where('channels.is_active', true)
-            ->whereHas('bouquets', fn ($q) => $q->whereIn('bouquets.id', $user->bouquets()->select('bouquets.id')));
+            ->whereHas('bouquets', fn ($q) => $q->whereIn('bouquets.id', $user->bouquets()->select('bouquets.id')))
+            ->whereNotIn('channels.id', DB::table('user_hidden_channels')->select('channel_id')->where('user_id', $user->id))
+            ->whereNotIn('channels.id', DB::table('owner_hidden_channels')->select('channel_id')
+                ->when($user->owner_id === null, fn ($q) => $q->whereNull('owner_id'), fn ($q) => $q->where('owner_id', $user->owner_id)));
     }
 
     /**

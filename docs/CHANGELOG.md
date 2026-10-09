@@ -4,6 +4,15 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Hide channels (per user, and for all of a reseller's or the admins' users)
+- **New page *Hide channels*** (menu, admins and resellers): the channels of the bouquets the person holds, with search, category, bouquet and shown/hidden filters, and bulk *Hide for all my users* / *Show again* (selected rows, or everything matching the filters). A reseller sees only their own bouquets' channels; an admin's list covers the admins' own users (those without a reseller).
+- **Per user:** *Choose channels* on the user page opens the user's channels and hides some for that user alone; each row says why it is hidden.
+- Bouquets are never changed, so other users and resellers are unaffected. Hidden channels disappear from the playlist, the Xtream API, the guide and playback (403), and from the channel count.
+- Two new tables (`user_hidden_channels`, `owner_hidden_channels`); additive migration. Nothing is hidden by default.
+- `Channel::scopeAvailableTo` now applies the hide lists; `StreamService::isAllowed` and `UserService::channelCount` use it (one rule everywhere).
+- Tests: `HiddenChannelTest` (17: what a user gets, playlist/Xtream/playback/count, pages, reseller isolation, bulk, filters, cascade) and a browser test; migration up, down, up and the queries checked on MySQL.
+- Files: `app/Services/ChannelHideService.php`, `app/Http/Controllers/Admin/HiddenChannelController.php`, `app/Models/Channel.php`, `app/Models/User.php`, `app/Services/StreamService.php`, `app/Services/UserService.php`, `database/migrations/2026_10_09_000009_create_hidden_channels_tables.php`, `resources/views/admin/hidden-channels/index.blade.php`, `resources/views/admin/users/show.blade.php`, `resources/views/layouts/admin.blade.php`, `routes/web.php`, `lang/mk.json`, `docs/features/hide-channels.md`, docs, `tests/Feature/HiddenChannelTest.php`, `e2e/hide-channels.spec.js`.
+
 ### 2026-10-09 — Launch checklist page
 - New admin page **Launch checklist** (Account menu): what to have in place before real viewers and resellers use the panel, in four groups (security, backups, background jobs, content). Most items are checked live by the app (2FA on, no sample password, production mode, https, last backup and off-site copy, scheduler and queue, mail, a source/bouquet/user exist); items the server can't see (APP_KEY saved, restore tested, secrets replaced, outside monitor, tried on a TV, tried as a reseller) are ticked by hand. Shows *N of M done*; Sentry is optional and not counted.
 - New table `checklist_ticks` (additive migration). Admins only: resellers get 403 and no menu entry.

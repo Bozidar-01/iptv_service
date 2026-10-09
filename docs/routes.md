@@ -62,6 +62,10 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/credits` | `admin.credits.index` | `CreditController@index`: history; a reseller sees own, an admin all or `?reseller=<id>` (staff group) |
 | POST | `/admin/users/{user}/credits` | `admin.users.credits.store` | `CreditController@store`: `amount` (non-zero integer, negative takes back), `note`; admin only, reseller accounts only |
 | POST | `/admin/users/{user}/credits/unlimited` | `admin.users.credits.unlimited` | `CreditController@unlimited`: remove the credit limit; admin only |
+| GET | `/admin/hide-channels` | `admin.hide-channels.index` | `HiddenChannelController@index`: channels of my bouquets (`?search=&category=&bouquet=&state=hidden\|visible`); staff |
+| POST | `/admin/hide-channels` | `admin.hide-channels.bulk` | `bulk`: `action` hide\|show, `scope` selected\|filtered, `ids[]`, `filters[]`; edits the list for all of my users |
+| GET | `/admin/users/{user}/channels` | `admin.users.channels` | `user`: the user's channels, same filters |
+| POST | `/admin/users/{user}/channels` | `admin.users.channels.bulk` | `userBulk`: hide / show for this user alone |
 | GET | `/admin/launch-checklist` | `admin.launch-checklist.index` | `LaunchChecklistController@index`: what to have in place before launch (admins only) |
 | POST | `/admin/launch-checklist/{item}` | `admin.launch-checklist.toggle` | ticks / unticks a manual item (others: 404) |
 | GET | `/admin/statistics` | `admin.statistics.index` | `StatisticsController@index`: `?days=7\|30\|90` |
