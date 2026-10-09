@@ -62,6 +62,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/credits` | `admin.credits.index` | `CreditController@index`: history; a reseller sees own, an admin all or `?reseller=<id>` (staff group) |
 | POST | `/admin/users/{user}/credits` | `admin.users.credits.store` | `CreditController@store`: `amount` (non-zero integer, negative takes back), `note`; admin only, reseller accounts only |
 | POST | `/admin/users/{user}/credits/unlimited` | `admin.users.credits.unlimited` | `CreditController@unlimited`: remove the credit limit; admin only |
+| GET | `/admin/users/trial` | `admin.users.trial` | `TrialController@create`: form (length, bouquets); staff |
+| POST | `/admin/users/trial` | `admin.users.trial.store` | `store`: `hours` 24\|72\|168, `bouquets[]`; creates the trial, redirects to the user page |
 | GET | `/admin/hide-channels` | `admin.hide-channels.index` | `HiddenChannelController@index`: channels of my bouquets (`?search=&category=&bouquet=&state=hidden\|visible`); staff |
 | POST | `/admin/hide-channels` | `admin.hide-channels.bulk` | `bulk`: `action` hide\|show, `scope` selected\|filtered, `ids[]`, `filters[]`; edits the list for all of my users |
 | GET | `/admin/users/{user}/channels` | `admin.users.channels` | `user`: the user's channels, same filters |

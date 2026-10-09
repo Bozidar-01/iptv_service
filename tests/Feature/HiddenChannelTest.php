@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Bouquet;
+use App\Models\Category;
 use App\Models\Channel;
 use App\Models\User;
+use App\Services\ChannelHideService;
 use App\Services\StreamService;
 use App\Services\UserService;
 use Illuminate\Support\Facades\DB;
@@ -210,5 +212,46 @@ describe('hiding and showing', function () {
         $this->r1->delete();
 
         expect(DB::table('user_hidden_channels')->count())->toBe(0)->and(DB::table('owner_hidden_channels')->count())->toBe(0);
+    });
+});
+
+describe('by category', function () {
+    beforeEach(function () {
+        $this->news = Category::create(['name' => 'News']);
+        $this->chA->update(['category_id' => $this->news->id]);
+        $this->chB->update(['category_id' => $this->news->id]);
+    });
+
+    it('lists the categories with how many channels are hidden', function () {
+        DB::table('owner_hidden_channels')->insert(['owner_id' => $this->r1->id, 'channel_id' => $this->chA->id]);
+
+        $stats = app(ChannelHideService::class)->categoryStats(app(ChannelHideService::class)->channelsIn($this->r1->bouquets()), $this->r1->id);
+
+        expect($stats)->toBe([
+            ['id' => $this->news->id, 'name' => 'News', 'total' => 2, 'hidden' => 1],
+            ['id' => null, 'name' => null, 'total' => 1, 'hidden' => 0],
+        ]);
+
+        $this->actingAs($this->r1)->get(route('admin.hide-channels.index'))->assertSee('By category')->assertSee('News')->assertSee('1 hidden');
+    });
+
+    it('hides and shows a whole category, and the uncategorized ones', function () {
+        $post = fn (string $action, $category) => $this->actingAs($this->r1)->post(route('admin.hide-channels.bulk'), ['action' => $action, 'scope' => 'filtered', 'filters' => ['category' => $category]]);
+
+        $post('hide', $this->news->id)->assertSessionHas('success', '2 channels hidden.');
+        expect(got($this->c1))->toBe(['Gamma']);
+
+        $post('hide', 'none')->assertSessionHas('success', '1 channel hidden.');
+        expect(got($this->c1))->toBe([]);
+
+        $post('show', $this->news->id)->assertSessionHas('success', '2 channels shown again.');
+        expect(got($this->c1))->toBe(['Alpha', 'Beta']);
+    });
+
+    it('works on a user\'s page too', function () {
+        $this->actingAs($this->r1)->post(route('admin.users.channels.bulk', $this->c1), ['action' => 'hide', 'scope' => 'filtered', 'filters' => ['category' => $this->news->id]]);
+
+        expect(got($this->c1))->toBe(['Gamma'])->and(got($this->c2))->toHaveCount(3);
+        $this->actingAs($this->r1)->get(route('admin.users.channels', $this->c1))->assertSee('By category')->assertSee('2 hidden');
     });
 });

@@ -76,7 +76,7 @@ class XtreamService
                 'auth' => 1,
                 'status' => $this->status($user),
                 'exp_date' => $user->expiration_date ? (string) $user->expiration_date->timestamp : null,
-                'is_trial' => '0',
+                'is_trial' => $user->is_trial ? '1' : '0',
                 'active_cons' => (string) $activeConnections,
                 'created_at' => (string) $user->created_at?->timestamp,
                 'max_connections' => (string) $user->max_connections,

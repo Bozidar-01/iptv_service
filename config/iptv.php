@@ -25,6 +25,9 @@ return [
     'reminder_email_users' => (bool) env('REMINDER_EMAIL_USERS', true),
     'renewal_contact' => env('RENEWAL_CONTACT', ''),
 
+    // How many trial accounts one reseller can make per 24 hours (admins are not limited)
+    'trials_per_day' => (int) env('TRIALS_PER_DAY', 5),
+
     'expiry_reminder_days' => (int) env('EXPIRY_REMINDER_DAYS', 3),
 
     /*

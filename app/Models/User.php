@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $created_at
  * @property int|null $credits
  */
-#[Fillable(['username', 'password', 'password_plain', 'email', 'locale', 'status', 'role', 'expiration_date', 'max_connections', 'owner_id', 'max_customers', 'max_customer_connections'])]
+#[Fillable(['username', 'password', 'password_plain', 'email', 'locale', 'status', 'role', 'expiration_date', 'max_connections', 'owner_id', 'max_customers', 'max_customer_connections', 'is_trial'])]
 #[Hidden(['password', 'password_plain', 'remember_token', 'playlist_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
@@ -49,6 +49,7 @@ class User extends Authenticatable
             'password_plain' => 'encrypted',
             'two_factor_confirmed_at' => 'datetime',
             'credits' => 'integer',
+            'is_trial' => 'boolean',
         ];
     }
 
