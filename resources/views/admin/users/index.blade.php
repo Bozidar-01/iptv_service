@@ -9,6 +9,7 @@
         <p>{{ __('Subscribers who watch through their playlist link, and admins who manage this panel.') }}</p>
     </div>
     <div class="page-actions">
+        <a href="{{ route('admin.users.trial') }}" class="btn btn-secondary"><x-icon name="clock" /> {{ __('New trial') }}</a>
         <a href="{{ route('admin.users.create') }}" class="btn btn-primary"><x-icon name="plus" /> {{ __('New user') }}</a>
     </div>
 </div>

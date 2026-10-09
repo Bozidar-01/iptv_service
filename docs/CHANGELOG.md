@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Copy login message, trial accounts, hide a whole category
+- **Message for the user** on the user page (admins and resellers): server URL, username, password (when stored), playlist link, the user's own page and the end date as one text with a *Copy message* button, in the user's language. Paste it into WhatsApp / Viber.
+- **New trial** (Users page): a 24 hour / 3 day / 7 day test account with a random login and one device, free of credits. A reseller can make `TRIALS_PER_DAY` (default 5) per 24 hours and trials count against their user limit; admins are not limited. *Trial* badge in the list and user page, `is_trial` for Xtream apps; it stops being a trial when the end date is moved later. New column `users.is_trial` (additive migration).
+- **Hide a whole category:** a *By category* panel on the Hide channels pages with *Hide all* / *Show all* per category.
+- Tests: `TrialTest` (9), `LoginMessageTest` (4), three category tests; a browser test for trials. 532 PHP tests.
+- Files: `app/Http/Controllers/Admin/TrialController.php`, `app/Services/UserService.php` (`createTrial`, `recentTrials`, `loginMessage`), `app/Services/ChannelHideService.php` (`categoryStats`), `app/Http/Controllers/Admin/HiddenChannelController.php`, `database/migrations/2026_10_09_000010_add_is_trial_to_users.php`, views (`users/trial`, `users/show`, `users/index`, `hidden-channels/index`, `partials/user-status`), `config/iptv.php`, `.env.example`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Hide channels (per user, and for all of a reseller's or the admins' users)
 - **New page *Hide channels*** (menu, admins and resellers): the channels of the bouquets the person holds, with search, category, bouquet and shown/hidden filters, and bulk *Hide for all my users* / *Show again* (selected rows, or everything matching the filters). A reseller sees only their own bouquets' channels; an admin's list covers the admins' own users (those without a reseller).
 - **Per user:** *Choose channels* on the user page opens the user's channels and hides some for that user alone; each row says why it is hidden.

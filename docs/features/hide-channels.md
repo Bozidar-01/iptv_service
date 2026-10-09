@@ -16,6 +16,8 @@ A user gets a channel when it is enabled, is in one of their bouquets, and is in
 - **Hide channels** (`admin.hide-channels.index`, menu: Subscribers): the channels of the bouquets the person holds (a reseller: their own bouquets; an admin: all), with search, category, bouquet and *Shown / Hidden* filters, 50 per page. Select channels (or *Select all N matching*), then *Hide for all my users* or *Show again for my users*. The header shows *N of M channels hidden*.
 - **Channels of a user** (`admin.users.channels`, button *Choose channels* and the *Hide some* link on the user page; subscribers only): the channels in that user's bouquets, with the same filters and bulk actions, *Hide for NAME* / *Show again for NAME*. Each row says why a channel is hidden: for this user, or for all users of their owner (an admin sees whose list).
 
+- **By category** (a fold-out panel on both pages): every category with its channel count and how many are hidden, and *Hide all* / *Show all* for the whole category (including "Uncategorized"), in one click.
+
 ## Rules
 
 - A **reseller** only works with the bouquets they hold. Channels from bouquets the admin added to a customer are not shown to the reseller and can't be hidden by them; ids sent from elsewhere are ignored (`HiddenChannelController::apply` always starts from the channels the person may work with). Someone else's user is a **404**, like everywhere else.

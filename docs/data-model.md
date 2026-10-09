@@ -11,6 +11,7 @@ Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..
 | username | string, unique | login identifier (no email column) |
 | password | string | `hashed` cast |
 | password_plain | text, nullable | encrypted copy shown on the edit page; null for users saved before it existed |
+| is_trial | bool, default false | a trial made with *New trial*; cleared when the end date is moved later |
 | status | enum `active`,`disabled` | default `active` |
 | role | string(20): `admin`, `reseller`, `user` | default `user`; was an enum, now a string so roles can be added |
 | owner_id | FK → users, nullable, `ON DELETE SET NULL` | the reseller a subscriber belongs to (`User::owner()`, `customers()`) |

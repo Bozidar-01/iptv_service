@@ -97,6 +97,7 @@ class HiddenChannelController extends Controller
             'subject' => $subject,
             'ownerIsMe' => $request->user()->isAdmin() ? $owner === null : $owner === $request->user()->id,
             'ownerName' => $subject?->owner?->username,
+            'categoryStats' => $this->hide->categoryStats($offered, $owner, $subject),
             'total' => (clone $offered)->count(),
             'hiddenTotal' => $this->hide->filter(clone $offered, ['state' => 'hidden'], $owner, $subject)->count(),
         ]);

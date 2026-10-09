@@ -16,6 +16,38 @@
     </div>
 </div>
 
+<details class="card" style="margin-bottom: 20px">
+    <summary class="card-header" style="cursor: pointer">
+        <div>
+            <h2>{{ __('By category') }}</h2>
+            <p>{{ __('Hide or show a whole category in one click.') }}</p>
+        </div>
+    </summary>
+    <ul class="list">
+        @foreach($categoryStats as $row)
+            <li>
+                <div>
+                    <strong>{{ $row['name'] ?? __('Uncategorized') }}</strong>
+                    <div class="muted">{{ trans_choice(':count channel|:count channels', $row['total'], ['count' => number_format($row['total'])]) }}@if($row['hidden']) · {{ __(':count hidden', ['count' => number_format($row['hidden'])]) }}@endif</div>
+                </div>
+                <div class="page-actions">
+                    @foreach(['hide' => $hideLabel, 'show' => $showLabel] as $verb => $label)
+                        @continue($verb === 'show' && !$row['hidden'])
+                        @continue($verb === 'hide' && $row['hidden'] >= $row['total'])
+                        <form method="POST" action="{{ $action }}" class="inline-form" @if($verb === 'hide') data-confirm="{{ __('Hide all :count channels of :name?', ['count' => number_format($row['total'] - $row['hidden']), 'name' => $row['name'] ?? __('Uncategorized')]) }}" @endif>
+                            @csrf
+                            <input type="hidden" name="action" value="{{ $verb }}">
+                            <input type="hidden" name="scope" value="filtered">
+                            <input type="hidden" name="filters[category]" value="{{ $row['id'] ?? 'none' }}">
+                            <button class="btn btn-ghost btn-sm">{{ $verb === 'hide' ? __('Hide all') : __('Show all') }}</button>
+                        </form>
+                    @endforeach
+                </div>
+            </li>
+        @endforeach
+    </ul>
+</details>
+
 <div class="card">
     <form method="GET" action="{{ $action }}" class="toolbar" id="filters">
         <div class="input-group">

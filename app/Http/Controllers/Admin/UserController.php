@@ -55,6 +55,7 @@ class UserController extends Controller
         $playlistUrl = route('playlist', ['token' => $user->playlist_token]);
         $isLocalHost = in_array($request->getHost(), ['localhost', '127.0.0.1', '::1'], true);
         $channelCount = $this->userService->channelCount($user);
+        $loginMessage = $this->userService->loginMessage($user, $request->getSchemeAndHttpHost(), $playlistUrl, route('me', ['token' => $user->playlist_token]));
         $recentLogs = $user->streamLogs()->with('channel')->orderByDesc('started_at')->limit(10)->get();
         // Xtream Codes login: apps want the server address without a path
         $server = [
@@ -63,7 +64,7 @@ class UserController extends Controller
             'port' => $request->getPort(),
         ];
 
-        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices'));
+        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage'));
     }
 
     public function disconnectDevice(User $user, ActiveSession $session, StreamService $streams)

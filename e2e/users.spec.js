@@ -56,3 +56,15 @@ test('shows and copies the password on the user page', async ({ page, context })
     await page.locator('[data-copy="#xtream-password"]').click();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('reveal-pass-1');
 });
+
+test('makes a trial and shows the message to send', async ({ page }) => {
+    await page.goto('/admin/users/trial');
+    await page.locator('input[name="bouquets[]"]').first().check();
+    await page.getByRole('button', { name: 'Create trial' }).click();
+
+    await expect(page.locator('.alert-success')).toContainText('Trial created');
+    const message = page.locator('#login-message');
+    await expect(message).toHaveValue(/Username: trial\d{5}/);
+    await expect(message).toHaveValue(/Password: [a-z0-9]{8}/);
+    await expect(page.getByText('Trial', { exact: true }).first()).toBeVisible();
+});

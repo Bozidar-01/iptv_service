@@ -81,6 +81,28 @@ class ChannelHideService
         return Category::whereIn('id', (clone $channels)->whereNotNull('channels.category_id')->select('channels.category_id'))->orderBy('name')->get(['id', 'name']);
     }
 
+    /**
+     * The categories of these channels with how many channels each has and how many are hidden: for hiding a whole
+     * category in one click. The "no category" group has id null.
+     *
+     * @return list<array{id: ?int, name: ?string, total: int, hidden: int}>
+     */
+    public function categoryStats(Builder $channels, ?int $ownerId, ?User $user = null): array
+    {
+        $count = fn (Builder $q) => $q->toBase()->reorder()->select('channels.category_id', DB::raw('count(*) as n'))->groupBy('channels.category_id')->pluck('n', 'category_id');
+
+        $totals = $count(clone $channels);
+        $hidden = $count($this->filter(clone $channels, ['state' => 'hidden'], $ownerId, $user));
+        $names = Category::whereIn('id', $totals->keys()->filter())->pluck('name', 'id');
+
+        return $totals->map(fn ($n, $id) => [
+            'id' => $id === '' ? null : ($id === null ? null : (int) $id),
+            'name' => $id ? ($names[$id] ?? null) : null,
+            'total' => (int) $n,
+            'hidden' => (int) ($hidden[$id] ?? 0),
+        ])->sortBy(fn ($row) => mb_strtolower($row['name'] ?? '~'))->values()->all();
+    }
+
     /** @return array{owner: list<int>, user: list<int>} which of these channels are hidden, and by which list */
     public function hiddenAmong(array $channelIds, ?int $ownerId, ?User $user = null): array
     {

@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\TrialController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
@@ -43,6 +44,8 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
     Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
     Route::post('users/{user}/sessions/disconnect', [UserController::class, 'disconnectAllDevices'])->name('users.sessions.disconnect-all');
     Route::post('users/{user}/sessions/{session}/disconnect', [UserController::class, 'disconnectDevice'])->name('users.sessions.disconnect');
+    Route::get('users/trial', [TrialController::class, 'create'])->name('users.trial');
+    Route::post('users/trial', [TrialController::class, 'store'])->name('users.trial.store');
     Route::get('users/{user}/channels', [HiddenChannelController::class, 'user'])->name('users.channels');
     Route::post('users/{user}/channels', [HiddenChannelController::class, 'userBulk'])->name('users.channels.bulk');
     Route::resource('users', UserController::class);

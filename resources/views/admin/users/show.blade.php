@@ -150,6 +150,22 @@
 
         <div class="card">
             <div class="card-header">
+                <div>
+                    <h2>{{ __('Message for the user') }}</h2>
+                    <p>{{ __('Everything the user needs to log in. Copy it and paste it into WhatsApp, Viber or an email.') }}</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" data-copy="#login-message"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy message') }}</span></button>
+            </div>
+            <div class="card-body">
+                <textarea class="textarea mono" id="login-message" rows="{{ substr_count($loginMessage, "\n") + 2 }}" readonly onclick="this.select()" aria-label="{{ __('Message for the user') }}">{{ $loginMessage }}</textarea>
+                @unless($user->password_plain)
+                    <p class="help" style="margin: 6px 0 0">{{ __('The password is not in the message because it is not stored for this user. Set a new one to include it.') }}</p>
+                @endunless
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
                 <h2>{{ __('Recent activity') }}</h2>
                 <a href="{{ route('admin.logs.index', ['user' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('View all') }}</a>
             </div>
