@@ -17,17 +17,25 @@ class UserService
      */
     public function getAllUsers(array $filters = [], ?User $actor = null)
     {
-        return User::visibleTo($actor)->with(['bouquets', 'owner'])
+        return $this->filteredQuery($filters, $actor)->with(['bouquets', 'owner'])
+            ->orderBy('role')
+            ->orderBy('username')
+            ->paginate(25)
+            ->withQueryString();
+    }
+
+    /**
+     * The users the list filters match (and $actor may see), for the list and for bulk actions on "everything matching".
+     */
+    public function filteredQuery(array $filters = [], ?User $actor = null)
+    {
+        return User::visibleTo($actor)
             ->when($filters['reseller'] ?? null, fn ($q, $reseller) => $q->where('owner_id', $reseller))
             ->when($filters['search'] ?? null, fn ($q, $search) => $q->where('username', 'like', '%'.$search.'%'))
             ->when(($filters['status'] ?? null) === 'active', fn ($q) => $q->where('status', 'active')
                 ->where(fn ($q) => $q->whereNull('expiration_date')->orWhere('expiration_date', '>', now())))
             ->when(($filters['status'] ?? null) === 'disabled', fn ($q) => $q->where('status', 'disabled'))
-            ->when(($filters['status'] ?? null) === 'expired', fn ($q) => $q->where('expiration_date', '<=', now()))
-            ->orderBy('role')
-            ->orderBy('username')
-            ->paginate(25)
-            ->withQueryString();
+            ->when(($filters['status'] ?? null) === 'expired', fn ($q) => $q->where('expiration_date', '<=', now()));
     }
 
     /**

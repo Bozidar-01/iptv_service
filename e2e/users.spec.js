@@ -82,3 +82,22 @@ test('renews a user for three months and the trial badge goes away', async ({ pa
     await expect(page.locator('.alert-success')).toContainText('Renewed for 3 months');
     await expect(page.locator('h1 + p .badge', { hasText: 'Trial' })).toHaveCount(0);
 });
+
+test('selects users and shows the bulk bar with the bouquet choice only when needed', async ({ page }) => {
+    await page.goto('/admin/users');
+    const bar = page.locator('#bulk-form');
+    await expect(bar).toBeHidden();
+
+    await page.locator('.row-check').first().check();
+    await expect(bar).toBeVisible();
+    await expect(page.locator('#bulk-bouquet')).toBeHidden();
+
+    await page.locator('#bulk-action').selectOption('add_bouquet');
+    await expect(page.locator('#bulk-bouquet')).toBeVisible();
+    await page.locator('#bulk-action').selectOption('extend');
+    await expect(page.locator('#bulk-months')).toBeVisible();
+    await expect(page.locator('#bulk-bouquet')).toBeHidden();
+
+    await page.locator('.row-check').first().uncheck();
+    await expect(bar).toBeHidden();
+});
