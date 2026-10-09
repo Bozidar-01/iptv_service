@@ -132,6 +132,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true             # B2 / R2 / Wasabi: true; AWS S3: f
 ```
 
   then `php artisan config:cache` and `php artisan iptv:backup`: it must print `Backup written` and the file must appear in the bucket. If the copy fails (wrong key, bucket, endpoint) the command fails and a `backup_failed` alert appears; the local backup is kept. Old backups are removed from both disks after `BACKUP_KEEP_DAYS`. Backups hold your data (and provider logins in channel addresses): keep the bucket private.
+- **Check a backup** (admin → Account → *Backups*, `BackupService::verify`): lists the ten newest backups on every disk and *Check the newest backup* reads the newest file on each disk to its end (a cut-off or damaged gzip fails), compares its tables with the database (names the missing ones), looks for the users' rows, and that every disk has the same newest file. A pass is remembered (*Last check*) and ticks *A restore has been tested once* on the launch checklist. It is not a restore: restoring into an empty database (below) is still the best proof.
 - **A missing backup is noticed.** If no backup succeeded on every configured disk for 36 hours, a `backup_stale` alert appears once a day (panel and email).
 - **Keep `APP_KEY` with your backups.** Source addresses, 2FA secrets and relay secrets are stored encrypted with it: a restore on a new server without the same `APP_KEY` can't read them (sign-in and 2FA then fail until you set them up again).
 - **Restore** (into an empty database, or over an existing one: tables are replaced):

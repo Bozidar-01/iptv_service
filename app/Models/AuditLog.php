@@ -69,6 +69,10 @@ class AuditLog extends Model
 
     public const USERS_EXPORTED = 'users.exported';
 
+    public const USERS_AUTO_DELETED = 'users.auto_deleted';
+
+    public const USERS_AUTO_DISABLED = 'users.auto_disabled';
+
     protected function casts(): array
     {
         return ['details' => 'array'];
@@ -111,6 +115,8 @@ class AuditLog extends Model
             self::USERS_BULK => __('Bulk action on users'),
             self::USERS_IMPORTED => __('Users imported'),
             self::USERS_EXPORTED => __('Users exported with passwords'),
+            self::USERS_AUTO_DELETED => __('Old trials deleted'),
+            self::USERS_AUTO_DISABLED => __('Long-expired users switched off'),
         ];
     }
 
@@ -132,6 +138,23 @@ class AuditLog extends Model
                 'remove_bouquet' => __('bouquet removed'), 'extend' => __('renewed'), 'delete' => __('deleted'),
             ][$d['action'] ?? ''] ?? ($d['action'] ?? '');
             $parts[] = $what.': '.trans_choice(':count user|:count users', $d['count'] ?? 0, ['count' => number_format($d['count'] ?? 0)]);
+            if (!empty($d['credits_spent'])) {
+                $parts[] = trans_choice(':count credit used|:count credits used', $d['credits_spent'], ['count' => $d['credits_spent']]);
+            }
+
+            return implode(' · ', $parts);
+        }
+
+        if (in_array($this->action, [self::USERS_AUTO_DELETED, self::USERS_AUTO_DISABLED], true)) {
+            $parts[] = trans_choice(':count user|:count users', $d['count'] ?? 0, ['count' => number_format($d['count'] ?? 0)]);
+            if (!empty($d['sample'])) {
+                $parts[] = implode(', ', $d['sample']).(($d['count'] ?? 0) > count($d['sample']) ? '…' : '');
+            }
+
+            return implode(' · ', $parts);
+        }
+        if (in_array($this->action, [self::USERS_IMPORTED, self::USERS_EXPORTED], true)) {
+            $parts[] = trans_choice(':count user|:count users', $d['count'] ?? 0, ['count' => number_format($d['count'] ?? 0)]);
             if (!empty($d['credits_spent'])) {
                 $parts[] = trans_choice(':count credit used|:count credits used', $d['credits_spent'], ['count' => $d['credits_spent']]);
             }
@@ -175,14 +198,6 @@ class AuditLog extends Model
         if (isset($d['count'])) {
             $parts[] = trans_choice(':count channel|:count channels', $d['count'], ['count' => number_format($d['count'])])
                 .(isset($d['for']) ? ' · '.$d['for'] : '');
-        }
-        if (in_array($this->action, [self::USERS_IMPORTED, self::USERS_EXPORTED], true)) {
-            $parts[] = trans_choice(':count user|:count users', $d['count'] ?? 0, ['count' => number_format($d['count'] ?? 0)]);
-            if (!empty($d['credits_spent'])) {
-                $parts[] = trans_choice(':count credit used|:count credits used', $d['credits_spent'], ['count' => $d['credits_spent']]);
-            }
-
-            return implode(' · ', $parts);
         }
         if (isset($d['names'])) {
             $parts[] = __(':names names and :categories categories changed.', ['names' => number_format($d['names']), 'categories' => number_format($d['categories'] ?? 0)]);
