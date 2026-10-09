@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\ResellerLimitReached;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +24,12 @@ class TrialController extends Controller
 
     protected $userService;
 
-    public function __construct(UserService $userService)
+    protected $audit;
+
+    public function __construct(UserService $userService, AuditService $audit)
     {
         $this->userService = $userService;
+        $this->audit = $audit;
     }
 
     public function create(Request $request)
@@ -62,6 +67,8 @@ class TrialController extends Controller
         } catch (\OverflowException) {
             return back()->withInput()->with('error', __('You can make :count trials per day. Try again tomorrow.', ['count' => config('iptv.trials_per_day')]));
         }
+
+        $this->audit->record(AuditLog::USER_TRIAL, $user, ['set' => ['expires' => $user->expiration_date->format('Y-m-d H:i'), 'reseller' => $actor->isReseller() ? $actor->username : null]], $actor);
 
         return redirect()->route('admin.users.show', $user)->with('success', __('Trial created. Copy the message below and send it to the user.'));
     }

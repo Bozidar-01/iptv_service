@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BouquetController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChannelController;
@@ -83,6 +84,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
+    Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit.index');
     Route::get('launch-checklist', [LaunchChecklistController::class, 'index'])->name('launch-checklist.index');
     Route::post('launch-checklist/{item}', [LaunchChecklistController::class, 'toggle'])->name('launch-checklist.toggle');
 
