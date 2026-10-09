@@ -37,6 +37,9 @@ Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();
 // Back up the database every night (BackupService); failures raise an alert
 Schedule::command('iptv:backup')->dailyAt('02:30');
 
+// Delete old trials and switch off long-expired subscribers (UserCleanupService)
+Schedule::command('iptv:cleanup-users')->dailyAt('05:00');
+
 // Alert when a login is used from many different addresses (SharingDetectionService)
 Schedule::command('iptv:detect-sharing')->hourly();
 

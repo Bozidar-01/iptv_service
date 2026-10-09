@@ -99,7 +99,7 @@ class UserBulkService
             }
 
             foreach ($plan as [$user, $until]) {
-                $user->forceFill(['expiration_date' => $until, 'is_trial' => false])->save();
+                $user->forceFill(['expiration_date' => $until, 'is_trial' => false, 'status' => 'active'])->save();
             }
 
             return ['changed' => count($plan), 'spent' => $total];

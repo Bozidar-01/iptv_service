@@ -83,6 +83,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/hide-channels` | `admin.hide-channels.bulk` | `bulk`: `action` hide\|show, `scope` selected\|filtered, `ids[]`, `filters[]`; edits the list for all of my users |
 | GET | `/admin/users/{user}/channels` | `admin.users.channels` | `user`: the user's channels, same filters |
 | POST | `/admin/users/{user}/channels` | `admin.users.channels.bulk` | `userBulk`: hide / show for this user alone |
+| GET | `/admin/backups` | `admin.backups.index` | `BackupController@index`: backups per disk, last backup and check (admins only) |
+| POST | `/admin/backups/verify` | `admin.backups.verify` | checks the newest backup on every disk |
 | GET | `/admin/live` | `admin.live.index` | `LiveController@index`: devices watching now (staff; a reseller sees their own users) |
 | GET | `/admin/sales` | `admin.sales.index` | `SalesReportController@index`: sales per reseller (`?days=30\|90\|365`); admins only |
 | GET | `/admin/audit-log` | `admin.audit.index` | `AuditLogController@index`: who changed what (`?actor=&action=&search=`); admins only |

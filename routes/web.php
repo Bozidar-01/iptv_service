@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\BouquetController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChannelController;
@@ -105,6 +106,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
     Route::get('sales', [SalesReportController::class, 'index'])->name('sales.index');
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
+    Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+    Route::post('backups/verify', [BackupController::class, 'verify'])->name('backups.verify');
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit.index');
     Route::get('launch-checklist', [LaunchChecklistController::class, 'index'])->name('launch-checklist.index');
     Route::post('launch-checklist/{item}', [LaunchChecklistController::class, 'toggle'])->name('launch-checklist.toggle');

@@ -44,10 +44,10 @@ class LaunchChecklistService
             [
                 'title' => __('Backups'),
                 'items' => [
-                    $auto('backup_recent', __('A backup ran in the last :hours hours', ['hours' => BackupService::STALE_HOURS]), $lastBackup ? __('Last successful backup: :when.', ['when' => $lastBackup->diffForHumans()]) : __('No backup has succeeded yet. Run php artisan iptv:backup on the server.'), $lastBackup !== null && $lastBackup->diffInHours(now()) < BackupService::STALE_HOURS),
-                    $auto('backup_offsite', __('Backups are also copied off the server'), __('Set BACKUP_COPY_DISK=s3 and the bucket keys in .env (Backblaze B2 or Cloudflare R2 are free at this size). See docs/deployment.md.'), !empty(config('iptv.backup.copy_disk'))),
+                    $auto('backup_recent', __('A backup ran in the last :hours hours', ['hours' => BackupService::STALE_HOURS]), $lastBackup ? __('Last successful backup: :when.', ['when' => $lastBackup->diffForHumans()]) : __('No backup has succeeded yet. Run php artisan iptv:backup on the server.'), $lastBackup !== null && $lastBackup->diffInHours(now()) < BackupService::STALE_HOURS, 'admin.backups.index'),
+                    $auto('backup_offsite', __('Backups are also copied off the server'), __('Set BACKUP_COPY_DISK=s3 and the bucket keys in .env (Backblaze B2 or Cloudflare R2 are free at this size). See docs/deployment.md.'), !empty(config('iptv.backup.copy_disk')), 'admin.backups.index'),
                     $manual('app_key_saved', __('APP_KEY is saved outside the server'), __('Keep it in a password manager. Without it a restore can not read the stored passwords, source addresses or two-factor secrets.')),
-                    $manual('restore_tested', __('A restore has been tested once'), __('Restore a backup into a scratch database to know it works before you need it.')),
+                    $manual('restore_tested', __('A restore has been tested once'), __('Press Check on the Backups page (it ticks this by itself), or better restore a backup into a scratch database to know it works before you need it.'), 'admin.backups.index'),
                 ],
             ],
             [

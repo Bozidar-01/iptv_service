@@ -29,6 +29,11 @@ return [
     'sharing_ips' => (int) env('SHARING_IPS', 3),
     'sharing_hours' => (int) env('SHARING_HOURS', 24),
 
+    // Housekeeping (iptv:cleanup-users, daily): delete a trial this many days after it ended, switch off a subscriber
+    // this many days after the subscription ended (0 = never)
+    'trial_keep_days' => (int) env('TRIAL_KEEP_DAYS', 7),
+    'expired_disable_days' => (int) env('EXPIRED_DISABLE_DAYS', 60),
+
     // How many trial accounts one reseller can make per 24 hours (admins are not limited)
     'trials_per_day' => (int) env('TRIALS_PER_DAY', 5),
 

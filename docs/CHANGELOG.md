@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Backup check and automatic housekeeping of users
+- **Backups** page (Account menu, admins only): the backups on every disk and **Check the newest backup**: it reads the file to its end, compares its tables with the database, looks for the users, and that the off-site disk has the same newest file. A pass is remembered and ticks *A restore has been tested once* on the launch checklist. Not a restore, but it catches empty, cut-off and unreadable backups.
+- **Daily housekeeping** (`iptv:cleanup-users`, 05:00): trials are deleted `TRIAL_KEEP_DAYS` (7) days after they ended; active subscribers whose subscription ended more than `EXPIRED_DISABLE_DAYS` (60) days ago are switched off. Audit-logged as "system". **Renew now also turns a switched-off user back on** (single, from an alert, and bulk).
+- No schema change. Tests: `UserCleanupTest` (7), `BackupCheckTest` (11). 687 PHP tests.
+- Files: `app/Services/BackupService.php`, `app/Services/UserCleanupService.php`, `app/Console/Commands/CleanupUsersCommand.php`, `app/Http/Controllers/Admin/BackupController.php`, `resources/views/admin/backups/index.blade.php`, `app/Services/UserService.php`, `app/Services/UserBulkService.php`, `app/Services/LaunchChecklistService.php`, `app/Models/AuditLog.php`, `config/iptv.php`, `routes/web.php`, `routes/console.php`, `.env.example`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Live view and account-sharing alerts
 - **Live** page (Subscribers menu, admins and resellers): who is watching right now (user, channel, IP, player, since) with Disconnect, how many devices and users, the most watched channel; refreshes every 20 seconds. A reseller sees their own users.
 - **Sharing alerts:** hourly check (`iptv:detect-sharing`); a login used from `SHARING_IPS` (3) or more different IPs within `SHARING_HOURS` (24) raises an alert once a day, for the admin, the user's reseller and the email digest. The user page has *Where this user watches from* (addresses of the last 7 days, plays, last use).

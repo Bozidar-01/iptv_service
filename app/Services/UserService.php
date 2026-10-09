@@ -97,7 +97,8 @@ class UserService
     public function renew(User $user, int $months): Carbon
     {
         $until = $this->renewedUntil($user, $months);
-        $user->forceFill(['expiration_date' => $until, 'is_trial' => false])->save();
+        // A renewal also turns a switched-off user back on (the daily cleanup switches off long-expired ones)
+        $user->forceFill(['expiration_date' => $until, 'is_trial' => false, 'status' => 'active'])->save();
 
         return $until;
     }
