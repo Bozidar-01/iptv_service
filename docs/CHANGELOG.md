@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Show and copy the password on the user page
+- The **Log in with username and password** card on the user page now has the password too: hidden by default, *Show current password* reveals it, *Copy* copies it (also when hidden), *Change password* below. Same encrypted copy as the edit page; users saved before it was added show "not stored" until their password is set again. A reseller sees it only for their own users.
+- Tests: three more in `PasswordRevealTest`, one browser test (show, hide, copy). 488 tests.
+- Files: `resources/views/admin/users/show.blade.php`, `docs/features/admin-panel.md`, `tests/Feature/PasswordRevealTest.php`, `e2e/users.spec.js`.
+
 ### 2026-10-09 — Fix: Credits page showed "Unlimited" for resellers that have credits
 - On the Credits page for **all resellers** every card said *Unlimited*, though the balance was saved (the history showed it). The page loaded each reseller with only `id`, `username` and `credits`, and "limited by credits" also needs the role, so every reseller looked like an account without a limit. It now loads the role too. Only the display was wrong: balances, charging and the history were correct.
 - Test: the all-resellers page shows each reseller's real balance (fails on the old code).

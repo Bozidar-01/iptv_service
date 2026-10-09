@@ -109,11 +109,22 @@
                         <button type="button" class="btn btn-secondary" data-copy="#xtream-username"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
                     </div>
 
-                    <span class="label">{{ __('Password') }}</span>
-                    <div class="login-password">
-                        {{ __('The password you set for this user.') }}
-                        <a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a>
-                    </div>
+                    <label class="label" for="xtream-password">{{ __('Password') }}</label>
+                    @if($user->password_plain)
+                        <div>
+                            <div class="copy-field">
+                                <input class="input mono" id="xtream-password" type="password" value="{{ $user->password_plain }}" readonly onclick="this.select()">
+                                <button type="button" class="btn btn-secondary" data-reveal="#xtream-password"><x-icon name="eye" /> <span data-reveal-label>{{ __('Show current password') }}</span></button>
+                                <button type="button" class="btn btn-secondary" data-copy="#xtream-password"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+                            </div>
+                            <p class="help" style="margin: 6px 0 0"><a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a></p>
+                        </div>
+                    @else
+                        <div class="login-password">
+                            {{ __('The current password is not stored for this user. Set a new one to see it here.') }}
+                            <a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a>
+                        </div>
+                    @endif
                 </div>
 
                 <p class="help" style="margin: 0">
