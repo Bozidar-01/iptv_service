@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\EpgSourceController;
 use App\Http\Controllers\Admin\HiddenChannelController;
 use App\Http\Controllers\Admin\LaunchChecklistController;
 use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\StatisticsController;
@@ -100,6 +101,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('epg/match', [EpgSourceController::class, 'match'])->name('epg.match');
     Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
+    Route::get('sales', [SalesReportController::class, 'index'])->name('sales.index');
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
     Route::get('audit-log', [AuditLogController::class, 'index'])->name('audit.index');
     Route::get('launch-checklist', [LaunchChecklistController::class, 'index'])->name('launch-checklist.index');

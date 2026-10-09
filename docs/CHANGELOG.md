@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Sales report
+- New admin page **Sales** (Subscribers menu, admins only): months sold (credits spent), credits given, new users, users expiring in 30 days and users that expired in the last 30 days, a 12-month column chart, and a per-reseller table with the balance and *about N days left* at the recent pace (yellow under 14 days). Includes the admins' own users.
+- No schema change. Tests: `SalesReportTest` (8). 661 PHP tests.
+- Files: `app/Services/SalesReportService.php`, `app/Http/Controllers/Admin/SalesReportController.php`, `resources/views/admin/sales/index.blade.php`, `resources/views/layouts/admin.blade.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — CSV import and export of users
 - **Export** (users page): the users the list filters match as CSV for accounting, with bouquets; passwords only with `?passwords=1` (audit-logged). Spreadsheet formulas in cells are defused.
 - **Import** (users page): up to 2,000 users from a CSV (username, password, expiration_date, max_connections, bouquets, email, status), checked like the user form; bad rows are listed and skipped, the rest created; empty passwords are made up and shown in a copyable list. For a reseller: own users, bouquets they hold, stream cap, user limit and credits. *Only check the file* is ticked by default and creates nothing.
