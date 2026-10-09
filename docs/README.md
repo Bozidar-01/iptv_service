@@ -17,6 +17,7 @@ IPTV middleware built on Laravel 13. Admins manage the catalogue and subscribers
 | [features/admin-panel.md](features/admin-panel.md) | Every admin page: dashboard, sources, channels, categories, bouquets, users, activity, launch checklist |
 | [features/hide-channels.md](features/hide-channels.md) | Hiding channels per user or for all of a reseller's / the admins' users, without changing bouquets |
 | [features/duplicate-channels.md](features/duplicate-channels.md) | Finding the same channel listed twice (two sources, satellite receiver), suggesting the copy that works and looks best, switching the rest off |
+| [features/cleanup-rules.md](features/cleanup-rules.md) | Rules that tidy channel names and categories on every import (and on demand), with ready-made sets for the satellite receiver |
 | [features/sources.md](features/sources.md) | Importing provider M3U playlists: sync rules, parser, scheduling |
 | [features/receiver.md](features/receiver.md) | Satellite receiver (Octagon / Enigma2) through the NeboTV relay: signed links, tuner limit, setup guide |
 | [features/epg.md](features/epg.md) | TV guide: XMLTV import, channel matching, guide for playlists and Xtream apps |

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BouquetController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChannelController;
+use App\Http\Controllers\Admin\CleanupRuleController;
 use App\Http\Controllers\Admin\CreditController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpgSourceController;
@@ -73,6 +74,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::post('channels/check-streams', [ChannelController::class, 'checkStreams'])->name('channels.check-streams');
     Route::get('channels/{channel}/preview', [ChannelController::class, 'preview'])->name('channels.preview');
+    Route::get('cleanup', [CleanupRuleController::class, 'index'])->name('cleanup.index');
+    Route::post('cleanup', [CleanupRuleController::class, 'store'])->name('cleanup.store');
+    Route::post('cleanup/apply', [CleanupRuleController::class, 'apply'])->name('cleanup.apply');
+    Route::post('cleanup/pack/{pack}', [CleanupRuleController::class, 'pack'])->name('cleanup.pack');
+    Route::post('cleanup/{rule}/toggle', [CleanupRuleController::class, 'toggle'])->name('cleanup.toggle');
+    Route::delete('cleanup/{rule}', [CleanupRuleController::class, 'destroy'])->name('cleanup.destroy');
     Route::get('channels/duplicates', [ChannelController::class, 'duplicates'])->name('channels.duplicates');
     Route::post('channels/duplicates', [ChannelController::class, 'applyDuplicates'])->name('channels.duplicates.apply');
     Route::post('channels/bulk', [ChannelController::class, 'bulk'])->name('channels.bulk');

@@ -61,6 +61,8 @@ class AuditLog extends Model
 
     public const CHANNELS_DEDUPLICATED = 'channels.deduplicated';
 
+    public const CLEANUP_APPLIED = 'cleanup.applied';
+
     protected function casts(): array
     {
         return ['details' => 'array'];
@@ -99,6 +101,7 @@ class AuditLog extends Model
             self::BOUQUET_DELETED => __('Bouquet deleted'),
             self::CHANNELS_DELETED => __('Channels deleted'),
             self::CHANNELS_DEDUPLICATED => __('Duplicate channels switched off'),
+            self::CLEANUP_APPLIED => __('Cleanup rules applied'),
         ];
     }
 
@@ -149,6 +152,9 @@ class AuditLog extends Model
         if (isset($d['count'])) {
             $parts[] = trans_choice(':count channel|:count channels', $d['count'], ['count' => number_format($d['count'])])
                 .(isset($d['for']) ? ' · '.$d['for'] : '');
+        }
+        if (isset($d['names'])) {
+            $parts[] = __(':names names and :categories categories changed.', ['names' => number_format($d['names']), 'categories' => number_format($d['categories'] ?? 0)]);
         }
         if (isset($d['groups'])) {
             $parts[] = trans_choice(':count group|:count groups', $d['groups'], ['count' => number_format($d['groups'])]);

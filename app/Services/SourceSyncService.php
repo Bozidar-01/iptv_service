@@ -104,6 +104,9 @@ class SourceSyncService
             ->mapWithKeys(fn ($id, $name) => [mb_strtolower($name) => $id])
             ->all();
 
+        // The admin's tidy-up rules change what is stored; the channel's identity key still comes from the raw entry
+        $rules = app(CleanupRuleService::class)->for($source->id);
+
         $rows = [];
         $legacyKeys = [];
         $seenKeys = [];
@@ -123,16 +126,19 @@ class SourceSyncService
                 $legacyKeys[$key] = $legacyKey;
             }
 
+            $name = $rules->name($entry['name']);
+            $group = $rules->category($entry['group']);
+
             $rows[] = [
                 'source_id' => $source->id,
                 'external_key' => $key,
-                'name' => mb_substr($entry['name'], 0, 255),
+                'name' => mb_substr($name, 0, 255),
                 'stream_url' => mb_substr($entry['url'], 0, 2048),
                 'logo_url' => $entry['logo'] ? mb_substr($entry['logo'], 0, 2048) : null,
                 'tvg_id' => $entry['tvg_id'] ? mb_substr($entry['tvg_id'], 0, 255) : null,
                 'http_user_agent' => $entry['user_agent'] ? mb_substr($entry['user_agent'], 0, 512) : null,
                 'http_referrer' => $entry['referrer'] ? mb_substr($entry['referrer'], 0, 1024) : null,
-                'category_id' => $this->categoryId($entry['group']),
+                'category_id' => $this->categoryId($rules->channelCategory($name, $group) ?? $group),
                 'sort_order' => ++$order,
                 'is_active' => true,
                 'created_at' => $syncedAt,
