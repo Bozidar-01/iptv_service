@@ -27,6 +27,7 @@
         ['route' => 'admin.alerts.index', 'match' => 'admin.alerts.*', 'icon' => 'bell', 'label' => __('Alerts')],
         ['section' => __('Account')],
         ['route' => 'admin.security.index', 'match' => 'admin.security.*', 'icon' => 'shield', 'label' => __('Security')],
+        ['route' => 'admin.launch-checklist.index', 'match' => 'admin.launch-checklist.*', 'icon' => 'check', 'label' => __('Launch checklist')],
     ];
 
     // A reseller gets only their own part of the panel: dashboard, users, activity, alerts, security
