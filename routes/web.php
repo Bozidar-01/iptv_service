@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpgSourceController;
 use App\Http\Controllers\Admin\HiddenChannelController;
 use App\Http\Controllers\Admin\LaunchChecklistController;
+use App\Http\Controllers\Admin\LiveController;
 use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\SecurityController;
@@ -59,6 +60,7 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
     Route::get('users/{user}/channels', [HiddenChannelController::class, 'user'])->name('users.channels');
     Route::post('users/{user}/channels', [HiddenChannelController::class, 'userBulk'])->name('users.channels.bulk');
     Route::resource('users', UserController::class);
+    Route::get('live', [LiveController::class, 'index'])->name('live.index');
     Route::get('hide-channels', [HiddenChannelController::class, 'index'])->name('hide-channels.index');
     Route::post('hide-channels', [HiddenChannelController::class, 'bulk'])->name('hide-channels.bulk');
 

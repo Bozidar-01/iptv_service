@@ -37,6 +37,9 @@ Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();
 // Back up the database every night (BackupService); failures raise an alert
 Schedule::command('iptv:backup')->dailyAt('02:30');
 
+// Alert when a login is used from many different addresses (SharingDetectionService)
+Schedule::command('iptv:detect-sharing')->hourly();
+
 // Email new alerts as one digest (ALERT_MAIL_TO, see docs/features/alerts.md)
 Schedule::command('iptv:send-alerts')->everyFiveMinutes()->withoutOverlapping();
 

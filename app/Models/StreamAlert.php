@@ -40,6 +40,9 @@ class StreamAlert extends Model
     /** A subscriber pressed "ask to renew" on their own page (SelfServiceController). */
     public const TYPE_RENEWAL_REQUESTED = 'renewal_requested';
 
+    /** A login used from many different addresses (SharingDetectionService). detail = "addresses|hours" */
+    public const TYPE_SHARING = 'sharing';
+
     public const SUBSCRIPTION_TYPES = [self::TYPE_EXPIRING, self::TYPE_EXPIRED, self::TYPE_RENEWAL_REQUESTED];
 
     /** The nightly database backup failed. detail = start of the error (the full one is in the log) */
@@ -94,6 +97,7 @@ class StreamAlert extends Model
             self::TYPE_EXPIRING => __('Subscription of :name ends on :date', ['name' => $this->name, 'date' => $this->expiryDate()]),
             self::TYPE_EXPIRED => __('Subscription of :name ended on :date', ['name' => $this->name, 'date' => $this->expiryDate()]),
             self::TYPE_RENEWAL_REQUESTED => __(':name asks to renew the subscription', ['name' => $this->name]),
+            self::TYPE_SHARING => __(':name used :count different addresses in :hours hours: the login may be shared', ['name' => $this->name, 'count' => (int) explode('|', (string) $this->detail)[0], 'hours' => (int) (explode('|', (string) $this->detail)[1] ?? 24)]),
             self::TYPE_RECEIVER_DOWN => __('Receiver :name is offline', ['name' => $this->name]),
             self::TYPE_RECEIVER_UP => __('Receiver :name is back online', ['name' => $this->name]),
             self::TYPE_BACKUP_FAILED => __('The database backup failed'),

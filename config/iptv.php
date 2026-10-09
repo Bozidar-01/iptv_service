@@ -25,6 +25,10 @@ return [
     'reminder_email_users' => (bool) env('REMINDER_EMAIL_USERS', true),
     'renewal_contact' => env('RENEWAL_CONTACT', ''),
 
+    // A login used from at least this many different IP addresses within SHARING_HOURS raises a sharing alert (0 = off)
+    'sharing_ips' => (int) env('SHARING_IPS', 3),
+    'sharing_hours' => (int) env('SHARING_HOURS', 24),
+
     // How many trial accounts one reseller can make per 24 hours (admins are not limited)
     'trials_per_day' => (int) env('TRIALS_PER_DAY', 5),
 
