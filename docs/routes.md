@@ -42,6 +42,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | resource | `/admin/sources` | `admin.sources.*` | `SourceController`, all except `show` |
 | GET | `/admin/channels/{channel}/preview` | `admin.channels.preview` | `ChannelController@preview`: plays the channel's stream through the panel for the **Watch** player. Signed `u` (base64url upstream URL) + `s` query params for HLS segments/keys/variants; 403 on a bad signature, 502 when the provider fails, 422 for non-http URLs |
 | POST | `/admin/channels/bulk` | `admin.channels.bulk` | `ChannelController@bulk` |
+| GET | `/admin/channels/duplicates` | `admin.channels.duplicates` | `ChannelController@duplicates`: groups of copies with the suggested one (`?search=&page=`) |
+| POST | `/admin/channels/duplicates` | `admin.channels.duplicates.apply` | `applyDuplicates`: `scope` page (`keep[group]=id`) or all, `search`; disables the other copies |
 | POST | `/admin/channels/check-streams` | `admin.channels.check-streams` | `ChannelController@checkStreams` (optional `source_id`) |
 | resource | `/admin/categories` | `admin.categories.*` | `CategoryController`: only index, store, update, destroy |
 | resource | `/admin/channels` | `admin.channels.*` | `ChannelController`, all except `show` |
