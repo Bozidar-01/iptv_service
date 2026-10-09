@@ -42,3 +42,11 @@ it('is written in the user\'s own language and the panel language is left alone'
         // the rest of the page stays in English
         ->assertSee('Recent activity');
 });
+
+it('leaves the personal page out for admins and resellers, which have none', function () {
+    $this->actingAs($this->admin)->get(route('admin.users.show', $this->reseller))
+        ->assertSee('Username: '.$this->reseller->username)->assertDontSee('Your page (expiry and renewal)')->assertDontSee('Page for this user');
+
+    $this->get(route('me', $this->reseller->playlist_token))->assertNotFound();
+    $this->actingAs($this->admin)->get(route('admin.users.show', $this->user))->assertSee('Your page (expiry and renewal)')->assertSee('Page for this user');
+});

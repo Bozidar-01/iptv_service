@@ -147,7 +147,10 @@ class UserService
                 $lines[] = __('Password').': '.$user->password_plain;
             }
             $lines[] = __('Playlist link').': '.$playlistUrl;
-            $lines[] = __('Your page (expiry and renewal)').': '.$pageUrl;
+            // Only subscribers have their own page (admins and resellers get a 404 there)
+            if ($user->role === 'user') {
+                $lines[] = __('Your page (expiry and renewal)').': '.$pageUrl;
+            }
             if ($user->expiration_date) {
                 $lines[] = __('Valid until').': '.$user->expiration_date->translatedFormat('j F Y');
             }
