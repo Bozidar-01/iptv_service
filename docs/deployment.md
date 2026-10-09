@@ -150,7 +150,7 @@ Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandl
 
 ## Automatic deploy
 
-Every push to `main` is put on the server by the **Deploy to the server** job in `.github/workflows/ci.yml`, but only after all checks (tests, style, analysis, browser tests, MySQL migrations, relay) have passed. It sends `scripts/deploy.sh` over SSH, so the server always runs the script of the commit being deployed. The script: stops if files were changed on the server → fast-forwards to that commit (never rewrites history) → dumps the database to `~/deploy-backups/` (the last 5 are kept) → `composer install --no-dev` → `migrate --force` → rebuilds the caches → `iptv:backup` → opens `APP_URL/login` and expects 200. It stops at the first error and prints how to go back (git can't undo migrations: use `migrate:rollback` or the dump). Pushes are deployed one at a time (a later push waits). Without the secrets below, the job does nothing.
+Every push to `main` is put on the server by the **Deploy to the server** job in `.github/workflows/ci.yml`. A push to `main` can only be a merged pull request (branch protection), and the checks (tests, style, analysis, browser tests, MySQL migrations, relay) already passed on that pull request with the branch up to date, i.e. on exactly this code, so they are not run a second time: the deploy starts right after the merge (about 30 seconds). It sends `scripts/deploy.sh` over SSH, so the server always runs the script of the commit being deployed. The script: stops if files were changed on the server → fast-forwards to that commit (never rewrites history) → dumps the database to `~/deploy-backups/` (the last 5 are kept) → `composer install --no-dev` → `migrate --force` → rebuilds the caches → `iptv:backup` → opens `APP_URL/login` and expects 200. It stops at the first error and prints how to go back (git can't undo migrations: use `migrate:rollback` or the dump). Pushes are deployed one at a time (a later push waits). Without the secrets below, the job does nothing.
 
 **One-time setup**
 
@@ -218,8 +218,8 @@ Without `STAGING_PATH` the staging job does nothing. Data on staging is its own:
 
 1. **Start:** `git fetch && git switch --no-track -c feature/short-name origin/main` (or `fix/…`, `docs/…`, `chore/…`). Commit as often as you like; branch pushes never deploy.
 2. **Check:** `composer check` (Pint, PHPStan, tests), `npm run e2e` for UI changes, migrations tried up and down on MySQL, docs and translations updated.
-3. **Pull request:** `gh pr create --base main`. The same five checks run on it. Write down in the description what the server needs (migrations, new `.env` variables: the deploy never edits the server's `.env`, add them *before* merging).
-4. **Merge** (`gh pr merge --squash --delete-branch`) only when everything is green and you decided it is ready: this is the release. The deploy job then updates the server.
+3. **Pull request:** `gh pr create --base main`. The five checks run on it (about 90 seconds). Write down in the description what the server needs (migrations, new `.env` variables: the deploy never edits the server's `.env`, add them *before* merging).
+4. **Merge:** `gh pr merge --auto --squash` turns on auto-merge: GitHub merges the moment the checks are green and deletes the branch (repository settings *Allow auto-merge* and *Automatically delete head branches* are on). Do it only when you decided the change is ready: the merge is the release, and the deploy job updates the server right after it.
 5. **Verify** the deploy log (`Done: old -> new`, `/login answers 200`) and the live site. Going back: revert on a new branch and ship that, plus `migrate:rollback` or the dump from `~/deploy-backups/` if a migration ran.
 
 The Claude Code skills `start-work` and `ship-to-main` (`.claude/skills/`) follow exactly these steps. **Protection on GitHub (turned on 2026-10-09):** `main` accepts changes only through a pull request whose five checks (*Tests (PHP 8.4)*, *Code style and static analysis*, *Browser tests*, *Migrations on MySQL*, *Receiver relay*) are green and whose branch is up to date with `main`; no direct pushes (also not for the owner), no force pushes, no deleting `main`, linear history (squash merges). Settings → Branches → rule for `main`. In a real emergency untick *Do not allow bypassing the above settings* there, push the fix, and turn it back on. A required reviewer for the `production` environment (a click to approve each deploy) would be the next step, but GitHub offers it for private repositories only on a paid plan; until then the go-ahead is given to Claude / yourself when merging.
@@ -248,7 +248,7 @@ Set `TRUSTED_PROXIES` in `.env` (`*` or a comma-separated list of the proxy IPs)
 
 ## Automated checks (CI)
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and every pull request: the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request (and on pushes to the `staging` branch), not again after the merge to `main` (see *Automatic deploy*): the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
 
 ## Limits to expect
 

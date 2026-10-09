@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Faster pull requests and merges
+- **Checks run once.** They run on the pull request (and on `staging`), no longer a second time after the merge to `main`: `main` only receives pull requests that passed on exactly this code (branch protection: required checks + branch up to date), so the second run repeated the same tests. The deploy no longer waits for them: merge → live in about 30 seconds instead of about 2 minutes.
+- **Auto-merge:** the repository now allows auto-merge and deletes merged branches by itself. `gh pr merge --auto --squash` merges the moment the five checks are green, with no polling; deleting the branch no longer closes pull requests that were stacked on it.
+- The `ship-to-main` skill follows this and says how to waive the go-ahead question for one conversation.
+- Timing before: PR checks about 90 s (browser tests 80 s, MySQL 65 s, PHP tests 41 s, in parallel), then again about 85 s on `main`, then deploy 27 s.
+- Files: `.github/workflows/ci.yml`, `.claude/skills/ship-to-main/SKILL.md`, `docs/deployment.md`.
+
 ### 2026-10-09 — Show and copy the password on the user page
 - The **Log in with username and password** card on the user page now has the password too: hidden by default, *Show current password* reveals it, *Copy* copies it (also when hidden), *Change password* below. Same encrypted copy as the edit page; users saved before it was added show "not stored" until their password is set again. A reseller sees it only for their own users.
 - Tests: three more in `PasswordRevealTest`, one browser test (show, hide, copy). 488 tests.
