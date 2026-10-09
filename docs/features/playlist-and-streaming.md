@@ -78,7 +78,7 @@ Lets apps like IPTV Smarters, TiviMate and XCIPTV log in with **server URL** (`s
 
 | Endpoint | Behaviour |
 |---|---|
-| `GET\|POST /player_api.php?username=&password=` (`xtream.api`) | Wrong or missing credentials → `{"user_info":{"auth":0}}` (HTTP 200, as the apps expect). Otherwise `user_info` (`auth` 1, `status` `Active`/`Disabled`/`Expired`, `exp_date` unix or null, `max_connections`, `active_cons`, `allowed_output_formats` `["m3u8","ts"]`) and `server_info` (`url` = request host, `port`/`https_port`, `server_protocol`, `timezone`, `timestamp_now`, `time_now`) |
+| `GET\|POST /player_api.php?username=&password=` (`xtream.api`) | Wrong or missing credentials → `{"user_info":{"auth":0}}` (HTTP 200, as the apps expect). Otherwise `user_info` (`auth` 1, `status` `Active`/`Disabled`/`Expired`, `exp_date` unix or null, `max_connections`, `active_cons`, `allowed_output_formats` `["m3u8","ts"]`) and `server_info` (`url` = request host, `port` = the port the request came in on and `https_port` (443 unless the request was https on another port), `server_protocol` = the request's, so https is never paired with port 80, `timezone`, `timestamp_now`, `time_now`) |
 | `…&action=get_live_categories` | Categories with at least one channel the user can watch, by name. Uncategorized channels → `category_id` `"0"`, "General" |
 | `…&action=get_live_streams[&category_id=]` | The user's channels (`Channel::availableTo()`, playlist order), streamed as JSON: `num`, `name`, `stream_type` `live`, `stream_id` = channel id, `stream_icon`, `epg_channel_id` = `tvg_id`, `category_id`, … |
 | `…&action=get_vod_*`, `get_series*`, anything else | `[]` |

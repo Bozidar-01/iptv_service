@@ -35,6 +35,14 @@ it('logs in and returns user and server info', function () {
         ->assertJsonPath('server_info.server_protocol', 'http');
 });
 
+it('tells apps the port and protocol it was reached on, so https is never paired with port 80', function () {
+    $login = fn (string $base) => test()->getJson($base.'/player_api.php?'.http_build_query(['username' => 'tv1', 'password' => 'secret']));
+
+    $login('https://nebotv.test')->assertJsonPath('server_info.server_protocol', 'https')->assertJsonPath('server_info.port', '443')->assertJsonPath('server_info.https_port', '443');
+    $login('http://nebotv.test')->assertJsonPath('server_info.server_protocol', 'http')->assertJsonPath('server_info.port', '80')->assertJsonPath('server_info.https_port', '443');
+    $login('http://nebotv.test:8000')->assertJsonPath('server_info.port', '8000');
+});
+
 it('rejects a wrong password, an unknown user and missing credentials', function () {
     api(['password' => 'wrong'])->assertOk()->assertExactJson(['user_info' => ['auth' => 0]]);
     api(['username' => 'nobody'])->assertExactJson(['user_info' => ['auth' => 0]]);
