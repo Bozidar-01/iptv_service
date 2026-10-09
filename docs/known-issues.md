@@ -8,7 +8,7 @@ _None currently known._
 
 ## Tooling
 
-- **PHPStan baseline:** `phpstan-baseline.neon` lists 15 findings that are the analyser's limits, not bugs (date casts read as strings, Eloquent collection generics). Don't add to it: fix new findings. Shrink it when you touch those spots (`vendor/bin/phpstan analyse --generate-baseline`).
+- **PHPStan baseline:** `phpstan-baseline.neon` lists 8 findings that are the analyser's limits, not bugs (Eloquent collection generics, a nullsafe on a relation). Date columns of a model are declared with `@property` in the model's docblock, because the analyser doesn't read the `casts()` method: do the same for new date columns. Don't add to it: fix new findings. Shrink it when you touch those spots (`vendor/bin/phpstan analyse --generate-baseline`).
 - **Browser tests need Google Chrome** on the machine (`channel: 'chrome'`). The Watch player (hls.js / mpegts.js from a CDN) is not covered.
 
 ## Design gaps / risks

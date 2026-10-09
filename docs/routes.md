@@ -23,6 +23,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/health` | `health` | `HealthController` | `200`/`503` JSON for an uptime monitor |
 | GET | `/m3u` | `m3u` | `M3uController@generate` | query: `username`, `password` |
 | GET | `/playlist/{token}.m3u` | `playlist` | `M3uController@playlist` | per-user playlist link |
+| GET | `/me/{token}` | `me` | `SelfServiceController@show`: the subscriber's own page; `?lang=en\|mk`; `?sent=yes\|again` after a renewal request; 404 for unknown / admin links |
+| POST | `/me/{token}/renew` | `me.renew` | `SelfServiceController@renew`: creates a `renewal_requested` alert (once per 24 h), redirects back to the page |
 | GET | `/epg/{token}.xml` | `epg` | `M3uController@epg` | XMLTV guide for the playlist link |
 | GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream, or the stream itself for sources with *Hide provider address*; token may end in `.m3u8`/`.ts`/… |
 | GET | `/stream/{channel_id}/{token}?u=` | `stream` | `PlayController@stream` | one part (segment, key, variant) of a proxied stream; `u` = encrypted provider address; own limit `THROTTLE_STREAM_PER_TOKEN` |
@@ -47,6 +49,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | resource | `/admin/users` | `admin.users.*` | `UserController` (all, `show` is the playlist page) |
 | POST | `/admin/users/{user}/toggle` | `admin.users.toggle` | `UserController@toggleStatus` |
 | POST | `/admin/users/{user}/playlist-token` | `admin.users.playlist-token` | `UserController@regeneratePlaylistToken` |
+| POST | `/admin/users/{user}/sessions/{session}/disconnect` | `admin.users.sessions.disconnect` | `UserController@disconnectDevice`: ends the device's session, blocks it for 15 minutes; 404 for another user's session |
+| POST | `/admin/users/{user}/sessions/disconnect` | `admin.users.sessions.disconnect-all` | `UserController@disconnectAllDevices` |
 | GET | `/admin/epg` | `admin.epg.index` | `EpgSourceController@index` |
 | POST | `/admin/epg` | `admin.epg.store` | `EpgSourceController@store` |
 | POST | `/admin/epg/match` | `admin.epg.match` | `EpgSourceController@match` |
@@ -55,11 +59,17 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/alerts` | `admin.alerts.index` | `AlertController@index` |
 | POST | `/admin/alerts/read` | `admin.alerts.read` | `AlertController@markAllRead` |
 | GET | `/admin/logs` | `admin.logs.index` | `LogController@index` |
+| GET | `/admin/credits` | `admin.credits.index` | `CreditController@index`: history; a reseller sees own, an admin all or `?reseller=<id>` (staff group) |
+| POST | `/admin/users/{user}/credits` | `admin.users.credits.store` | `CreditController@store`: `amount` (non-zero integer, negative takes back), `note`; admin only, reseller accounts only |
+| POST | `/admin/users/{user}/credits/unlimited` | `admin.users.credits.unlimited` | `CreditController@unlimited`: remove the credit limit; admin only |
+| GET | `/admin/statistics` | `admin.statistics.index` | `StatisticsController@index`: `?days=7\|30\|90` |
 | GET | `/admin/security` | `admin.security.index` | `SecurityController@index`: two-factor status / setup and recent sign-ins |
 | POST | `/admin/security/two-factor` | `admin.security.start` | `SecurityController@start`: new secret + QR code |
 | POST | `/admin/security/two-factor/confirm` | `admin.security.confirm` | `code`; turns on and shows the recovery codes once |
 | POST | `/admin/security/two-factor/recovery-codes` | `admin.security.recovery-codes` | `password`; new recovery codes |
 | POST | `/admin/security/two-factor/disable` | `admin.security.disable` | `password` |
+
+Routes under `/admin` are in two groups: the **staff** group (admins and resellers: `dashboard`, `users.*`, `alerts.*`, `logs.index`, `security.*`; resellers see only their own users) and the **admin** group (everything else; a reseller gets 403). See [features/admin-panel.md](features/admin-panel.md#resellers).
 
 Admin resource routes are limited with `->only()` / `->except()` so that only implemented controller methods are registered.
 

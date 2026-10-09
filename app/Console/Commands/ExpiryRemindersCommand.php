@@ -13,7 +13,7 @@ class ExpiryRemindersCommand extends Command
 
     public function handle(SubscriptionReminderService $reminders): int
     {
-        $this->info('Reminders created: '.$reminders->run());
+        $this->info('Reminders created: '.$reminders->run().', emails sent to subscribers: '.$reminders->mailed);
 
         return self::SUCCESS;
     }

@@ -885,6 +885,21 @@ dialog.modal-wide { width: min(880px, calc(100vw - 32px)); }
     .copy-field { flex-direction: column; }
 }
 
+/* The subscriber's own page (/me/{token}): a wider sign-in-style card */
+.auth-card.wide { width: min(560px, 100%); }
+.auth-card.wide .card + .card { margin-top: 16px; }
+.me-lang { display: flex; justify-content: center; gap: 14px; margin-top: 16px; font-size: 13px; }
+.me-lang a { color: var(--text-muted); }
+.me-lang a[aria-current] { color: var(--text); font-weight: 600; text-decoration: none; }
+
+/* Statistics: column charts and inline bars (colours from the theme tokens) */
+.chart { display: flex; align-items: flex-end; gap: 2px; height: 140px; }
+.chart > div { flex: 1; min-width: 1px; background: var(--primary); border-radius: 2px 2px 0 0; opacity: 0.85; }
+.chart > div:hover { opacity: 1; }
+.chart-axis { display: flex; justify-content: space-between; margin-top: 8px; color: var(--text-faint); font-size: 12px; }
+.bar { height: 5px; margin-top: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--primary); border-radius: 3px; }
+
 /* Two-factor setup: QR code and recovery codes */
 .qr { display: inline-block; padding: 12px; background: var(--qr-bg); border-radius: var(--radius); line-height: 0; }
 .qr svg { width: 200px; height: 200px; max-width: 100%; }

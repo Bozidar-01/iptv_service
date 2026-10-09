@@ -2,19 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
 
 jobs:
   tests:
     name: Tests (PHP ${{ matrix.php }})
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         php: ['8.4']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -22,7 +25,7 @@ jobs:
           extensions: pdo_sqlite, intl, zip, pcntl, bcmath, mbstring
           coverage: none
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
@@ -33,9 +36,12 @@ jobs:
 
   quality:
     name: Code style and static analysis
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -50,9 +56,12 @@ jobs:
 
   browser:
     name: Browser tests
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -60,7 +69,7 @@ jobs:
           extensions: pdo_sqlite, intl, zip, pcntl, bcmath, mbstring
           coverage: none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: npm
@@ -70,7 +79,7 @@ jobs:
       - run: npm ci --ignore-scripts
       # Uses the Google Chrome that comes with the runner (playwright.config.js: channel "chrome")
       - run: npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
@@ -80,6 +89,9 @@ jobs:
 
   mysql:
     name: Migrations on MySQL
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -101,7 +113,7 @@ jobs:
       DB_USERNAME: iptv
       DB_PASSWORD: iptv
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -126,19 +138,22 @@ jobs:
 
   relay:
     name: Receiver relay
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: python3 relay/test_relay.py
 
-  # Puts the tested commit on the server. Only after every check above passed, only for pushes to
+  # Puts the merged commit on the server, right after a pull request (whose checks all passed) is merged into
   # main. Needs the secrets listed in docs/deployment.md#automatic-deploy; without them it does nothing.
   deploy:
     name: Deploy to the server
-    needs: [tests, quality, browser, mysql, relay]
+    # No `needs`: the checks ran on the pull request. A push to main can only be a merged pull request (branch protection).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
@@ -154,7 +169,7 @@ jobs:
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Is deploying set up?
         id: config
@@ -177,3 +192,45 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
             -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
             "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$DEPLOY_PATH' '$GITHUB_SHA'" < scripts/deploy.sh
+
+  # Same checks, then the commit goes to the staging copy of the site (a separate subdomain and database) so a
+  # change can be tried for real before it is merged. Push a branch there with:  git push -f origin <branch>:staging
+  # Needs the DEPLOY_* secrets and STAGING_PATH (the staging project folder); without STAGING_PATH it does nothing.
+  deploy-staging:
+    name: Deploy to staging
+    needs: [tests, quality, browser, mysql, relay]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: true
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      STAGING_PATH: ${{ secrets.STAGING_PATH }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Is staging set up?
+        id: config
+        run: |
+          if [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_USER" ] && [ -n "$STAGING_PATH" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Staging is not set up (STAGING_PATH or deploy secrets missing): skipping. See docs/deployment.md#staging"
+          fi
+
+      - name: Update staging
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -p "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "DEPLOY_RESET=1 bash -s -- '$STAGING_PATH' '$GITHUB_SHA' staging" < scripts/deploy.sh

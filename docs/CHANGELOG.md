@@ -4,6 +4,89 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Recommendations for faster checks
+- `docs/deployment.md` (*Automated checks*) lists what would still make pull request checks faster, ranked by benefit: shard the browser tests, cache composer, speed up the MySQL job, skip browser tests for docs-only changes, larger runners. Docs only.
+- Files: `docs/deployment.md`.
+
+### 2026-10-09 — Faster pull requests and merges
+- **Checks run once.** They run on the pull request (and on `staging`), no longer a second time after the merge to `main`: `main` only receives pull requests that passed on exactly this code (branch protection: required checks + branch up to date), so the second run repeated the same tests. The deploy no longer waits for them: merge → live in about 30 seconds instead of about 2 minutes.
+- **Auto-merge:** the repository now allows auto-merge and deletes merged branches by itself. `gh pr merge --auto --squash` merges the moment the five checks are green, with no polling; deleting the branch no longer closes pull requests that were stacked on it.
+- The `ship-to-main` skill follows this and says how to waive the go-ahead question for one conversation.
+- Timing before: PR checks about 90 s (browser tests 80 s, MySQL 65 s, PHP tests 41 s, in parallel), then again about 85 s on `main`, then deploy 27 s.
+- Files: `.github/workflows/ci.yml`, `.claude/skills/ship-to-main/SKILL.md`, `docs/deployment.md`.
+
+### 2026-10-09 — Show and copy the password on the user page
+- The **Log in with username and password** card on the user page now has the password too: hidden by default, *Show current password* reveals it, *Copy* copies it (also when hidden), *Change password* below. Same encrypted copy as the edit page; users saved before it was added show "not stored" until their password is set again. A reseller sees it only for their own users.
+- Tests: three more in `PasswordRevealTest`, one browser test (show, hide, copy). 488 tests.
+- Files: `resources/views/admin/users/show.blade.php`, `docs/features/admin-panel.md`, `tests/Feature/PasswordRevealTest.php`, `e2e/users.spec.js`.
+
+### 2026-10-09 — Fix: Credits page showed "Unlimited" for resellers that have credits
+- On the Credits page for **all resellers** every card said *Unlimited*, though the balance was saved (the history showed it). The page loaded each reseller with only `id`, `username` and `credits`, and "limited by credits" also needs the role, so every reseller looked like an account without a limit. It now loads the role too. Only the display was wrong: balances, charging and the history were correct.
+- Test: the all-resellers page shows each reseller's real balance (fails on the old code).
+- Files: `app/Http/Controllers/Admin/CreditController.php`, `tests/Feature/CreditTest.php`.
+
+### 2026-10-09 — Reseller credits
+- Admins give **credits** to resellers; a reseller with credits can only give as many subscriptions as they can pay for. **1 credit = 1 month** of subscription for one user: creating a user or moving their end date later costs the whole months added (from the day the user's subscription runs out, or from today when it already ended), shortening or keeping it costs nothing. One extra day is not charged (a reseller's date can differ from the server's by a day: time zones) but any longer subscription costs at least 1 credit.
+- A reseller **without** a balance (the default for existing resellers) is not limited, as before. Giving credits switches the limit on; *Make unlimited* switches it off. A reseller with credits must give an end date (no "Never"); the form shows the price while typing and a refused save changes nothing (user and credits are saved together under a lock on the reseller's row).
+- New **Credits** page (reseller: own balance and history; admin: everyone's or one reseller's), a credits panel on a reseller's page (give / take back with a note, never below 0), *Starting credits* when creating a reseller. Every change is kept in `credit_transactions` (who, what, for which user, balance after).
+- Fix found by the browser test: the end-date shortcuts (+1 month …) built the date in UTC, which could be a day off for a browser west of UTC; they now use the browser's own date and the same month rule as the server.
+- Schema: `users.credits` (nullable), `credit_transactions`. Tests: `CreditTest`, `e2e/credits.spec.js`.
+- Files: `app/Support/Credits.php`, `app/Services/CreditService.php`, `app/Models/CreditTransaction.php`, `app/Http/Controllers/Admin/{CreditController,UserController}.php`, `app/Exceptions/*`, `database/migrations/2026_10_09_000006_*`, `resources/views/admin/{credits/index,users/_form,users/show,users/index,dashboard-reseller}.blade.php`, `resources/views/layouts/admin.blade.php`, `routes/web.php`, `lang/mk.json`, `docs/**`.
+
+### 2026-10-09 — Show a user's password on the edit page
+- **Edit user** has a *Show current password* button (for the Xtream Codes login). Passwords were only stored as hashes, so a new `users.password_plain` column keeps an encrypted copy (`encrypted` cast, hidden from serialisation), written whenever a password is set through `UserService`. Users saved before this have none: the page says so; setting a new password fills it in. Resellers see it only for their own users (existing access rule). Anyone with the database and `APP_KEY` can read these passwords.
+- Files: migration `…000007_add_password_plain_to_users`, `User`, `UserService`, `admin/users/_form`, `layouts/admin` (reveal button script), `lang/mk.json`.
+
+### 2026-10-09 — Fix: Statistics page failed with a 500 on the second visit
+- **Cause:** the report was cached with a date object (`Carbon`) inside. The real (database) cache refuses to rebuild objects (`cache.serializable_classes` is `false`), so the second request got a `__PHP_Incomplete_Class` and the page returned 500, for the 5 minutes the entry lived, in both languages (switching language reloads the page, which is how it showed). The first visit worked because nothing was cached yet, and the tests didn't catch it because the test cache keeps objects as they are.
+- **Fix:** only plain values are cached (`from` is a date string); the cache key is versioned (`statistics:v2:`) so entries written by the old code are never read.
+- Test: reads the report back through the database cache and loads the page repeatedly in both languages (fails on the old code). Checked nothing else caches an object. 
+- Files: `app/Services/StatisticsService.php`, `resources/views/admin/statistics/index.blade.php`, `tests/Feature/Admin/StatisticsTest.php`.
+
+### 2026-10-09 — Resellers
+- New role **reseller**: signs in to the panel and sees and manages only their own users. Admin sets *Most users*, *Most streams per user* and the bouquets they may hand out. A reseller gets Dashboard, Users, Activity, Alerts (their users' only) and Security; the rest of the panel is 403. Details in `docs/features/admin-panel.md#resellers`.
+- Access control: `User::scopeVisibleTo` + a scoped `{user}` route binding (someone else's user is a 404 on every route), `EnsureStaff` (admin or an active reseller) and `EnsureAdmin` (reseller → 403) run before the binding; limits and role/owner can't be set by a reseller whatever is posted.
+- Schema: `users.role` is now a string(20) (was enum), `users.owner_id` (FK, null on delete), `users.max_customers`, `users.max_customer_connections`. Migration tried up / down / up on MySQL.
+- Hardened after an independent review: the user limit is checked and the user created under a row lock (parallel creates can't exceed it), a reseller sees only the bouquets it holds on a user's page, array-shaped filters are ignored instead of failing, and rolling the migration back disables former resellers.
+- Not included: credits or prices, reseller-specific emails (renewal requests show in their Alerts), per-reseller branding.
+- Tests: `ResellerTest` (43 cases incl. 404 on every route for foreign users, limits, scoping of activity / alerts / sign-ins / dashboard). 438 tests.
+- Files: `database/migrations/2026_10_09_000005_*`, `app/Models/User.php`, `app/Http/Middleware/{EnsureStaff,EnsureAdmin}.php`, `bootstrap/app.php`, `routes/web.php`, `app/Providers/AppServiceProvider.php`, `app/Http/Controllers/{Auth/AuthController,Admin/UserController,Admin/DashboardController,Admin/LogController,Admin/AlertController,Admin/SecurityController}.php`, `app/Services/UserService.php`, `resources/views/admin/{dashboard-reseller,users/_form,users/index,users/show}.blade.php`, `resources/views/layouts/admin.blade.php`, `lang/mk.json`, `docs/**`, `tests/Feature/ResellerTest.php`.
+
+### 2026-10-09 — Expiry emails to subscribers
+- Users get an optional **email** and **language of emails** (user form; shown on the user page). Subscribers with an address are emailed the expiry reminder (before the end date and when it has ended) with a button to their own page, where *Ask to renew* is, plus the `RENEWAL_CONTACT` line. Once per reminder, retried next run on failure (`stream_alerts.user_mailed_at`). `REMINDER_EMAIL_USERS=false` switches it off. Nobody is emailed until addresses are added.
+- Schema: `users.email`, `users.locale`, `stream_alerts.user_mailed_at` (migration tried up/down/up on MySQL).
+- `iptv:expiry-reminders` prints the number of emails sent.
+- Tests: `UserReminderEmailTest` (13), 392 tests.
+- Files: `database/migrations/2026_10_09_000004_*`, `app/Mail/SubscriptionReminderMail.php`, `resources/views/emails/subscription-reminder*.blade.php`, `app/Services/SubscriptionReminderService.php`, `app/Console/Commands/ExpiryRemindersCommand.php`, `app/Http/Controllers/Admin/UserController.php`, `app/Models/{User,StreamAlert}.php`, `resources/views/admin/users/{_form,show}.blade.php`, `config/iptv.php`, `.env.example`, `lang/mk.json`, `lang/mk/validation.php`, `docs/**`, `tests/Feature/UserReminderEmailTest.php`.
+
+### 2026-10-09 — Subscriber page and smaller PHPStan baseline
+- **`/me/{token}`**: a page a subscriber opens with their personal link: status, expiry, playlist link with copy button, setup steps, Xtream server + username (never the password), channel count, streams in use, and **Ask to renew** (alert for the admins, once a day). English or Macedonian (`?lang=` or the browser's language), no cookies, `noindex`, own request limit. The user page in the panel shows the link to send (*Page for this user*).
+- New alert type `renewal_requested` (in the *Subscriptions* group of the email digest).
+- PHPStan: date columns of `User`, `Source` and `EpgProgramme` are declared with `@property`, so the analyser knows they are dates: baseline 15 → 8 findings.
+- Tests: `SelfServiceTest` (17), 379 tests. Looked at the page on a phone-sized screen in Macedonian.
+- Files: `app/Http/Controllers/SelfServiceController.php`, `resources/views/me/show.blade.php`, `app/Models/{StreamAlert,User,Source,EpgProgramme}.php`, `routes/player.php`, `app/Providers/AppServiceProvider.php`, `public/css/admin.css`, `resources/views/admin/users/show.blade.php`, `lang/mk.json`, `phpstan-baseline.neon`, `docs/**`, `tests/Feature/SelfServiceTest.php`.
+
+### 2026-10-09 — Usage statistics
+- New **Statistics** page (sidebar, under Users): plays, viewers and channels watched for the last 7 / 30 / 90 days, plays per day and per hour as column charts, top 10 channels and top 10 users. `StatisticsService`: grouped queries only (a fixed number whatever the history size), 5-minute cache; MySQL and SQLite expressions for day and hour. Runs on the existing `stream_logs` data, no schema change.
+- CSS: `.chart`, `.chart-axis`, `.bar` (theme tokens only; looked at in light and dark).
+- Tests: `StatisticsTest` (9), 362 tests.
+- Files: `app/Services/StatisticsService.php`, `app/Http/Controllers/Admin/StatisticsController.php`, `resources/views/admin/statistics/index.blade.php`, `resources/views/layouts/admin.blade.php`, `public/css/admin.css`, `routes/web.php`, `lang/mk.json`, `docs/**`, `tests/Feature/Admin/StatisticsTest.php`.
+
+### 2026-10-09 — Disconnect a device
+- The user page lists the **devices watching now** with **Disconnect** (and **Disconnect all**). It ends the device's session and blocks that device (IP + player) from starting a stream for 15 minutes (`StreamService::disconnect`, cache). Proxied streams stop (HLS parts refused; a running MPEG-TS stream stops at the next tick, `onTick` returning `false`); direct redirect streams can't be cut and end when the player reconnects.
+- "Active now" on the user page counts only sessions from the last 5 minutes (`ActiveSession::active()`).
+- Tests: `DisconnectDeviceTest` (7). 353 tests.
+- Files: `app/Services/{StreamService,StreamProxyService,StreamPreviewService}.php`, `app/Models/ActiveSession.php`, `app/Http/Controllers/Admin/UserController.php`, `routes/web.php`, `resources/views/admin/users/show.blade.php`, `lang/mk.json`, `docs/**`, `tests/Feature/Admin/DisconnectDeviceTest.php`.
+
+### 2026-10-09 — Ops: off-site backups, backup watch, uptime monitor, staging
+- **Off-site backups:** `BACKUP_COPY_DISK` (e.g. `s3`) writes every backup to a second disk as well (`league/flysystem-aws-s3-v3`, works with AWS S3, Backblaze B2, Cloudflare R2, Wasabi via `AWS_ENDPOINT`). A failed copy fails the command and raises `backup_failed`; the local copy stays. Old backups are pruned on both disks.
+- **Backup watch:** `backup_stale` alert (once a day) when no backup succeeded on every disk for 36 hours (`HealthService`, `BackupService::lastSuccess()`).
+- **Uptime monitor:** `.github/workflows/uptime.yml` checks `/login` and `/health` every 30 minutes; a failed run emails you. Needs the repository variable `SITE_URL`.
+- **Staging:** pushing a branch to `staging` runs the checks and updates a separate staging site (`deploy-staging` job, `STAGING_PATH` secret). `scripts/deploy.sh` takes a branch and `DEPLOY_RESET=1` (tested against a diverged clone). Setup in `docs/deployment.md#staging`.
+- Not verified against a real bucket: the first `iptv:backup` after setting `BACKUP_COPY_DISK` shows it.
+- Tests: off-site copy, copy failure, pruning on both disks, stale alert. 346 tests.
+- Files: `app/Services/{BackupService,HealthService}.php`, `app/Models/StreamAlert.php`, `config/iptv.php`, `scripts/deploy.sh`, `.github/workflows/{ci,uptime}.yml`, `.env.example`, `lang/mk.json`, `composer.{json,lock}`, `.claude/skills/ship-to-main/SKILL.md`, `docs/**`, `tests/**`.
+
 ### 2026-10-09 — Dependency update and weekly audit
 - `composer update`: Laravel 13.5 → 13.35, Guzzle 7 → **8**, psr7 2 → 3, Symfony 8.0 → 8.1, league/commonmark, flysystem, Pest, Pint and more. Fixes the 20+ advisories `composer audit` reported (Laravel email-rule CRLF injection and signed-URL path confusion, Guzzle host-check bypass, Symfony mime/mailer/routing/http-kernel, commonmark DoS). `composer audit` is clean.
 - Checked after the update: all tests, Pint, PHPStan, and the real HTTP paths against a fake provider (playlist import, `php` and `nginx` stream proxy with redirects, HLS rewrite).

@@ -119,7 +119,20 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 `php artisan iptv:backup` runs every night at 02:30 (the same cron job). It writes a gzipped SQL dump to `storage/app/private/backups/iptv-YYYYMMDD-HHMMSS.sql.gz` and deletes dumps older than `BACKUP_KEEP_DAYS` (14, the newest is always kept). The dump has all your data except what the app rebuilds by itself (queue, cache, sessions, TV guide programmes, which the nightly guide import refills). If it fails, an alert appears in the panel and email.
 
 - **Needs `mysqldump`** on the server (Hostinger has it; the Docker image installs it). Set `BACKUP_MYSQLDUMP=/full/path` if it isn't on the PATH, and `BACKUP_DUMP_OPTIONS=--skip-ssl` if the database uses a self-signed certificate (the Docker setup does this).
-- **Keep a copy off the server.** A backup on the same disk doesn't help when the disk is lost. Point `BACKUP_DISK` at an off-site disk, e.g. an S3-compatible bucket: `composer require league/flysystem-aws-s3-v3 "^3.0"`, add the `AWS_*` variables and set `BACKUP_DISK=s3`. Or download the newest file now and then.
+- **Keep a copy off the server.** A backup on the same disk doesn't help when the disk is lost. Set `BACKUP_COPY_DISK=s3` and every backup is also written to an S3-compatible bucket (the driver is installed; the local copy stays). Cheap or free options: **Backblaze B2** (10 GB free), **Cloudflare R2** (10 GB free), Wasabi, or AWS S3. Create a private bucket and a key that can only write to it, then in `.env`:
+
+```
+BACKUP_COPY_DISK=s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_BUCKET=nebotv-backups
+AWS_DEFAULT_REGION=eu-central-003            # B2: the region in the endpoint; R2: auto
+AWS_ENDPOINT=https://s3.eu-central-003.backblazeb2.com   # leave empty for AWS S3
+AWS_USE_PATH_STYLE_ENDPOINT=true             # B2 / R2 / Wasabi: true; AWS S3: false
+```
+
+  then `php artisan config:cache` and `php artisan iptv:backup`: it must print `Backup written` and the file must appear in the bucket. If the copy fails (wrong key, bucket, endpoint) the command fails and a `backup_failed` alert appears; the local backup is kept. Old backups are removed from both disks after `BACKUP_KEEP_DAYS`. Backups hold your data (and provider logins in channel addresses): keep the bucket private.
+- **A missing backup is noticed.** If no backup succeeded on every configured disk for 36 hours, a `backup_stale` alert appears once a day (panel and email).
 - **Keep `APP_KEY` with your backups.** Source addresses, 2FA secrets and relay secrets are stored encrypted with it: a restore on a new server without the same `APP_KEY` can't read them (sign-in and 2FA then fail until you set them up again).
 - **Restore** (into an empty database, or over an existing one: tables are replaced):
 
@@ -137,7 +150,7 @@ Set `SENTRY_LARAVEL_DSN` in `.env` (a free Sentry project is enough) and unhandl
 
 ## Automatic deploy
 
-Every push to `main` is put on the server by the **Deploy to the server** job in `.github/workflows/ci.yml`, but only after all checks (tests, style, analysis, browser tests, MySQL migrations, relay) have passed. It sends `scripts/deploy.sh` over SSH, so the server always runs the script of the commit being deployed. The script: stops if files were changed on the server → fast-forwards to that commit (never rewrites history) → dumps the database to `~/deploy-backups/` (the last 5 are kept) → `composer install --no-dev` → `migrate --force` → rebuilds the caches → `iptv:backup` → opens `APP_URL/login` and expects 200. It stops at the first error and prints how to go back (git can't undo migrations: use `migrate:rollback` or the dump). Pushes are deployed one at a time (a later push waits). Without the secrets below, the job does nothing.
+Every push to `main` is put on the server by the **Deploy to the server** job in `.github/workflows/ci.yml`. A push to `main` can only be a merged pull request (branch protection), and the checks (tests, style, analysis, browser tests, MySQL migrations, relay) already passed on that pull request with the branch up to date, i.e. on exactly this code, so they are not run a second time: the deploy starts right after the merge (about 30 seconds). It sends `scripts/deploy.sh` over SSH, so the server always runs the script of the commit being deployed. The script: stops if files were changed on the server → fast-forwards to that commit (never rewrites history) → dumps the database to `~/deploy-backups/` (the last 5 are kept) → `composer install --no-dev` → `migrate --force` → rebuilds the caches → `iptv:backup` → opens `APP_URL/login` and expects 200. It stops at the first error and prints how to go back (git can't undo migrations: use `migrate:rollback` or the dump). Pushes are deployed one at a time (a later push waits). Without the secrets below, the job does nothing.
 
 **One-time setup**
 
@@ -162,6 +175,39 @@ ssh-keygen -t ed25519 -N "" -C "github-deploy" -f ~/.ssh/github_deploy && cat ~/
 
 The job uses the `production` environment: in Settings → Environments → production you can require an approval before each deploy. To pause deploying, delete the `DEPLOY_SSH_KEY` secret. To remove access, delete the line `github-deploy` from `~/.ssh/authorized_keys` on the server. Deploy by hand: `bash scripts/deploy.sh "$PWD"` in the project folder.
 
+## Uptime monitor
+
+The **Uptime** workflow (`.github/workflows/uptime.yml`) opens `/login` and `/health` of the live site every 30 minutes (3 tries each) and fails when either does not answer 200. `/health` also fails when the scheduler or queue has stopped. A failed run emails you (GitHub → Settings → Notifications → Actions → "Send notifications for failed workflows only"). It stays off until the repository variable is set:
+
+```bash
+gh variable set SITE_URL --body "https://nebotv.bozidarpejoski.dev"
+```
+
+GitHub runs schedules on a best-effort basis (a run can start a few minutes late). For faster alerts add a free external monitor (UptimeRobot, Better Stack) on the same two addresses.
+
+## Staging
+
+A second copy of the site (own subdomain, own database, own `.env`) to try a change for real before merging it. Push any branch there: `git push -f origin <branch>:staging`; the checks run and then **Deploy to staging** updates the staging folder (`DEPLOY_RESET=1`: the server is moved to that commit with `git reset --hard`, never used for production). Staging never touches the live site or database.
+
+**One-time setup on Hostinger**
+
+1. hPanel → Websites → *Subdomains*: create `staging.yourdomain.com` (note its folder). Databases → create a second MySQL database and user.
+2. Over SSH, in the folder that belongs to the subdomain:
+
+```bash
+git clone <repo-url> nebotv-staging && cd nebotv-staging && cp .env.example .env && php artisan key:generate
+```
+
+3. Edit `.env`: the new `DB_*`, `APP_URL=https://staging.yourdomain.com`, `APP_ENV=staging`, `APP_DEBUG=false`, `SESSION_SECURE_COOKIE=true`, `QUEUE_SCHEDULED_WORKER=true`, **`MAIL_MAILER=log`** and no `ALERT_MAIL_TO` (staging must not email anyone), no real provider sources, and its **own** `ADMIN_PASSWORD`. Never copy the live `APP_KEY`.
+4. `composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan db:seed --class=AdminSeeder --force`, point the subdomain's web root at `nebotv-staging/public`, add the cron job (see section 4) for it, and (optional) protect it with a password in hPanel (*Password protect directories*) so search engines and strangers stay out.
+5. In GitHub add the secret `STAGING_PATH` = the absolute path of `nebotv-staging` (the other `DEPLOY_*` secrets are shared with production):
+
+```bash
+gh secret set STAGING_PATH --body "/home/u123/domains/yourdomain.com/staging/nebotv-staging"
+```
+
+Without `STAGING_PATH` the staging job does nothing. Data on staging is its own: use throw-away sources and users.
+
 ## Dependencies
 
 `composer audit` reports known security advisories. The **Dependency audit** workflow (`.github/workflows/audit.yml`) runs it every Monday and whenever `composer.lock` changes; it is not a required check (a new advisory would block unrelated work), so a red run is your signal. Dependabot (`.github/dependabot.yml`) opens a weekly pull request for PHP packages, one for the browser-test tools and one for GitHub Actions. Updating by hand: branch, `composer update`, `composer check` + `npm run e2e`, try playing a channel through *Hide provider address* in both modes (the proxy uses Guzzle directly), then ship as usual.
@@ -172,8 +218,8 @@ The job uses the `production` environment: in Settings → Environments → prod
 
 1. **Start:** `git fetch && git switch --no-track -c feature/short-name origin/main` (or `fix/…`, `docs/…`, `chore/…`). Commit as often as you like; branch pushes never deploy.
 2. **Check:** `composer check` (Pint, PHPStan, tests), `npm run e2e` for UI changes, migrations tried up and down on MySQL, docs and translations updated.
-3. **Pull request:** `gh pr create --base main`. The same five checks run on it. Write down in the description what the server needs (migrations, new `.env` variables: the deploy never edits the server's `.env`, add them *before* merging).
-4. **Merge** (`gh pr merge --squash --delete-branch`) only when everything is green and you decided it is ready: this is the release. The deploy job then updates the server.
+3. **Pull request:** `gh pr create --base main`. The five checks run on it (about 90 seconds). Write down in the description what the server needs (migrations, new `.env` variables: the deploy never edits the server's `.env`, add them *before* merging).
+4. **Merge:** `gh pr merge --auto --squash` turns on auto-merge: GitHub merges the moment the checks are green and deletes the branch (repository settings *Allow auto-merge* and *Automatically delete head branches* are on). Do it only when you decided the change is ready: the merge is the release, and the deploy job updates the server right after it.
 5. **Verify** the deploy log (`Done: old -> new`, `/login answers 200`) and the live site. Going back: revert on a new branch and ship that, plus `migrate:rollback` or the dump from `~/deploy-backups/` if a migration ran.
 
 The Claude Code skills `start-work` and `ship-to-main` (`.claude/skills/`) follow exactly these steps. **Protection on GitHub (turned on 2026-10-09):** `main` accepts changes only through a pull request whose five checks (*Tests (PHP 8.4)*, *Code style and static analysis*, *Browser tests*, *Migrations on MySQL*, *Receiver relay*) are green and whose branch is up to date with `main`; no direct pushes (also not for the owner), no force pushes, no deleting `main`, linear history (squash merges). Settings → Branches → rule for `main`. In a real emergency untick *Do not allow bypassing the above settings* there, push the fix, and turn it back on. A required reviewer for the `production` environment (a click to approve each deploy) would be the next step, but GitHub offers it for private repositories only on a paid plan; until then the go-ahead is given to Claude / yourself when merging.
@@ -202,7 +248,20 @@ Set `TRUSTED_PROXIES` in `.env` (`*` or a comma-separated list of the proxy IPs)
 
 ## Automated checks (CI)
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and every pull request: the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request (and on pushes to the `staging` branch), not again after the merge to `main` (see *Automatic deploy*): the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
+
+### Making the checks faster (recommendations)
+
+Today a pull request takes about 85–100 s. The browser tests (about 80 s) and the MySQL job (about 65 s) run in parallel and set the pace, so only changes to those two shorten it. In order of benefit for effort:
+
+1. **Split the browser tests in two** (`npx playwright test --shard=1/2` and `2/2` as a matrix). Saves about 25–35 s. Each shard needs its own port and SQLite file in `e2e/serve.sh`. Costs about twice the runner minutes of that job.
+2. **Cache composer and Playwright setup** (`shivammathur/setup-php` plus a `vendor/` cache keyed on `composer.lock`; `cache: npm` is already on). Saves about 10–15 s per job.
+3. **Cut MySQL start-up:** use a `tmpfs` data directory and `--innodb-flush-log-at-trx-commit=0` for the service container (the data is thrown away anyway). Saves about 10–20 s of the 65 s.
+4. **Run the browser tests only when needed:** a `paths` filter that skips them for docs-only pull requests (`docs/**`, `*.md`). Docs pull requests then finish in about 30 s. Keep the job required: a skipped required job counts as passing only when it is skipped by a workflow condition, so test this on a throwaway pull request first.
+5. **Run PHPStan and Pint only on changed files** is not worth it: both already take about 30 s together and run in parallel.
+6. **Larger runners** (paid) cut the browser job to about 50 s without any change to the tests. Only worth it if the minutes are cheap for you.
+
+Not recommended: dropping the MySQL up/down/up job or the browser tests. They are what caught the date-shortcut bug and the migration-order mistakes.
 
 ## Limits to expect
 

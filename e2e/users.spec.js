@@ -35,3 +35,24 @@ test('asks before deleting a category and only deletes on yes', async ({ page })
     await expect(page.locator('.alert-success')).toBeVisible();
     await expect(page.locator('tr', { hasText: 'News' })).toHaveCount(0);
 });
+
+test('shows and copies the password on the user page', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/admin/users/create');
+    await page.getByLabel('Username').fill('reveal-user');
+    await page.getByLabel('Password').fill('reveal-pass-1');
+    await page.getByRole('button', { name: 'Create user' }).click();
+
+    const field = page.locator('#xtream-password');
+    await expect(field).toHaveAttribute('type', 'password');
+
+    await page.getByRole('button', { name: 'Show current password' }).click();
+    await expect(field).toHaveAttribute('type', 'text');
+    await expect(field).toHaveValue('reveal-pass-1');
+
+    await page.getByRole('button', { name: 'Hide current password' }).click();
+    await expect(field).toHaveAttribute('type', 'password');
+
+    await page.locator('[data-copy="#xtream-password"]').click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('reveal-pass-1');
+});

@@ -5,7 +5,7 @@ description: Release finished work from a branch to main, which deploys to the l
 
 # Ship a branch to main (= deploy to production)
 
-Merging into `main` puts the code on the live server within minutes: GitHub Actions run the checks, then the *deploy* job updates the server (database backup, `composer install`, `migrate --force`, caches, `/login` must answer 200). So a merge is a production release. Ship only when the work is **100% ready**, and only after the user says so **for this branch**: an earlier "yes" for another branch doesn't count.
+Merging into `main` puts the code on the live server within a minute: the checks have already run on the pull request, and the *deploy* job then updates the server (database backup, `composer install`, `migrate --force`, caches, `/login` must answer 200). So a merge is a production release. Ship only when the work is **100% ready**, and only after the user says so **for this branch**: an earlier "yes" for another branch doesn't count.
 
 ## 1. Is it 100% ready? (all must be true; report each, don't skip)
 
@@ -24,6 +24,8 @@ Run from the work branch. Fix problems on the branch, then start the checklist a
 
 If anything is not true, say so plainly and stop: "not ready: <what>". Don't open a PR for unfinished work.
 
+**Risky or hard to test locally** (migrations on real data, proxy, auth, deploy changes, big UI)? If staging is set up (`docs/deployment.md#staging`), also try it there first: `git push -f origin <branch>:staging`, wait for *Deploy to staging*, click through the change on the staging site, then continue. Staging is the user's server: ask before pushing to `staging`.
+
 ## 2. Bring it up to date with main
 
 ```bash
@@ -41,26 +43,30 @@ gh pr create --base main --title "<what it does, in one line>" --body-file <file
 
 The description (write it to a file in the scratchpad) has: **What and why**, **How it was tested**, **Server impact** (migrations, env vars to add, anything manual), **How to go back**. Never put secrets in it.
 
-## 4. Wait for the checks
+## 4. The go-ahead (required unless the user waived it)
+
+Merging deploys to production, so the user decides. Stop and ask, in plain words, something like: *"The checks will run now. Merging deploys to production: migrations: <yes/no>, new env vars: <none / list, already added?>. Merge `<branch>` when they are green?"* Wait for a clear yes. If `.env` changes are needed, confirm they are done on the server first.
+
+**Exception:** if the user said in this conversation to merge without asking (e.g. "merge without confirmation until I say otherwise"), skip the question, but still run the whole checklist, never merge with a red check, and say in your report what was merged. That permission ends when the user says so or the conversation ends; it never covers a different task or another session.
+
+## 5. Merge when green, and watch the deploy
+
+Use **auto-merge**: GitHub merges the moment the five required checks (tests, style + analysis, browser tests, MySQL migrations, relay) pass, so there is nothing to poll. The branch is deleted automatically.
 
 ```bash
-gh pr checks --watch
+gh pr merge <pr> --auto --squash
+gh pr checks <pr> --watch          # optional: watch them go green
 ```
 
-All five must pass (tests, style + analysis, browser tests, MySQL migrations, relay). A red check is fixed on the branch, never bypassed: no `--admin`, no merging with failures, no disabling a check to get through.
+A red check is fixed on the branch, never bypassed: no `--admin`, no merging with failures, no disabling a check. If `main` moved and the branch is no longer up to date, `gh pr update-branch <pr>` (or rebase) and let the checks run again.
 
-## 5. Ask for the go-ahead (required)
-
-Stop and ask the user, in plain words, something like: *"All checks are green. Merging deploys to production now: migrations: <yes/no>, new env vars: <none / list, already added?>. Merge `<branch>`?"* Wait for a clear yes. If `.env` changes are needed, confirm they are done on the server first.
-
-## 6. Merge and watch the deploy
+The checks run on the pull request only. After the merge the **deploy starts at once** (about 30 seconds, no second test run: `main` only ever receives merged pull requests whose checks passed on this exact code):
 
 ```bash
-gh pr merge <pr> --squash --delete-branch
-gh run watch $(gh run list --branch main --limit 1 --json databaseId -q '.[0].databaseId')
+gh run watch $(gh run list --branch main --workflow CI --limit 1 --json databaseId -q '.[0].databaseId')
 ```
 
-(If the `production` environment requires approval, tell the user to approve the deploy in GitHub → Actions.) Then verify and report: the deploy job's log shows `Done: <old> -> <new>` and `/login answers 200`; for UI changes also look at the live site. Finish locally: `git switch main && git pull --ff-only`, delete the local branch.
+The deploy job's log shows `Done: <old> -> <new>` and `/login answers 200`; for UI changes also look at the live site. Finish locally: `git switch main && git pull --ff-only`, delete the local branch.
 
 ## If the deploy fails or the release is bad
 

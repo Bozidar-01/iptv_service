@@ -35,7 +35,7 @@ class AuthController extends Controller
 
     public function showLogin()
     {
-        if (Auth::check() && Auth::user()->role === 'admin') {
+        if (Auth::check() && Auth::user()->canUsePanel()) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -68,7 +68,8 @@ class AuthController extends Controller
         $user = $provider->retrieveByCredentials(['username' => $credentials['username']]);
 
         if ($user && $provider->validateCredentials($user, ['password' => $credentials['password']])) {
-            if ($user->role !== 'admin') {
+            // Subscribers never; a reseller only while their account is active and not expired
+            if (!$user->canUsePanel()) {
                 LoginEvent::record(LoginEvent::DENIED, $credentials['username'], $user, $request);
                 RateLimiter::hit($throttleKey, 60);
                 RateLimiter::hit($ipKey, 60);
@@ -175,6 +176,6 @@ class AuthController extends Controller
 
         $user = User::find($pending['id']);
 
-        return $user && $user->isAdmin() && $this->twoFactor->isEnabled($user) ? $user : null;
+        return $user && $user->canUsePanel() && $this->twoFactor->isEnabled($user) ? $user : null;
     }
 }

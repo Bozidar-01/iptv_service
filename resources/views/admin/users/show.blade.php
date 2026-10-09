@@ -10,6 +10,7 @@
         <p>
             @include('admin.partials.user-status', ['user' => $user])
             @if($user->isAdmin()) <span class="badge badge-primary">{{ __('Admin') }}</span> @endif
+            @if($user->isReseller()) <span class="badge badge-info">{{ __('Reseller') }}</span> @endif
         </p>
     </div>
     <div class="page-actions">
@@ -68,6 +69,15 @@
                 </div>
 
                 <div>
+                    <div class="label" style="margin-bottom: 6px">{{ __('Page for this user') }}</div>
+                    <div class="copy-field">
+                        <input class="input" id="customer-url" value="{{ route('me', ['token' => $user->playlist_token]) }}" readonly onclick="this.select()">
+                        <button type="button" class="btn btn-secondary" data-copy="#customer-url"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+                    </div>
+                    <p class="help" style="margin: 6px 0 0">{{ __('Send this to the user: it shows their expiry, the playlist link and a button to ask for a renewal. It stops working when you make a new playlist link.') }}</p>
+                </div>
+
+                <div>
                     <div class="label" style="margin-bottom: 6px">{{ __('Set up on a TV') }}</div>
                     <ol class="steps">
                         <li>{!! __('Install an IPTV player: :apps (Android TV / Fire TV), or :vlc.', ['apps' => '<strong>TiviMate</strong>, <strong>IPTV Smarters</strong>, <strong>OTT Navigator</strong>', 'vlc' => '<strong>VLC</strong>']) !!}</li>
@@ -99,11 +109,22 @@
                         <button type="button" class="btn btn-secondary" data-copy="#xtream-username"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
                     </div>
 
-                    <span class="label">{{ __('Password') }}</span>
-                    <div class="login-password">
-                        {{ __('The password you set for this user.') }}
-                        <a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a>
-                    </div>
+                    <label class="label" for="xtream-password">{{ __('Password') }}</label>
+                    @if($user->password_plain)
+                        <div>
+                            <div class="copy-field">
+                                <input class="input mono" id="xtream-password" type="password" value="{{ $user->password_plain }}" readonly onclick="this.select()">
+                                <button type="button" class="btn btn-secondary" data-reveal="#xtream-password"><x-icon name="eye" /> <span data-reveal-label>{{ __('Show current password') }}</span></button>
+                                <button type="button" class="btn btn-secondary" data-copy="#xtream-password"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
+                            </div>
+                            <p class="help" style="margin: 6px 0 0"><a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a></p>
+                        </div>
+                    @else
+                        <div class="login-password">
+                            {{ __('The current password is not stored for this user. Set a new one to see it here.') }}
+                            <a href="{{ route('admin.users.edit', $user) }}">{{ __('Change password') }}</a>
+                        </div>
+                    @endif
                 </div>
 
                 <p class="help" style="margin: 0">
@@ -151,6 +172,82 @@
     </div>
 
     <div class="card">
+        <div class="card-header">
+            <div>
+                <h2>{{ __('Devices watching now') }}</h2>
+                <p>{{ __('A player that plays straight from the provider keeps its current stream until it reconnects. Streams played through this server stop within seconds.') }}</p>
+            </div>
+            @if($devices->count() > 1)
+                <form method="POST" action="{{ route('admin.users.sessions.disconnect-all', $user) }}" data-confirm="{{ __('Disconnect all devices of this user? They can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger-ghost btn-sm"><x-icon name="power" /> {{ __('Disconnect all') }}</button>
+                </form>
+            @endif
+        </div>
+        @if($devices->isEmpty())
+            <div class="empty" style="padding: 28px 20px"><p>{{ __('Nobody is watching right now.') }}</p></div>
+        @else
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>{{ __('Channel') }}</th><th class="hide-sm">{{ __('IP address') }}</th><th class="hide-sm">{{ __('Player') }}</th><th class="right">{{ __('Since') }}</th><th class="shrink"></th></tr></thead>
+                    <tbody>
+                    @foreach($devices as $device)
+                        <tr>
+                            <td class="cell-main truncate">{{ $device->channel->name ?? __('Deleted channel') }}</td>
+                            <td class="hide-sm mono muted">{{ $device->ip }}</td>
+                            <td class="hide-sm muted truncate" style="max-width: 200px" title="{{ $device->user_agent }}">{{ $device->user_agent }}</td>
+                            <td class="right muted" title="{{ $device->started_at }}">{{ $device->started_at->diffForHumans() }}</td>
+                            <td>
+                                <form method="POST" action="{{ route('admin.users.sessions.disconnect', [$user, $device]) }}" data-confirm="{{ __('Disconnect this device? It can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-danger-ghost btn-sm">{{ __('Disconnect') }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </div>
+
+    @if($user->isReseller() && Auth::user()->isAdmin())
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>{{ __('Credits') }}</h2>
+                    <p>{{ __('1 credit = 1 month of subscription for one user. Giving credits switches the limit on.') }}</p>
+                </div>
+                <a href="{{ route('admin.credits.index', ['reseller' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('History') }}</a>
+            </div>
+            <div class="card-body stack" style="gap: 16px">
+                <div class="stat-value" style="margin: 0">{{ $user->usesCredits() ? number_format($user->credits) : __('Unlimited') }}</div>
+
+                <form method="POST" action="{{ route('admin.users.credits.store', $user) }}" class="form-grid">
+                    @csrf
+                    <div class="field">
+                        <label class="label" for="credit-amount">{{ __('Give or take back') }}</label>
+                        <input class="input" id="credit-amount" name="amount" type="number" step="1" min="-1000000" max="1000000" placeholder="10" required>
+                        <span class="help">{{ __('A positive number gives credits, a negative one takes them back.') }}</span>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="credit-note">{{ __('Note') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                        <input class="input" id="credit-note" name="note" maxlength="255">
+                    </div>
+                    <div class="field full"><div><button class="btn btn-primary" type="submit"><x-icon name="package" /> {{ __('Save') }}</button></div></div>
+                </form>
+
+                @if($user->usesCredits())
+                    <form method="POST" action="{{ route('admin.users.credits.unlimited', $user) }}" data-confirm="{{ __('Remove the credit limit of this reseller? They can then give any number of subscriptions.') }}">
+                        @csrf
+                        <button class="btn btn-danger-ghost btn-sm" type="submit">{{ __('Make unlimited') }}</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    <div class="card">
         <div class="card-header"><h2>{{ __('Subscription') }}</h2></div>
         <div class="card-body">
             <dl class="dl">
@@ -168,6 +265,23 @@
                         <span class="faint">{{ __('None') }}</span>
                     @endforelse
                 </dd>
+                @if($user->owner && Auth::user()->isAdmin())
+                    <dt>{{ __('Reseller') }}</dt>
+                    <dd><a href="{{ route('admin.users.show', $user->owner) }}">{{ $user->owner->username }}</a></dd>
+                @endif
+                @if($user->isReseller())
+                    <dt>{{ __('Users') }}</dt>
+                    <dd>
+                        {{ $user->max_customers !== null ? __(':count of :max', ['count' => $user->customers_count, 'max' => $user->max_customers]) : $user->customers_count }}
+                        @if($user->customers_count)
+                            · <a href="{{ route('admin.users.index', ['reseller' => $user->id]) }}">{{ __('View all') }}</a>
+                        @endif
+                    </dd>
+                    <dt>{{ __('Most streams per user') }}</dt>
+                    <dd>{{ $user->max_customer_connections ?? __('No limit') }}</dd>
+                @endif
+                <dt>{{ __('Email') }}</dt>
+                <dd>{{ $user->email ?: '–' }}</dd>
                 <dt>{{ __('Created') }}</dt>
                 <dd>{{ $user->created_at?->translatedFormat('M j, Y') }}</dd>
             </dl>

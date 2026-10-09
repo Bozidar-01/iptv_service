@@ -171,6 +171,7 @@ return [
         'bouquets' => 'пакети',
         'categories' => 'категории',
         'category_id' => 'категорија',
+        'email' => 'е-пошта',
         'code' => 'код',
         'epg_id' => 'ID за водичот',
         'expiration_date' => 'датум на истекување',

@@ -10,11 +10,18 @@ Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..
 | id | bigint PK | |
 | username | string, unique | login identifier (no email column) |
 | password | string | `hashed` cast |
+| password_plain | text, nullable | encrypted copy shown on the edit page; null for users saved before it existed |
 | status | enum `active`,`disabled` | default `active` |
-| role | enum `admin`,`user` | default `user` |
+| role | string(20): `admin`, `reseller`, `user` | default `user`; was an enum, now a string so roles can be added |
+| owner_id | FK → users, nullable, `ON DELETE SET NULL` | the reseller a subscriber belongs to (`User::owner()`, `customers()`) |
+| credits | int, nullable | reseller's credit balance (1 credit = 1 month of subscription for one user); null = not limited by credits (`CreditService`, `User::usesCredits()`) |
+| max_customers | unsigned int, nullable | reseller limit: how many users they can create (null = no limit) |
+| max_customer_connections | unsigned smallint, nullable | reseller limit: the most simultaneous streams they can give a user (null = no limit) |
 | expiration_date | datetime, nullable | null = never expires |
 | max_connections | int | default 1 |
 | playlist_token | string(64), unique, nullable | secret for `/playlist/{token}.m3u`; set on create (`User::booted`), backfilled by migration, hidden from serialization |
+| email | string, nullable | optional, not unique: where the subscriber gets expiry reminders (`SubscriptionReminderService`) |
+| locale | string(5), nullable | `en` / `mk`: language of those emails (empty = the panel default) |
 | two_factor_secret | text, nullable | authenticator secret, encrypted with `APP_KEY` (`TwoFactorService`); hidden |
 | two_factor_recovery_codes | text, nullable | JSON list of HMAC hashes of unused recovery codes; hidden |
 | two_factor_confirmed_at | timestamp, nullable | set when the first code was confirmed; null = two-factor off |
@@ -25,6 +32,9 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 
 ### login_events
 `id`, `user_id` FK nullable (`SET NULL`), `username` (what was typed), `event` (`success`, `failed`, `denied`, `two_factor_failed`, `two_factor_enabled`, `two_factor_disabled`), `ip`, `user_agent`, `created_at` (indexed). Written by `AuthController` / `SecurityController`; pruned after 180 days (`MassPrunable`, one DELETE per chunk).
+
+### credit_transactions
+`id`, `user_id` FK → users (the reseller, `ON DELETE CASCADE`), `actor_id` FK → users nullable (who did it: an admin, or the reseller spending; `SET NULL`), `customer_id` FK → users nullable (the user it was spent on; `SET NULL`), `amount` (+ given, − spent or taken; 0 for *unlimited*), `balance_after` (null when the account is unlimited), `reason` (`admin_grant`, `admin_take`, `admin_unlimited`, `new_subscription`, `extended_subscription`), `note`, `created_at` (indexed). Only ever added to.
 
 ### categories
 `id`, `name`, timestamps. Has many channels.
@@ -83,7 +93,7 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 ### stream_alerts
 | Column | Type | Notes |
 |---|---|---|
-| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up`, `expiring`, `expired` (`StreamAlert::TYPE_*`) |
+| type | string(20) | `down`, `up`, `sync_failed`, `queue_stuck`, `jobs_failed`, `receiver_down`, `receiver_up`, `expiring`, `expired`, `renewal_requested`, `backup_failed`, `backup_stale` (`StreamAlert::TYPE_*`) |
 | channel_id | FK → channels, nullable, `ON DELETE SET NULL` | |
 | source_id | FK → sources, nullable, `ON DELETE SET NULL` | |
 | user_id | FK → users, nullable, `ON DELETE SET NULL` | subscription reminders |
@@ -91,6 +101,7 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 | detail | string(50), nullable | `down`: the `stream_error`; `queue_stuck`: minutes waited; `jobs_failed`: count |
 | read_at | timestamp, nullable, indexed | shared by all admins |
 | mailed_at | timestamp, nullable, indexed | set by `iptv:send-alerts` |
+| user_mailed_at | timestamp, nullable | when the subscriber was emailed about this expiry reminder (null = not yet, or no address); a failed send is retried on the next run |
 
 Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem()`, `isSystem()`.
 
