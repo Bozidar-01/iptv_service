@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — CSV import and export of users
+- **Export** (users page): the users the list filters match as CSV for accounting, with bouquets; passwords only with `?passwords=1` (audit-logged). Spreadsheet formulas in cells are defused.
+- **Import** (users page): up to 2,000 users from a CSV (username, password, expiration_date, max_connections, bouquets, email, status), checked like the user form; bad rows are listed and skipped, the rest created; empty passwords are made up and shown in a copyable list. For a reseller: own users, bouquets they hold, stream cap, user limit and credits. *Only check the file* is ticked by default and creates nothing.
+- No schema change. Tests: `UserCsvTest` (14). 653 PHP tests.
+- Files: `app/Services/UserCsvService.php`, `app/Http/Controllers/Admin/UserCsvController.php`, `resources/views/admin/users/import.blade.php`, `resources/views/admin/users/index.blade.php`, `app/Models/AuditLog.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Fix: flaky receiver relay test
 - `test_limits_channels_to_the_tuners` waited a fixed 0.2 s for the first stream to take the tuner and assumed the stream was still open afterwards, so it failed on a slow CI machine (PR checks, not the relay itself). The fake receiver now keeps the first stream open until the test releases it, and the test waits until the relay reports the tuner taken. Passes 15 of 15 runs with all CPU cores busy.
 - Files: `relay/test_relay.py`.

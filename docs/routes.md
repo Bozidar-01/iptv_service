@@ -56,6 +56,10 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | resource | `/admin/bouquets` | `admin.bouquets.*` | `BouquetController`, all except `show` |
 | resource | `/admin/users` | `admin.users.*` | `UserController` (all, `show` is the playlist page) |
 | POST | `/admin/users/{user}/toggle` | `admin.users.toggle` | `UserController@toggleStatus` |
+| GET | `/admin/users/export` | `admin.users.export` | `UserCsvController@export`: CSV of the list (`?search=&status=&reseller=&passwords=1`) |
+| GET | `/admin/users/import` | `admin.users.import` | upload form |
+| GET | `/admin/users/import/template` | `admin.users.import.template` | example CSV |
+| POST | `/admin/users/import` | `admin.users.import.store` | `file` (CSV, 1 MB), `check_only`; shows created users, skipped rows and credits |
 | POST | `/admin/users/bulk` | `admin.users.bulk` | `UserController@bulk`: `action` (enable, disable, extend, add_bouquet, remove_bouquet, delete), `scope` selected\|filtered, `ids[]`, `filters[]`, `months`, `bouquet_id` |
 | POST | `/admin/users/{user}/renew` | `admin.users.renew` | `UserController@renew`: `months` 1\|3\|6\|12; admin free, reseller pays credits; subscribers with an end date only |
 | POST | `/admin/users/{user}/playlist-token` | `admin.users.playlist-token` | `UserController@regeneratePlaylistToken` |

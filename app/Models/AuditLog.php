@@ -65,6 +65,10 @@ class AuditLog extends Model
 
     public const USERS_BULK = 'users.bulk';
 
+    public const USERS_IMPORTED = 'users.imported';
+
+    public const USERS_EXPORTED = 'users.exported';
+
     protected function casts(): array
     {
         return ['details' => 'array'];
@@ -105,6 +109,8 @@ class AuditLog extends Model
             self::CHANNELS_DEDUPLICATED => __('Duplicate channels switched off'),
             self::CLEANUP_APPLIED => __('Cleanup rules applied'),
             self::USERS_BULK => __('Bulk action on users'),
+            self::USERS_IMPORTED => __('Users imported'),
+            self::USERS_EXPORTED => __('Users exported with passwords'),
         ];
     }
 
@@ -169,6 +175,14 @@ class AuditLog extends Model
         if (isset($d['count'])) {
             $parts[] = trans_choice(':count channel|:count channels', $d['count'], ['count' => number_format($d['count'])])
                 .(isset($d['for']) ? ' · '.$d['for'] : '');
+        }
+        if (in_array($this->action, [self::USERS_IMPORTED, self::USERS_EXPORTED], true)) {
+            $parts[] = trans_choice(':count user|:count users', $d['count'] ?? 0, ['count' => number_format($d['count'] ?? 0)]);
+            if (!empty($d['credits_spent'])) {
+                $parts[] = trans_choice(':count credit used|:count credits used', $d['credits_spent'], ['count' => $d['credits_spent']]);
+            }
+
+            return implode(' · ', $parts);
         }
         if (isset($d['names'])) {
             $parts[] = __(':names names and :categories categories changed.', ['names' => number_format($d['names']), 'categories' => number_format($d['categories'] ?? 0)]);
