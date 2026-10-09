@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fix: "Your page" link for admins and resellers
+- The *Message for the user* and the *Page for this user* box offered the subscriber page link for admins and resellers too, where it answers 404 (only subscribers have a page). Both now leave it out for them.
+- Test: added to `LoginMessageTest`.
+- Files: `app/Services/UserService.php`, `resources/views/admin/users/show.blade.php`, `tests/Feature/LoginMessageTest.php`.
+
 ### 2026-10-09 — Fix: Xtream login in IPTV Smarters (port in `server_info`)
 - For an https site the Xtream login answered `server_protocol: https` together with `port: 80`. Apps that build their next requests from those fields (IPTV Smarters) can then go to `https://host:80` and the playlist is not added, although the login itself returns `auth: 1` and the M3U link works. `server_info.port` is now the port the request came in on (443 on https); `https_port` as before.
 - Test: the ports and protocol for https, http and http on another port.

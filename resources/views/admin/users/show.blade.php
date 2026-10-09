@@ -71,6 +71,7 @@
                     <button type="button" class="btn btn-primary" data-copy="#playlist-url"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
                 </div>
 
+                @if($user->role === 'user')
                 <div>
                     <div class="label" style="margin-bottom: 6px">{{ __('Page for this user') }}</div>
                     <div class="copy-field">
@@ -79,6 +80,7 @@
                     </div>
                     <p class="help" style="margin: 6px 0 0">{{ __('Send this to the user: it shows their expiry, the playlist link and a button to ask for a renewal. It stops working when you make a new playlist link.') }}</p>
                 </div>
+                @endif
 
                 <div>
                     <div class="label" style="margin-bottom: 6px">{{ __('Set up on a TV') }}</div>
