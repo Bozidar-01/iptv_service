@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fix: flaky receiver relay test
+- `test_limits_channels_to_the_tuners` waited a fixed 0.2 s for the first stream to take the tuner and assumed the stream was still open afterwards, so it failed on a slow CI machine (PR checks, not the relay itself). The fake receiver now keeps the first stream open until the test releases it, and the test waits until the relay reports the tuner taken. Passes 15 of 15 runs with all CPU cores busy.
+- Files: `relay/test_relay.py`.
+
 ### 2026-10-09 — Bulk actions on users
 - The users list has checkboxes and a bar for **Enable**, **Disable**, **Renew** (1 / 3 / 6 / 12 months), **Add a bouquet**, **Remove a bouquet** and **Delete**, for the selected users or *all N matching* the list filters. Admins and resellers (own users only; a reseller only uses bouquets they hold).
 - Only subscribers are changed. A reseller's renewal costs 1 credit per month per user, all or nothing; users who never expire are skipped. Set-based queries (checked on MySQL), written to the audit log.
