@@ -93,7 +93,9 @@ class XtreamService
 
         return [
             'url' => $request->getHost(),
-            'port' => $https ? '80' : $port,
+            // The port this request came in on: apps that build their later requests from server_info (protocol + url + port)
+            // must not end up on https://host:80
+            'port' => $port,
             'https_port' => $https ? $port : '443',
             'server_protocol' => $https ? 'https' : 'http',
             'rtmp_port' => '0',

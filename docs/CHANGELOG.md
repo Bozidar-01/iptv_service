@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fix: Xtream login in IPTV Smarters (port in `server_info`)
+- For an https site the Xtream login answered `server_protocol: https` together with `port: 80`. Apps that build their next requests from those fields (IPTV Smarters) can then go to `https://host:80` and the playlist is not added, although the login itself returns `auth: 1` and the M3U link works. `server_info.port` is now the port the request came in on (443 on https); `https_port` as before.
+- Test: the ports and protocol for https, http and http on another port.
+- Files: `app/Services/XtreamService.php`, `tests/Feature/XtreamTest.php`, `docs/features/playlist-and-streaming.md`.
+
 ### 2026-10-09 — Find duplicate channels
 - New **Find duplicates** page (Channels → button, admins only): groups enabled channels that are the same one (names equal after ignoring case, country prefix, quality tags and punctuation, or the same guide id), suggests the copy that works, then best quality, then not a satellite receiver, then most bouquets, and switches the others off. Choose per group, per page, or *keep the suggested copy in all groups* (limited by the search).
 - Nothing is deleted: the extra copies are disabled (a sync keeps them disabled) and the kept channel is added to their bouquets first. Groups nobody gets (not in a bouquet) and groups over 12 copies are left out. Written to the audit log.
