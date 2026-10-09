@@ -25,6 +25,7 @@
         ['route' => 'admin.hide-channels.index', 'match' => 'admin.hide-channels.*', 'icon' => 'tv', 'label' => __('Hide channels')],
         ['route' => 'admin.logs.index', 'match' => 'admin.logs.*', 'icon' => 'activity', 'label' => __('Activity')],
         ['route' => 'admin.credits.index', 'match' => 'admin.credits.*', 'icon' => 'package', 'label' => __('Credits')],
+        ['route' => 'admin.sales.index', 'match' => 'admin.sales.*', 'icon' => 'package', 'label' => __('Sales')],
         ['route' => 'admin.statistics.index', 'match' => 'admin.statistics.*', 'icon' => 'signal', 'label' => __('Statistics')],
         ['route' => 'admin.alerts.index', 'match' => 'admin.alerts.*', 'icon' => 'bell', 'label' => __('Alerts')],
         ['section' => __('Account')],
