@@ -73,6 +73,28 @@ class UserService
     }
 
     /**
+     * The end date after renewing: $months calendar months from the current end date, or from now when the
+     * subscription already ended.
+     */
+    public function renewedUntil(User $user, int $months): Carbon
+    {
+        $from = $user->expiration_date && $user->expiration_date->isFuture() ? $user->expiration_date->copy() : now();
+
+        return $from->addMonthsNoOverflow($months);
+    }
+
+    /**
+     * Move the end date later by $months. A trial becomes a normal user. Returns the new end date.
+     */
+    public function renew(User $user, int $months): Carbon
+    {
+        $until = $this->renewedUntil($user, $months);
+        $user->forceFill(['expiration_date' => $until, 'is_trial' => false])->save();
+
+        return $until;
+    }
+
+    /**
      * A short test account: random username and password, one device, ends in $hours.
      * $owner is the reseller it belongs to, or null (the admins' own users).
      *

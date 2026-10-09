@@ -28,7 +28,7 @@
     @else
         <ul class="list">
             @foreach($alerts as $alert)
-                @include('admin.partials.alert-item', ['alert' => $alert])
+                @include('admin.partials.alert-item', ['alert' => $alert, 'renewable' => true])
             @endforeach
         </ul>
         {{ $alerts->links('admin.partials.pagination') }}

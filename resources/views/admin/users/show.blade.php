@@ -272,6 +272,12 @@
             <dl class="dl">
                 <dt>{{ __('Expires') }}</dt>
                 <dd>{{ $user->expiration_date ? $user->expiration_date->translatedFormat('M j, Y') . ' (' . $user->expiration_date->diffForHumans() . ')' : __('Never') }}</dd>
+                @if($user->role === 'user' && $user->expiration_date)
+                    <dt>{{ __('Renew') }}</dt>
+                    <dd>
+                        @include('admin.partials.renew-form', ['user' => $user])
+                    </dd>
+                @endif
                 <dt>{{ __('Streams') }}</dt>
                 <dd>{{ __(':count active now · max :max', ['count' => $user->active_sessions_count, 'max' => $user->max_connections]) }}</dd>
                 <dt>{{ __('Channels') }}</dt>
