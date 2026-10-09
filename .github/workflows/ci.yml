@@ -8,6 +8,9 @@ on:
 jobs:
   tests:
     name: Tests (PHP ${{ matrix.php }})
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,6 +36,9 @@ jobs:
 
   quality:
     name: Code style and static analysis
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +56,9 @@ jobs:
 
   browser:
     name: Browser tests
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +89,9 @@ jobs:
 
   mysql:
     name: Migrations on MySQL
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -126,6 +138,9 @@ jobs:
 
   relay:
     name: Receiver relay
+    # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
+    # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -134,11 +149,11 @@ jobs:
           python-version: '3.11'
       - run: python3 relay/test_relay.py
 
-  # Puts the tested commit on the server. Only after every check above passed, only for pushes to
+  # Puts the merged commit on the server, right after a pull request (whose checks all passed) is merged into
   # main. Needs the secrets listed in docs/deployment.md#automatic-deploy; without them it does nothing.
   deploy:
     name: Deploy to the server
-    needs: [tests, quality, browser, mysql, relay]
+    # No `needs`: the checks ran on the pull request. A push to main can only be a merged pull request (branch protection).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
