@@ -232,6 +232,34 @@
         @endif
     </div>
 
+    @if($addresses)
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>{{ __('Where this user watches from') }}</h2>
+                    <p>{{ __('Addresses used in the last 7 days. Many different ones in a day can mean the login is shared.') }}</p>
+                </div>
+                @if(config('iptv.sharing_ips') >= 2 && $recentAddressCount >= config('iptv.sharing_ips'))
+                    <span class="badge badge-warning badge-dot">{{ __(':count addresses in :hours hours', ['count' => $recentAddressCount, 'hours' => config('iptv.sharing_hours')]) }}</span>
+                @endif
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>{{ __('IP address') }}</th><th class="right">{{ __('Plays') }}</th><th class="right">{{ __('Last used') }}</th></tr></thead>
+                    <tbody>
+                    @foreach($addresses as $address)
+                        <tr>
+                            <td class="mono">{{ $address['ip'] }}</td>
+                            <td class="right">{{ number_format($address['plays']) }}</td>
+                            <td class="right muted" title="{{ $address['last'] }}">{{ \Illuminate\Support\Carbon::parse($address['last'])->diffForHumans() }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
     @if($user->isReseller() && Auth::user()->isAdmin())
         <div class="card">
             <div class="card-header">

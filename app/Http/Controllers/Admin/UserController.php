@@ -13,6 +13,7 @@ use App\Models\StreamAlert;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CreditService;
+use App\Services\SharingDetectionService;
 use App\Services\StreamService;
 use App\Services\UserBulkService;
 use App\Services\UserService;
@@ -34,8 +35,11 @@ class UserController extends Controller
 
     protected $audit;
 
-    public function __construct(UserService $userService, CreditService $credits, AuditService $audit)
+    protected $sharing;
+
+    public function __construct(UserService $userService, CreditService $credits, AuditService $audit, SharingDetectionService $sharing)
     {
+        $this->sharing = $sharing;
         $this->userService = $userService;
         $this->credits = $credits;
         $this->audit = $audit;
@@ -69,6 +73,8 @@ class UserController extends Controller
         $isLocalHost = in_array($request->getHost(), ['localhost', '127.0.0.1', '::1'], true);
         $channelCount = $this->userService->channelCount($user);
         $loginMessage = $this->userService->loginMessage($user, $request->getSchemeAndHttpHost(), $playlistUrl, route('me', ['token' => $user->playlist_token]));
+        $addresses = $this->sharing->addresses($user);
+        $recentAddressCount = $this->sharing->recentAddressCount($user);
         $recentLogs = $user->streamLogs()->with('channel')->orderByDesc('started_at')->limit(10)->get();
         // Xtream Codes login: apps want the server address without a path
         $server = [
@@ -77,7 +83,7 @@ class UserController extends Controller
             'port' => $request->getPort(),
         ];
 
-        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage'));
+        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage', 'addresses', 'recentAddressCount'));
     }
 
     /**

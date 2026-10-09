@@ -868,5 +868,18 @@
     "New": "Нови",
     "Expiring": "Истекуваат",
     "Your own users": "Ваши сопствени корисници",
-    "about :count day left|about :count days left": "уште околу :count ден|уште околу :count дена"
+    "about :count day left|about :count days left": "уште околу :count ден|уште околу :count дена",
+    "Live": "Во живо",
+    "Who is watching right now: devices that played something in the last :minutes minutes.": "Кој гледа сега: уреди што пуштиле нешто во последните :minutes минути.",
+    "Refresh every 20 seconds": "Освежувај на секои 20 секунди",
+    "Devices watching": "Уреди што гледаат",
+    "Most watched now": "Најгледано сега",
+    "nobody yet": "сè уште никој",
+    "Nobody is watching right now": "Никој не гледа во моментов",
+    "Devices show up here while they play.": "Уредите се појавуваат тука додека пуштаат.",
+    "Where this user watches from": "Од каде гледа овој корисник",
+    "Addresses used in the last 7 days. Many different ones in a day can mean the login is shared.": "Адреси користени во последните 7 дена. Многу различни во еден ден може да значат дека најавата се споделува.",
+    ":count addresses in :hours hours": ":count адреси за :hours часа",
+    "Last used": "Последно користена",
+    ":name used :count different addresses in :hours hours: the login may be shared": ":name користеше :count различни адреси за :hours часа: најавата можеби се споделува"
 }

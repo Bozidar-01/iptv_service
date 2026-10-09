@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Live view and account-sharing alerts
+- **Live** page (Subscribers menu, admins and resellers): who is watching right now (user, channel, IP, player, since) with Disconnect, how many devices and users, the most watched channel; refreshes every 20 seconds. A reseller sees their own users.
+- **Sharing alerts:** hourly check (`iptv:detect-sharing`); a login used from `SHARING_IPS` (3) or more different IPs within `SHARING_HOURS` (24) raises an alert once a day, for the admin, the user's reseller and the email digest. The user page has *Where this user watches from* (addresses of the last 7 days, plays, last use).
+- No schema change. Tests: `SharingAndLiveTest` (9). 670 PHP tests.
+- Files: `app/Services/SharingDetectionService.php`, `app/Console/Commands/DetectSharingCommand.php`, `app/Http/Controllers/Admin/LiveController.php`, `resources/views/admin/live/index.blade.php`, `app/Models/StreamAlert.php`, `app/Mail/StreamAlertsMail.php`, `app/Http/Controllers/Admin/UserController.php`, `resources/views/admin/users/show.blade.php`, `config/iptv.php`, `routes/web.php`, `routes/console.php`, `.env.example`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Sales report
 - New admin page **Sales** (Subscribers menu, admins only): months sold (credits spent), credits given, new users, users expiring in 30 days and users that expired in the last 30 days, a 12-month column chart, and a per-reseller table with the balance and *about N days left* at the recent pace (yellow under 14 days). Includes the admins' own users.
 - No schema change. Tests: `SalesReportTest` (8). 661 PHP tests.
