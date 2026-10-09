@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Cleanup rules for channel names and categories
+- New admin page **Cleanup rules** (Content menu): rules that tidy names and categories on every import and on demand (*Apply now*): change channel names (contains / exactly / regex), rename or merge categories, and put channels in a category by name (optionally only for channels in one category). Per source or for all, with *Preview* before saving and ready-made sets: remove `[301]` tags, radio, satellite group names, genres for the *Satellite* group (Sports, News, Kids, Movies, Music, Documentary).
+- The import applies the rules before saving but keeps the channel's identity key from the raw playlist, so rules never create duplicates or lose bouquets. Categories left empty by *Apply now* are deleted. Audit-logged.
+- Measured on the dev data: all four sets would change 570 names and 283 categories.
+- New table `cleanup_rules` (additive migration). Tests: `CleanupRuleTest` (15). 626 PHP tests.
+- Files: `app/Services/CleanupRuleService.php`, `app/Services/CleanupRules.php`, `app/Models/CleanupRule.php`, `app/Http/Controllers/Admin/CleanupRuleController.php`, `app/Services/SourceSyncService.php`, `resources/views/admin/cleanup/index.blade.php`, `database/migrations/2026_10_09_000013_create_cleanup_rules_table.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — TV guide for many more channels
 - **Guides for the countries of your channels:** the TV guide page lists countries that have channels without a guide (from ids like `CanalShowsport.ar@SD`) and adds the free iptv-epg.org guide of one country, or all of them, in one click. 55 countries are known.
 - **The importer keeps only programmes of guide channels some channel of ours can match** (by id, name or any other display name), so big country files (US 47 MB) don't fill the database; the guide's channel list stays complete. After a channel source import, guides that now have matched channels without programmes are imported again (at most every 6 hours).
