@@ -49,17 +49,27 @@ jobs:
           extensions: pdo_sqlite, intl, zip, pcntl, bcmath, mbstring
           coverage: none
 
+      - uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-8.4-${{ hashFiles('composer.lock') }}
+
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate
       - run: vendor/bin/pint --test
       - run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
-  browser:
-    name: Browser tests
+  browser-shard:
+    name: Browser tests (part ${{ matrix.shard }} of 2)
     # Checks run on pull requests (and on the staging branch). Not again on main: main only receives pull requests whose
     # checks passed on exactly this code (branch protection: up to date + required checks), so a second run changes nothing.
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
+    # Two halves run at the same time, each on its own runner (so the fixed port and SQLite file never clash)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v7
 
@@ -74,18 +84,32 @@ jobs:
           node-version: '22'
           cache: npm
 
+      - uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-8.4-${{ hashFiles('composer.lock') }}
+
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate
       - run: npm ci --ignore-scripts
       # Uses the Google Chrome that comes with the runner (playwright.config.js: channel "chrome")
-      - run: npx playwright test
+      - run: npx playwright test --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v6
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
+
+  # One required check for both halves: branch protection asks for "Browser tests"
+  browser:
+    name: Browser tests
+    if: always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/staging')
+    needs: browser-shard
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.browser-shard.result }}" = success
 
   mysql:
     name: Migrations on MySQL
@@ -120,6 +144,11 @@ jobs:
           php-version: '8.4'
           extensions: pdo_mysql, intl, zip, pcntl, bcmath, mbstring
           coverage: none
+
+      - uses: actions/cache@v6
+        with:
+          path: vendor
+          key: composer-8.4-${{ hashFiles('composer.lock') }}
 
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate

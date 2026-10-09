@@ -250,16 +250,15 @@ Set `TRUSTED_PROXIES` in `.env` (`*` or a comma-separated list of the proxy IPs)
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request (and on pushes to the `staging` branch), not again after the merge to `main` (see *Automatic deploy*): the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
 
-### Making the checks faster (recommendations)
+### Making the checks faster
 
-Today a pull request takes about 85–100 s. The browser tests (about 80 s) and the MySQL job (about 65 s) run in parallel and set the pace, so only changes to those two shorten it. In order of benefit for effort:
+Pull request checks take about 60–70 s since the browser tests run in two halves and composer's `vendor/` is cached in every job (before: 85–100 s). What is left, by benefit:
 
-1. **Split the browser tests in two** (`npx playwright test --shard=1/2` and `2/2` as a matrix). Saves about 25–35 s. Each shard needs its own port and SQLite file in `e2e/serve.sh`. Costs about twice the runner minutes of that job.
-2. **Cache composer and Playwright setup** (`shivammathur/setup-php` plus a `vendor/` cache keyed on `composer.lock`; `cache: npm` is already on). Saves about 10–15 s per job.
-3. **Cut MySQL start-up:** use a `tmpfs` data directory and `--innodb-flush-log-at-trx-commit=0` for the service container (the data is thrown away anyway). Saves about 10–20 s of the 65 s.
-4. **Run the browser tests only when needed:** a `paths` filter that skips them for docs-only pull requests (`docs/**`, `*.md`). Docs pull requests then finish in about 30 s. Keep the job required: a skipped required job counts as passing only when it is skipped by a workflow condition, so test this on a throwaway pull request first.
-5. **Run PHPStan and Pint only on changed files** is not worth it: both already take about 30 s together and run in parallel.
-6. **Larger runners** (paid) cut the browser job to about 50 s without any change to the tests. Only worth it if the minutes are cheap for you.
+1. **Speed up the MySQL job** (about 65 s, now the slowest): a `tmpfs` data directory and `--innodb-flush-log-at-trx-commit=0` on the service container (the data is thrown away anyway). Saves about 10–20 s.
+2. **Skip the browser tests for docs-only pull requests** (`paths` filter on `docs/**`, `*.md`). Those then finish in about 30 s. The required check `Browser tests` must still report: a skipped required job counts as passing only when skipped by a workflow condition, so test this on a throwaway pull request first.
+3. **Larger runners** (paid) would cut the browser halves further without changing the tests.
+
+Done: the browser tests are split in two (`--shard`, each half on its own runner; the required check `Browser tests` is a small job that passes only when both halves pass) and `vendor/` is cached by `composer.lock` in all four PHP jobs.
 
 Not recommended: dropping the MySQL up/down/up job or the browser tests. They are what caught the date-shortcut bug and the migration-order mistakes.
 
