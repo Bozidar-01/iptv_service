@@ -170,9 +170,22 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
     flex-direction: column;
     background: var(--sidebar-bg);
     color: var(--sidebar-text);
-    padding: 20px 14px;
-    overflow-y: auto;
+    overflow: hidden;
 }
+
+/* Three zones: the logo on top and the language / mode / account at the bottom stay put; only the menu scrolls */
+.sidebar > .brand { flex-shrink: 0; padding: 24px 24px 18px; }
+.sidebar > nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 14px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.sidebar > nav::-webkit-scrollbar { width: 6px; }
+.sidebar > nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
 
 .brand {
     display: flex;
@@ -233,11 +246,12 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 }
 
 .sidebar-footer {
-    margin-top: auto;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 10px 0;
+    margin: 0 14px;
+    padding: 14px 10px 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -759,8 +773,7 @@ dialog.modal-wide { width: min(880px, calc(100vw - 32px)); }
 .theme-switch button[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary-text); }
 
 /* In the (always dark) sidebar: open upwards, sidebar colours */
-.sidebar .prefs { margin: auto 0 12px; }
-.sidebar .prefs ~ .sidebar-footer { margin-top: 0; }
+.sidebar .prefs { flex-shrink: 0; margin: 0 14px 12px; }
 .sidebar .lang-current, .sidebar .theme-switch { background: var(--sidebar-hover); border-color: transparent; color: var(--sidebar-text); }
 .sidebar .lang-current .chevron, .sidebar .theme-switch button { color: var(--sidebar-text); }
 .sidebar .theme-switch button:hover { color: var(--sidebar-text-active); }
@@ -772,7 +785,7 @@ dialog.modal-wide { width: min(880px, calc(100vw - 32px)); }
 .auth .lang-menu { flex: 0 1 170px; }
 
 /* ---------- Alerts: header bell (partials/notifications) ---------- */
-.header-bar { display: flex; justify-content: flex-end; padding: 16px 40px 0; }
+.header-bar { display: flex; justify-content: flex-end; padding: 16px 40px 8px; position: sticky; top: 0; z-index: 30; background: var(--bg); }
 .header-bar + .main { padding-top: 8px; }
 .topbar-end { margin-left: auto; }
 .notif-menu { position: relative; --notif-ring: var(--bg); }

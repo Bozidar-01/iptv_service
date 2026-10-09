@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Fixed logo, language and account; only the menu scrolls
+- The sidebar has three zones: the **logo** on top and the **language, light/dark mode and account** at the bottom stay in place; only the **menu** between them scrolls (it got long with the new pages, and used to push the language and account out of view). The bell bar at the top of the page also stays in view while the page scrolls. On a phone the opened menu behaves the same.
+- Tests: three browser tests (`e2e/layout.spec.js`: logo, language/account and top bar stay put on a short window; the phone menu). They fail on the old CSS.
+- Files: `public/css/admin.css`, `e2e/layout.spec.js`.
+
 ### 2026-10-09 — Backup check and automatic housekeeping of users
 - **Backups** page (Account menu, admins only): the backups on every disk and **Check the newest backup**: it reads the file to its end, compares its tables with the database, looks for the users, and that the off-site disk has the same newest file. A pass is remembered and ticks *A restore has been tested once* on the launch checklist. Not a restore, but it catches empty, cut-off and unreadable backups.
 - **Daily housekeeping** (`iptv:cleanup-users`, 05:00): trials are deleted `TRIAL_KEEP_DAYS` (7) days after they ended; active subscribers whose subscription ended more than `EXPIRED_DISABLE_DAYS` (60) days ago are switched off. Audit-logged as "system". **Renew now also turns a switched-off user back on** (single, from an alert, and bulk).
