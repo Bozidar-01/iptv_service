@@ -250,6 +250,19 @@ Set `TRUSTED_PROXIES` in `.env` (`*` or a comma-separated list of the proxy IPs)
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request (and on pushes to the `staging` branch), not again after the merge to `main` (see *Automatic deploy*): the test suite, the receiver relay tests, and a MySQL job that migrates up, all the way down and up again, seeds, and makes a backup. A red check means something is broken, don't deploy it.
 
+### Making the checks faster (recommendations)
+
+Today a pull request takes about 85–100 s. The browser tests (about 80 s) and the MySQL job (about 65 s) run in parallel and set the pace, so only changes to those two shorten it. In order of benefit for effort:
+
+1. **Split the browser tests in two** (`npx playwright test --shard=1/2` and `2/2` as a matrix). Saves about 25–35 s. Each shard needs its own port and SQLite file in `e2e/serve.sh`. Costs about twice the runner minutes of that job.
+2. **Cache composer and Playwright setup** (`shivammathur/setup-php` plus a `vendor/` cache keyed on `composer.lock`; `cache: npm` is already on). Saves about 10–15 s per job.
+3. **Cut MySQL start-up:** use a `tmpfs` data directory and `--innodb-flush-log-at-trx-commit=0` for the service container (the data is thrown away anyway). Saves about 10–20 s of the 65 s.
+4. **Run the browser tests only when needed:** a `paths` filter that skips them for docs-only pull requests (`docs/**`, `*.md`). Docs pull requests then finish in about 30 s. Keep the job required: a skipped required job counts as passing only when it is skipped by a workflow condition, so test this on a throwaway pull request first.
+5. **Run PHPStan and Pint only on changed files** is not worth it: both already take about 30 s together and run in parallel.
+6. **Larger runners** (paid) cut the browser job to about 50 s without any change to the tests. Only worth it if the minutes are cheap for you.
+
+Not recommended: dropping the MySQL up/down/up job or the browser tests. They are what caught the date-shortcut bug and the migration-order mistakes.
+
 ## Limits to expect
 
 - **Very large playlists** (roughly 50k–100k entries) may be stopped by the host's CPU/process limits. The source is then marked **Failed** with "The import was stopped before it finished." (`SyncSource::failed`, after `DB_QUEUE_RETRY_AFTER`). Channels written so far are kept and nothing is deleted, because removing vanished channels is the last step. Tick **Skip VOD** to shrink the playlist, or run that source over SSH: `php artisan iptv:sync-sources <id> --now`.

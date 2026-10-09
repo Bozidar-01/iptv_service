@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Recommendations for faster checks
+- `docs/deployment.md` (*Automated checks*) lists what would still make pull request checks faster, ranked by benefit: shard the browser tests, cache composer, speed up the MySQL job, skip browser tests for docs-only changes, larger runners. Docs only.
+- Files: `docs/deployment.md`.
+
 ### 2026-10-09 — Faster pull requests and merges
 - **Checks run once.** They run on the pull request (and on `staging`), no longer a second time after the merge to `main`: `main` only receives pull requests that passed on exactly this code (branch protection: required checks + branch up to date), so the second run repeated the same tests. The deploy no longer waits for them: merge → live in about 30 seconds instead of about 2 minutes.
 - **Auto-merge:** the repository now allows auto-merge and deletes merged branches by itself. `gh pr merge --auto --squash` merges the moment the five checks are green, with no polling; deleting the branch no longer closes pull requests that were stacked on it.
