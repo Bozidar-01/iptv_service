@@ -25,7 +25,7 @@ jobs:
           extensions: pdo_sqlite, intl, zip, pcntl, bcmath, mbstring
           coverage: none
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
