@@ -33,6 +33,9 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 ### login_events
 `id`, `user_id` FK nullable (`SET NULL`), `username` (what was typed), `event` (`success`, `failed`, `denied`, `two_factor_failed`, `two_factor_enabled`, `two_factor_disabled`), `ip`, `user_agent`, `created_at` (indexed). Written by `AuthController` / `SecurityController`; pruned after 180 days (`MassPrunable`, one DELETE per chunk).
 
+### checklist_ticks
+`id`, `item` (key of a manual launch-checklist item, unique), `user_id` FK → users nullable (who ticked it, `SET NULL`), timestamps. Written by `LaunchChecklistService::toggle`; a row means the item is ticked off.
+
 ### credit_transactions
 `id`, `user_id` FK → users (the reseller, `ON DELETE CASCADE`), `actor_id` FK → users nullable (who did it: an admin, or the reseller spending; `SET NULL`), `customer_id` FK → users nullable (the user it was spent on; `SET NULL`), `amount` (+ given, − spent or taken; 0 for *unlimited*), `balance_after` (null when the account is unlimited), `reason` (`admin_grant`, `admin_take`, `admin_unlimited`, `new_subscription`, `extended_subscription`), `note`, `created_at` (indexed). Only ever added to.
 

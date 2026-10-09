@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ChannelController;
 use App\Http\Controllers\Admin\CreditController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EpgSourceController;
+use App\Http\Controllers\Admin\LaunchChecklistController;
 use App\Http\Controllers\Admin\LogController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
@@ -74,6 +75,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
     Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics.index');
+    Route::get('launch-checklist', [LaunchChecklistController::class, 'index'])->name('launch-checklist.index');
+    Route::post('launch-checklist/{item}', [LaunchChecklistController::class, 'toggle'])->name('launch-checklist.toggle');
 
     // Giving and taking back credits is for admins only
     Route::post('users/{user}/credits', [CreditController::class, 'store'])->name('users.credits.store');

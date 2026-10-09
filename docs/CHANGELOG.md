@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Launch checklist page
+- New admin page **Launch checklist** (Account menu): what to have in place before real viewers and resellers use the panel, in four groups (security, backups, background jobs, content). Most items are checked live by the app (2FA on, no sample password, production mode, https, last backup and off-site copy, scheduler and queue, mail, a source/bouquet/user exist); items the server can't see (APP_KEY saved, restore tested, secrets replaced, outside monitor, tried on a TV, tried as a reseller) are ticked by hand. Shows *N of M done*; Sentry is optional and not counted.
+- New table `checklist_ticks` (additive migration). Admins only: resellers get 403 and no menu entry.
+- Tests: `LaunchChecklistTest` (access, menu, every automatic check, ticking, unknown keys, progress).
+- Files: `app/Services/LaunchChecklistService.php`, `app/Http/Controllers/Admin/LaunchChecklistController.php`, `app/Models/ChecklistTick.php`, `database/migrations/2026_10_09_000008_create_checklist_ticks_table.php`, `resources/views/admin/launch-checklist/index.blade.php`, `routes/web.php`, `resources/views/layouts/admin.blade.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Faster MySQL check
 - The MySQL job's database container keeps its data in memory (`--tmpfs`), does not flush to disk on every commit, and is polled every 2 s instead of 5 s. The data is thrown away after the run anyway.
 - Files: `.github/workflows/ci.yml`, `docs/deployment.md`.

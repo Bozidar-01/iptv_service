@@ -14,7 +14,7 @@ IPTV middleware built on Laravel 13. Admins manage the catalogue and subscribers
 | [features/authentication.md](features/authentication.md) | Admin login / logout |
 | [features/localization.md](features/localization.md) | English / Macedonian panel: language menu with flags, translation files, rules for new text |
 | [features/theme.md](features/theme.md) | Light / dark / system mode switch |
-| [features/admin-panel.md](features/admin-panel.md) | Every admin page: dashboard, sources, channels, categories, bouquets, users, activity |
+| [features/admin-panel.md](features/admin-panel.md) | Every admin page: dashboard, sources, channels, categories, bouquets, users, activity, launch checklist |
 | [features/sources.md](features/sources.md) | Importing provider M3U playlists: sync rules, parser, scheduling |
 | [features/receiver.md](features/receiver.md) | Satellite receiver (Octagon / Enigma2) through the NeboTV relay: signed links, tuner limit, setup guide |
 | [features/epg.md](features/epg.md) | TV guide: XMLTV import, channel matching, guide for playlists and Xtream apps |
