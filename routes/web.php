@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\SourceController;
 use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\TrialController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserCsvController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ThemeController;
@@ -43,6 +44,10 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('users/{user}/toggle', [UserController::class, 'toggleStatus'])->name('users.toggle');
+    Route::get('users/export', [UserCsvController::class, 'export'])->name('users.export');
+    Route::get('users/import', [UserCsvController::class, 'form'])->name('users.import');
+    Route::get('users/import/template', [UserCsvController::class, 'template'])->name('users.import.template');
+    Route::post('users/import', [UserCsvController::class, 'import'])->name('users.import.store');
     Route::post('users/bulk', [UserController::class, 'bulk'])->name('users.bulk');
     Route::post('users/{user}/renew', [UserController::class, 'renew'])->name('users.renew');
     Route::post('users/{user}/playlist-token', [UserController::class, 'regeneratePlaylistToken'])->name('users.playlist-token');
