@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Faster MySQL check
+- The MySQL job's database container keeps its data in memory (`--tmpfs`), does not flush to disk on every commit, and is polled every 2 s instead of 5 s. The data is thrown away after the run anyway.
+- Files: `.github/workflows/ci.yml`, `docs/deployment.md`.
+
 ### 2026-10-09 — Faster pull request checks
 - **Browser tests run in two halves** at the same time (Playwright `--shard`, one runner each). The required check is still called `Browser tests`: it is a small job that passes only when both halves pass, so branch protection needed no change.
 - **`vendor/` is cached** (key: `composer.lock`) in the style/PHPStan, browser and MySQL jobs too, as it already was in the PHP tests job.
