@@ -48,6 +48,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | resource | `/admin/bouquets` | `admin.bouquets.*` | `BouquetController`, all except `show` |
 | resource | `/admin/users` | `admin.users.*` | `UserController` (all, `show` is the playlist page) |
 | POST | `/admin/users/{user}/toggle` | `admin.users.toggle` | `UserController@toggleStatus` |
+| POST | `/admin/users/{user}/renew` | `admin.users.renew` | `UserController@renew`: `months` 1\|3\|6\|12; admin free, reseller pays credits; subscribers with an end date only |
 | POST | `/admin/users/{user}/playlist-token` | `admin.users.playlist-token` | `UserController@regeneratePlaylistToken` |
 | POST | `/admin/users/{user}/sessions/{session}/disconnect` | `admin.users.sessions.disconnect` | `UserController@disconnectDevice`: ends the device's session, blocks it for 15 minutes; 404 for another user's session |
 | POST | `/admin/users/{user}/sessions/disconnect` | `admin.users.sessions.disconnect-all` | `UserController@disconnectAllDevices` |

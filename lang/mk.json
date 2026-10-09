@@ -712,5 +712,10 @@
     ":count month|:count months": ":count месец|:count месеци",
     ":count credit used|:count credits used": ":count кредит потрошен|:count кредити потрошени",
     ":count credit|:count credits": ":count кредит|:count кредити",
-    ":count device|:count devices": ":count уред|:count уреди"
+    ":count device|:count devices": ":count уред|:count уреди",
+    "Renew 1 month": "Обнови 1 месец",
+    "Renew :name for the chosen time?": "Да се обнови :name за избраното време?",
+    "Renew": "Обнови",
+    "This user never expires, so there is nothing to renew.": "Овој корисник никогаш не истекува, па нема што да се обнови.",
+    "Renewed for :count month. Now valid until :date.|Renewed for :count months. Now valid until :date.": "Обновено за :count месец. Сега важи до :date.|Обновено за :count месеци. Сега важи до :date."
 }

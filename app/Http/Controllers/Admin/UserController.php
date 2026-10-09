@@ -9,6 +9,7 @@ use App\Models\ActiveSession;
 use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\CreditTransaction;
+use App\Models\StreamAlert;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CreditService;
@@ -23,6 +24,9 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    /** Lengths the Renew button offers, in months (1 month = 1 credit). */
+    public const RENEW_MONTHS = [1, 3, 6, 12];
+
     protected $userService;
 
     protected $credits;
@@ -71,6 +75,51 @@ class UserController extends Controller
         ];
 
         return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage'));
+    }
+
+    /**
+     * Renew a subscriber: move the end date later by the chosen months, from the current end date (or from now when
+     * it already ended). An admin renews for free; a reseller with credits pays 1 per month. A trial becomes a normal user.
+     */
+    public function renew(Request $request, User $user)
+    {
+        $actor = $request->user();
+        $months = (int) $request->validate(['months' => ['required', Rule::in(self::RENEW_MONTHS)]])['months'];
+
+        abort_unless($user->role === 'user', 404);
+
+        if (!$user->expiration_date) {
+            return back()->with('error', __('This user never expires, so there is nothing to renew.'));
+        }
+
+        $before = $this->audit->snapshot($user);
+
+        try {
+            $spent = DB::transaction(function () use ($actor, $user, $months) {
+                $spent = 0;
+
+                if ($actor->isReseller() && User::whereKey($actor->id)->lockForUpdate()->firstOrFail()->usesCredits()) {
+                    $spent = Credits::months($user->expiration_date, $this->userService->renewedUntil($user, $months));
+                }
+
+                $this->userService->renew($user, $months);
+
+                if ($spent > 0) {
+                    $this->credits->charge($actor, $spent, CreditTransaction::EXTENDED, $user);
+                }
+
+                return $spent;
+            });
+        } catch (InsufficientCredits $e) {
+            return back()->with('error', __('Not enough credits: this needs :needed, you have :balance.', ['needed' => $e->needed, 'balance' => $e->balance]));
+        }
+
+        // Whatever asked for or warned about this renewal is dealt with
+        StreamAlert::where('user_id', $user->id)->whereIn('type', StreamAlert::SUBSCRIPTION_TYPES)->whereNull('read_at')->update(['read_at' => now()]);
+
+        $this->audit->record(AuditLog::USER_RENEWED, $user, ['months' => $months, 'credits_spent' => $spent] + $this->audit->changes($before, $this->audit->snapshot($user)));
+
+        return back()->with('success', $this->withCreditNote(trans_choice('Renewed for :count month. Now valid until :date.|Renewed for :count months. Now valid until :date.', $months, ['count' => $months, 'date' => $user->fresh()->expiration_date->translatedFormat('j F Y')]), $actor, $spent));
     }
 
     public function disconnectDevice(User $user, ActiveSession $session, StreamService $streams)

@@ -68,3 +68,17 @@ test('makes a trial and shows the message to send', async ({ page }) => {
     await expect(message).toHaveValue(/Password: [a-z0-9]{8}/);
     await expect(page.getByText('Trial', { exact: true }).first()).toBeVisible();
 });
+
+test('renews a user for three months and the trial badge goes away', async ({ page }) => {
+    await page.goto('/admin/users/trial');
+    await page.locator('input[name="bouquets[]"]').first().check();
+    await page.getByRole('button', { name: 'Create trial' }).click();
+    await expect(page.locator('.alert-success')).toContainText('Trial created');
+
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.locator('select[name="months"]').selectOption('3');
+    await page.getByRole('button', { name: 'Renew', exact: true }).click();
+
+    await expect(page.locator('.alert-success')).toContainText('Renewed for 3 months');
+    await expect(page.locator('h1 + p .badge', { hasText: 'Trial' })).toHaveCount(0);
+});

@@ -15,4 +15,11 @@
         </div>
         <div class="cell-sub" title="{{ $alert->created_at }}">{{ $alert->created_at->diffForHumans() }}</div>
     </div>
+    @if(($renewable ?? false) && $alert->user_id && in_array($alert->type, \App\Models\StreamAlert::SUBSCRIPTION_TYPES, true))
+        <form method="POST" action="{{ route('admin.users.renew', $alert->user_id) }}" class="inline-form">
+            @csrf
+            <input type="hidden" name="months" value="1">
+            <button class="btn btn-secondary btn-sm"><x-icon name="refresh" /> {{ __('Renew 1 month') }}</button>
+        </form>
+    @endif
 </li>

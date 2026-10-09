@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Renew button (admins and resellers)
+- **Renew** on the user page: choose 1 / 3 / 6 / 12 months and the end date moves later from the current end date (or from now when it already ended). Admins renew for free; a reseller with credits pays 1 credit per month (a reseller without credits pays nothing; not enough credits refuses it and changes nothing). A trial becomes a normal user; the renewal is in the audit log.
+- Alerts about a subscription (expiring, expired, *asks to renew*) get a **Renew 1 month** button on the Alerts page, and are marked read once the user is renewed.
+- No schema change.
+- Tests: `RenewTest` (17), a browser test. 561 PHP tests.
+- Files: `app/Http/Controllers/Admin/UserController.php` (`renew`), `app/Services/UserService.php` (`renewedUntil`, `renew`), `resources/views/admin/partials/renew-form.blade.php`, `resources/views/admin/partials/alert-item.blade.php`, `resources/views/admin/users/show.blade.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Audit log
 - New admin page **Audit log** (Account menu, admins only): who changed what, with filters (person, kind of change, name). Records user created / changed (what changed, never the password), deleted, enabled / disabled, trials, new playlist links, disconnected devices, credits given / taken / unlimited, channels hidden / shown, and deleted sources, bouquets and channels. Kept for a year.
 - Entries are written by `AuditService` after the change succeeded; a failed write is reported but never blocks the change. Nothing is recorded when a save changes nothing.
