@@ -52,12 +52,8 @@ class StreamService
             return false;
         }
 
-        // Check if channel is in user's bouquets
-        $hasAccess = $user->bouquets()->whereHas('channels', function ($query) use ($channel) {
-            $query->where('channels.id', $channel->id);
-        })->exists();
-
-        if (!$hasAccess) {
+        // The channel must be in one of the user's bouquets and not hidden for them
+        if (!Channel::availableTo($user)->whereKey($channel->id)->exists()) {
             return false;
         }
 

@@ -18,6 +18,9 @@
             @csrf
             <button class="btn btn-secondary"><x-icon name="power" /> {{ $user->status === 'active' ? __('Disable') : __('Enable') }}</button>
         </form>
+        @if($user->role === 'user')
+            <a href="{{ route('admin.users.channels', $user) }}" class="btn btn-secondary"><x-icon name="tv" /> {{ __('Choose channels') }}</a>
+        @endif
         <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-primary"><x-icon name="edit" /> {{ __('Edit') }}</a>
     </div>
 </div>
@@ -256,7 +259,7 @@
                 <dt>{{ __('Streams') }}</dt>
                 <dd>{{ __(':count active now · max :max', ['count' => $user->active_sessions_count, 'max' => $user->max_connections]) }}</dd>
                 <dt>{{ __('Channels') }}</dt>
-                <dd>{{ number_format($channelCount) }}</dd>
+                <dd>{{ number_format($channelCount) }}@if($user->role === 'user') · <a href="{{ route('admin.users.channels', $user) }}">{{ __('Hide some') }}</a>@endif</dd>
                 <dt>{{ __('Bouquets') }}</dt>
                 <dd>
                     @forelse($user->bouquets as $bouquet)

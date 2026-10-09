@@ -58,6 +58,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Bouquet::class, 'user_bouquet');
     }
 
+    /** @return BelongsToMany<Channel, $this> channels hidden for this user alone (see ChannelHideService) */
+    public function hiddenChannels(): BelongsToMany
+    {
+        return $this->belongsToMany(Channel::class, 'user_hidden_channels');
+    }
+
     /** @return HasMany<ActiveSession, $this> */
     public function activeSessions(): HasMany
     {
