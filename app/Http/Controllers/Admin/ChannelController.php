@@ -8,11 +8,13 @@ use App\Models\Bouquet;
 use App\Models\Channel;
 use App\Models\Source;
 use App\Services\AuditService;
+use App\Services\ChannelDuplicateService;
 use App\Services\ChannelService;
 use App\Services\EpgService;
 use App\Services\StreamCheckService;
 use App\Services\StreamPreviewService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
 
 class ChannelController extends Controller
@@ -119,6 +121,62 @@ class ChannelController extends Controller
         ][$data['action']];
 
         return back()->with('success', trans_choice($message, $count, ['count' => number_format($count)]));
+    }
+
+    /**
+     * The same channel listed more than once, with the copy that works and looks best suggested. Nothing changes until applied.
+     */
+    public function duplicates(Request $request, ChannelDuplicateService $duplicates)
+    {
+        $search = is_string($request->query('search')) ? $request->query('search') : null;
+        $groups = $duplicates->groups($search);
+        $perPage = 25;
+
+        $page = new LengthAwarePaginator(
+            array_slice($groups, (max(1, (int) $request->query('page', 1)) - 1) * $perPage, $perPage),
+            count($groups),
+            $perPage,
+            max(1, (int) $request->query('page', 1)),
+            ['path' => $request->url(), 'query' => array_filter(['search' => $search])]
+        );
+
+        return view('admin.channels.duplicates', [
+            'groups' => $page,
+            'search' => $search,
+            'extra' => array_sum(array_map(fn ($g) => count($g['channels']) - 1, $groups)),
+        ]);
+    }
+
+    /**
+     * Switch off the extra copies: the ones on this page with the choices made (`keep[group] = channel id`, 0 = leave the group),
+     * or with `scope=all` the suggested copy of every group (limited to the search).
+     */
+    public function applyDuplicates(Request $request, ChannelDuplicateService $duplicates)
+    {
+        $data = $request->validate([
+            'scope' => ['required', 'in:page,all'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'keep' => ['required_if:scope,page', 'array'],
+            'keep.*' => ['integer', 'min:0'],
+        ]);
+        $search = $data['search'] ?? null;
+
+        $keep = $data['scope'] === 'all'
+            ? collect($duplicates->groups($search))->mapWithKeys(fn ($g) => [$g['key'] => $g['suggested']])->all()
+            : array_filter($data['keep'] ?? [], fn ($id) => (int) $id > 0);
+
+        $result = $duplicates->apply($keep, $search);
+
+        if ($result['groups'] > 0) {
+            $this->audit->record(AuditLog::CHANNELS_DEDUPLICATED, null, ['groups' => $result['groups'], 'count' => $result['disabled']]);
+        }
+
+        $message = trans_choice(':count channel switched off. The best copy of each group stays.|:count channels switched off. The best copy of each group stays.', $result['disabled'], ['count' => number_format($result['disabled'])]);
+        if ($result['skipped'] > 0) {
+            $message .= ' '.trans_choice(':count group changed in the meantime and was skipped.|:count groups changed in the meantime and were skipped.', $result['skipped'], ['count' => $result['skipped']]);
+        }
+
+        return redirect()->route('admin.channels.duplicates', array_filter(['search' => $search]))->with('success', $message);
     }
 
     /**

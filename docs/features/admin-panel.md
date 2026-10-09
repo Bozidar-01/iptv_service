@@ -28,6 +28,8 @@ List with type/host, status badge (Not synced / Queued / Syncing / Synced / Fail
 - **Watch** (play button on each row) opens a player dialog to check a channel by eye. The stream goes through the panel (`GET channels/{channel}/preview`, `StreamPreviewService`), so provider streams without CORS headers or on plain http still play. HLS (`.m3u8`/`.m3u`) uses hls.js and MPEG-TS uses mpegts.js, both loaded from jsDelivr on first use. If the first one fails, the other is tried. When nothing plays, the dialog shows the panel's reason (provider error code, web page instead of a stream, no answer) or a generic "format browsers can not play" message. The dialog also shows the stream address with a copy button, for VLC. Live MPEG-TS is passed on for at most 30 minutes per open player (`StreamPreviewService::MAX_SECONDS`) and ties up one PHP worker while it plays.
 - Create/edit form: name, stream URL, optional category and logo, enabled toggle (hidden `0` fallback), **Send me alerts**. Editing also has **Guide ID** (with the automatic match and *On now*) and **Backup channel** (channels with the same name or guide id). Editing an imported channel shows a notice that the next sync overwrites name/URL/logo/category but keeps enabled/disabled.
 
+- **Find duplicates** (button on the Channels page): the same channel listed more than once, with the best copy suggested and the rest switched off, see [duplicate-channels.md](duplicate-channels.md).
+
 ## TV guide (`admin.epg.*`)
 Guide sources with status and counts, coverage stats (enabled channels with a guide / with upcoming programmes), **Match channels again**, and an add form. See [epg.md](epg.md).
 

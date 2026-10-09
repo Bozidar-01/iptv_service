@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Find duplicate channels
+- New **Find duplicates** page (Channels → button, admins only): groups enabled channels that are the same one (names equal after ignoring case, country prefix, quality tags and punctuation, or the same guide id), suggests the copy that works, then best quality, then not a satellite receiver, then most bouquets, and switches the others off. Choose per group, per page, or *keep the suggested copy in all groups* (limited by the search).
+- Nothing is deleted: the extra copies are disabled (a sync keeps them disabled) and the kept channel is added to their bouquets first. Groups nobody gets (not in a bouquet) and groups over 12 copies are left out. Written to the audit log.
+- No schema change. Tested on the dev data (5,637 channels, 619 groups in 0.13 s).
+- Tests: `DuplicateChannelTest` (36). 597 PHP tests.
+- Files: `app/Services/ChannelDuplicateService.php`, `app/Http/Controllers/Admin/ChannelController.php`, `resources/views/admin/channels/duplicates.blade.php`, `resources/views/admin/channels/index.blade.php`, `app/Models/AuditLog.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Renew button (admins and resellers)
 - **Renew** on the user page: choose 1 / 3 / 6 / 12 months and the end date moves later from the current end date (or from now when it already ended). Admins renew for free; a reseller with credits pays 1 credit per month (a reseller without credits pays nothing; not enough credits refuses it and changes nothing). A trial becomes a normal user; the renewal is in the audit log.
 - Alerts about a subscription (expiring, expired, *asks to renew*) get a **Renew 1 month** button on the Alerts page, and are marked read once the user is renewed.

@@ -73,6 +73,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::post('channels/check-streams', [ChannelController::class, 'checkStreams'])->name('channels.check-streams');
     Route::get('channels/{channel}/preview', [ChannelController::class, 'preview'])->name('channels.preview');
+    Route::get('channels/duplicates', [ChannelController::class, 'duplicates'])->name('channels.duplicates');
+    Route::post('channels/duplicates', [ChannelController::class, 'applyDuplicates'])->name('channels.duplicates.apply');
     Route::post('channels/bulk', [ChannelController::class, 'bulk'])->name('channels.bulk');
     Route::resource('channels', ChannelController::class)->except(['show']);
 

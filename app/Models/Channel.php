@@ -6,8 +6,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @property Carbon|null $stream_checked_at
+ */
 #[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id'])]
 class Channel extends Model
 {
