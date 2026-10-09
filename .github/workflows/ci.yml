@@ -128,7 +128,8 @@ jobs:
         ports: ['3306:3306']
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=5s --health-timeout=5s --health-retries=20
+          --health-interval=2s --health-timeout=5s --health-retries=40
+          --tmpfs /var/lib/mysql
     env:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
@@ -152,6 +153,8 @@ jobs:
 
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: cp .env.example .env && php artisan key:generate
+      # The data is thrown away after the run: no need to flush to disk on every commit
+      - run: mysql -h 127.0.0.1 -uroot -proot -e "SET GLOBAL innodb_flush_log_at_trx_commit=0, GLOBAL sync_binlog=0"
       # Up, all the way down, and up again: catches foreign-key / index mistakes SQLite allows
       - run: php artisan migrate --force
       - run: php artisan migrate:reset --force
