@@ -740,5 +740,14 @@
     ":count channel switched off. The best copy of each group stays.|:count channels switched off. The best copy of each group stays.": ":count канал е исклучен. Најдобрата копија од секоја група останува.|:count канали се исклучени. Најдобрата копија од секоја група останува.",
     ":count group changed in the meantime and was skipped.|:count groups changed in the meantime and were skipped.": ":count група се промени во меѓувреме и беше прескокната.|:count групи се променија во меѓувреме и беа прескокнати.",
     "Duplicate channels switched off": "Дупликат каналите се исклучени",
-    ":count group|:count groups": ":count група|:count групи"
+    ":count group|:count groups": ":count група|:count групи",
+    "Guides your channels could use": "Водичи што може да ги користат вашите канали",
+    "These countries have channels without a guide, and a free guide file exists for each. Only the programmes of channels you have are kept.": "Овие држави имаат канали без водич, а за секоја постои бесплатна датотека со водич. Се чуваат само програмите на каналите што ги имате.",
+    "Add :count guide and import it in the background?|Add :count guides and import them in the background?": "Да се додаде :count водич и да се увезе во позадина?|Да се додадат :count водичи и да се увезат во позадина?",
+    "Add all :count": "Додај ги сите :count",
+    ":count channel without a guide|:count channels without a guide": ":count канал без водич|:count канали без водич",
+    "Add": "Додај",
+    "Refreshed every night. When two guides have the same channel, the one for the channel's own country is used, else the one added first.": "Се освежува секоја ноќ. Кога два водичи го имаат истиот канал, се користи водичот од државата на каналот, инаку оној додаден прв.",
+    ":count guide added. It is being imported in the background.|:count guides added. They are being imported in the background.": ":count водич е додаден. Се увезува во позадина.|:count водичи се додадени. Се увезуваат во позадина.",
+    "Nothing to add.": "Нема што да се додаде."
 }

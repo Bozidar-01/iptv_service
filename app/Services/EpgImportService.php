@@ -80,12 +80,16 @@ class EpgImportService
             throw new RuntimeException('The guide is not a readable XMLTV file.');
         }
 
+        // Only guide channels that some channel of ours can match keep their programmes (see EpgService::wantedLookups)
+        $wanted = app(EpgService::class)->wantedLookups();
+        $wantedIds = [];
+        $sawChannels = false;
         $from = now()->subHours(6);
         $until = now()->addDays((int) config('iptv.epg_days'));
         $channels = $programmes = 0;
 
         try {
-            DB::transaction(function () use ($reader, $source, $from, $until, &$channels, &$programmes) {
+            DB::transaction(function () use ($reader, $source, $from, $until, $wanted, &$wantedIds, &$sawChannels, &$channels, &$programmes) {
                 EpgProgramme::where('epg_source_id', $source->id)->delete();
                 EpgChannel::where('epg_source_id', $source->id)->delete();
 
@@ -108,13 +112,22 @@ class EpgImportService
                             continue;
                         }
                         $seen[mb_strtolower($id)] = true;
-                        $name = trim((string) ($node->{'display-name'}[0] ?? $id));
+                        $names = array_values(array_filter(array_map(fn ($n) => trim((string) $n), iterator_to_array($node->{'display-name'}, false))));
+                        $name = $names[0] ?? $id;
+                        $nameKey = EpgService::nameKey($name);
+                        // The other display names, as keys (a channel can be known by several names)
+                        $altKeys = array_values(array_unique(array_filter(array_map(EpgService::nameKey(...), array_slice($names, 1)), fn ($k) => $k !== '' && $k !== $nameKey)));
                         $channelRows[] = [
                             'epg_source_id' => $source->id,
                             'xmltv_id' => mb_substr($id, 0, 255),
                             'name' => mb_substr($name, 0, 255),
-                            'name_key' => mb_substr(EpgService::nameKey($name), 0, 255),
+                            'name_key' => mb_substr($nameKey, 0, 255),
+                            'alt_keys' => $altKeys ? mb_substr(implode('|', $altKeys), 0, 1000) : null,
                         ];
+                        $sawChannels = true;
+                        if ($wanted && (isset($wanted['ids'][mb_strtolower($id)]) || isset($wanted['ids'][preg_replace('/@[^@]*$/', '', mb_strtolower($id))]) || isset($wanted['names'][$nameKey]) || array_intersect_key(array_flip($altKeys), $wanted['names']))) {
+                            $wantedIds[mb_strtolower($id)] = true;
+                        }
                         if (count($channelRows) >= self::CHUNK_SIZE) {
                             EpgChannel::insert($channelRows);
                             $channels += count($channelRows);
@@ -125,6 +138,10 @@ class EpgImportService
                         $stop = self::parseTime($reader->getAttribute('stop'));
                         $channel = trim((string) $reader->getAttribute('channel'));
                         if (!$start || !$channel || $start->gt($until) || ($stop ?? $start)->lt($from)) {
+                            continue;
+                        }
+                        // A guide with channels listed and some of ours to match: keep only the programmes of the ones we can use
+                        if ($wanted && $sawChannels && !isset($wantedIds[mb_strtolower($channel)])) {
                             continue;
                         }
                         $node = @simplexml_load_string($reader->readOuterXml());

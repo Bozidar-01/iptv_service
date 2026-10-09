@@ -56,6 +56,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/users/{user}/sessions/disconnect` | `admin.users.sessions.disconnect-all` | `UserController@disconnectAllDevices` |
 | GET | `/admin/epg` | `admin.epg.index` | `EpgSourceController@index` |
 | POST | `/admin/epg` | `admin.epg.store` | `EpgSourceController@store` |
+| POST | `/admin/epg/countries` | `admin.epg.countries` | `EpgSourceController@addCountries`: `all=1` or `countries[]` (two-letter codes); adds the free per-country guides and queues their import |
 | POST | `/admin/epg/match` | `admin.epg.match` | `EpgSourceController@match` |
 | POST | `/admin/epg/{epgSource}/sync` | `admin.epg.sync` | `EpgSourceController@sync` |
 | DELETE | `/admin/epg/{epgSource}` | `admin.epg.destroy` | `EpgSourceController@destroy` |

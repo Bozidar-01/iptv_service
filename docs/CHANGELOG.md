@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — TV guide for many more channels
+- **Guides for the countries of your channels:** the TV guide page lists countries that have channels without a guide (from ids like `CanalShowsport.ar@SD`) and adds the free iptv-epg.org guide of one country, or all of them, in one click. 55 countries are known.
+- **The importer keeps only programmes of guide channels some channel of ours can match** (by id, name or any other display name), so big country files (US 47 MB) don't fill the database; the guide's channel list stays complete. After a channel source import, guides that now have matched channels without programmes are imported again (at most every 6 hours).
+- **Better matching:** a guide channel's other display names count too, and when several guides have a channel name the guide of the channel's own country wins (`.de` → Germany, `.uk` → United Kingdom), else the oldest.
+- **Measured on the dev data** (5,637 enabled channels, all 45 suggested country guides added): channels with a guide 635 → 2,140 (11% → 38%), with programmes now 421 → 1,733 (7.5% → 31%); 362,000 programmes and 24,900 guide channels stored.
+- New column `epg_channels.alt_keys` (additive migration). Tests: `EpgCoverageTest` (12). 611 PHP tests.
+- Files: `app/Services/EpgGuideCatalog.php`, `app/Services/EpgService.php`, `app/Services/EpgImportService.php`, `app/Services/SourceSyncService.php`, `app/Models/EpgSource.php`, `app/Models/EpgChannel.php`, `app/Http/Controllers/Admin/EpgSourceController.php`, `resources/views/admin/epg/index.blade.php`, `database/migrations/2026_10_09_000012_add_alt_keys_to_epg_channels.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Fix: "Your page" link for admins and resellers
 - The *Message for the user* and the *Page for this user* box offered the subscriber page link for admins and resellers too, where it answers 404 (only subscribers have a page). Both now leave it out for them.
 - Test: added to `LoginMessageTest`.

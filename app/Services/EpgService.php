@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncEpgSource;
 use App\Models\Channel;
 use App\Models\EpgChannel;
 use App\Models\EpgProgramme;
+use App\Models\EpgSource;
+use App\Models\Source;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +20,9 @@ use Illuminate\Support\Str;
  * Matching, for channels the admin hasn't set by hand (epg_manual):
  *  1. the channel's tvg-id equals a guide channel id (also without iptv-org's "@SD"/"@HD" suffix);
  *  2. otherwise the normalised names are equal (nameKey: "Канал 5 HD" and "MK - Kanal 5" both
- *     become "kanal5").
- * When several guides have the channel, the oldest guide source wins, so results are stable.
+ *     become "kanal5"), also against the guide channel's other display names.
+ * When several guides have the channel, the guide of the channel's own country wins (from a tvg-id like
+ * "Name.es@SD"), else the oldest guide source, so results are stable.
  */
 class EpgService
 {
@@ -39,22 +43,70 @@ class EpgService
     }
 
     /**
+     * The country in a playlist id such as "CanalShowsport.ar@SD" (iptv-org style), matching the guide files' codes
+     * (iptv-org says "uk" where the guide files say "gb"). Null when the id has none.
+     */
+    public static function countryOf(?string $tvgId): ?string
+    {
+        if (!$tvgId || !preg_match('/\.([a-z]{2})(?:@[^@]*)?$/i', $tvgId, $m)) {
+            return null;
+        }
+
+        $code = strtolower($m[1]);
+
+        return $code === 'uk' ? 'gb' : $code;
+    }
+
+    /**
+     * What the channels we have can match in a guide: their guide ids (also without "@SD" / "@HD") and their name keys.
+     * The importer keeps programmes only for guide channels that match one of these, so a huge country file doesn't fill
+     * the database with channels nobody has. Null when there are no channels yet (then everything is kept).
+     *
+     * @return array{ids: array<string, true>, names: array<string, true>}|null
+     */
+    public function wantedLookups(): ?array
+    {
+        $ids = $names = [];
+
+        Channel::query()->where('is_active', true)->select(['id', 'name', 'tvg_id', 'epg_id', 'epg_manual'])->chunkById(5000, function ($channels) use (&$ids, &$names) {
+            foreach ($channels as $channel) {
+                $tvg = mb_strtolower((string) $channel->tvg_id);
+                if ($tvg !== '') {
+                    $ids[$tvg] = true;
+                    $ids[preg_replace('/@[^@]*$/', '', $tvg)] = true;
+                }
+                if ($channel->epg_manual && $channel->epg_id) {
+                    $ids[mb_strtolower($channel->epg_id)] = true;
+                }
+                $key = self::nameKey($channel->name);
+                if ($key !== '') {
+                    $names[$key] = true;
+                }
+            }
+        });
+
+        return $ids === [] && $names === [] ? null : ['ids' => $ids, 'names' => $names];
+    }
+
+    /**
      * Match channels to the guides. Set-based: one query per 1000 changed channels.
      *
      * @return int channels that have a guide afterwards
      */
     public function matchChannels(?int $sourceId = null): int
     {
-        // Guide channel lookups, oldest guide source first so it wins
+        // Guide channel lookups, oldest guide source first so it wins; each guide's country for the name matches
+        $countries = EpgSource::get(['id', 'url'])->mapWithKeys(fn (EpgSource $s) => [$s->id => $s->country()])->all();
         $byId = [];
         $byName = [];
         EpgChannel::orderBy('epg_source_id')->orderBy('id')
-            ->select(['epg_source_id', 'xmltv_id', 'name_key'])
+            ->select(['epg_source_id', 'xmltv_id', 'name_key', 'alt_keys'])
             ->lazy(5000)
-            ->each(function ($row) use (&$byId, &$byName) {
+            ->each(function ($row) use (&$byId, &$byName, $countries) {
                 $byId[mb_strtolower($row->xmltv_id)] ??= [$row->epg_source_id, $row->xmltv_id];
-                if ($row->name_key !== '') {
-                    $byName[$row->name_key] ??= [$row->epg_source_id, $row->xmltv_id];
+                $keys = array_filter(array_unique([$row->name_key, ...explode('|', (string) $row->alt_keys)]));
+                foreach ($keys as $key) {
+                    $byName[$key][] = [$row->epg_source_id, $row->xmltv_id, $countries[$row->epg_source_id] ?? null];
                 }
             });
 
@@ -72,12 +124,12 @@ class EpgService
                     } else {
                         $tvg = mb_strtolower((string) $channel->tvg_id);
                         $match = ($tvg !== '' ? ($byId[$tvg] ?? $byId[preg_replace('/@[^@]*$/', '', $tvg)] ?? null) : null)
-                            ?? ($byName[self::nameKey($channel->name)] ?? null)
+                            ?? $this->byName($byName[self::nameKey($channel->name)] ?? [], self::countryOf($channel->tvg_id))
                             ?? [null, null];
                     }
 
                     if ($match[0] !== $channel->epg_source_id || $match[1] !== $channel->epg_id) {
-                        $changes[$channel->id] = $match;
+                        $changes[$channel->id] = [$match[0], $match[1]];
                     }
                 }
 
@@ -85,6 +137,51 @@ class EpgService
             });
 
         return Channel::whereNotNull('epg_source_id')->count();
+    }
+
+    /**
+     * Guides that were imported before some channels of ours were there have dropped those channels' programmes (the importer
+     * keeps only what our channels can use). After new channels are imported and matched, queue an import of the guides that now
+     * have matched channels without programmes, at most one import per guide every 6 hours.
+     *
+     * @return int imports queued
+     */
+    public function refreshGuidesMissingProgrammes(): int
+    {
+        $ids = Channel::where('is_active', true)->whereNotNull('epg_source_id')
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('epg_programmes')
+                ->whereColumn('epg_programmes.epg_source_id', 'channels.epg_source_id')
+                ->whereColumn('epg_programmes.xmltv_id', 'channels.epg_id')
+                ->where('epg_programmes.stop', '>', now()))
+            ->distinct()->pluck('epg_source_id');
+
+        $queued = 0;
+        foreach (EpgSource::whereIn('id', $ids)->where('status', Source::STATUS_SUCCESS)
+            ->where(fn ($q) => $q->whereNull('last_synced_at')->orWhere('last_synced_at', '<', now()->subHours(6)))->get() as $guide) {
+            $guide->update(['status' => Source::STATUS_QUEUED]);
+            SyncEpgSource::dispatch($guide);
+            $queued++;
+        }
+
+        return $queued;
+    }
+
+    /**
+     * Of the guide channels with this name, the one from the channel's own country when it has one, else the first
+     * (the guide added first).
+     *
+     * @param  list<array{0: int, 1: string, 2: ?string}>  $candidates
+     * @return array{0: int, 1: string}|null
+     */
+    private function byName(array $candidates, ?string $country): ?array
+    {
+        if ($candidates === []) {
+            return null;
+        }
+
+        $pick = ($country ? collect($candidates)->first(fn ($c) => $c[2] === $country) : null) ?? $candidates[0];
+
+        return [$pick[0], $pick[1]];
     }
 
     /**

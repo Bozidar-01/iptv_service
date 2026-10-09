@@ -29,11 +29,42 @@
     </div>
 </div>
 
+@if($suggestions)
+    <div class="card" style="margin-bottom: 20px">
+        <div class="card-header">
+            <div>
+                <h2>{{ __('Guides your channels could use') }}</h2>
+                <p>{{ __('These countries have channels without a guide, and a free guide file exists for each. Only the programmes of channels you have are kept.') }}</p>
+            </div>
+            <form method="POST" action="{{ route('admin.epg.countries') }}" class="inline-form" data-confirm="{{ trans_choice('Add :count guide and import it in the background?|Add :count guides and import them in the background?', count($suggestions), ['count' => count($suggestions)]) }}">
+                @csrf
+                <input type="hidden" name="all" value="1">
+                <button class="btn btn-primary"><x-icon name="plus" /> {{ __('Add all :count', ['count' => count($suggestions)]) }}</button>
+            </form>
+        </div>
+        <ul class="list">
+            @foreach($suggestions as $suggestion)
+                <li>
+                    <div>
+                        <strong>{{ $suggestion['name'] }}</strong>
+                        <div class="muted">{{ trans_choice(':count channel without a guide|:count channels without a guide', $suggestion['channels'], ['count' => number_format($suggestion['channels'])]) }}</div>
+                    </div>
+                    <form method="POST" action="{{ route('admin.epg.countries') }}" class="inline-form">
+                        @csrf
+                        <input type="hidden" name="countries[]" value="{{ $suggestion['code'] }}">
+                        <button class="btn btn-secondary btn-sm"><x-icon name="plus" /> {{ __('Add') }}</button>
+                    </form>
+                </li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 <div class="card">
     <div class="card-header">
         <div>
             <h2>{{ __('Guides') }}</h2>
-            <p>{{ __('Refreshed every night. When two guides have the same channel, the one added first is used.') }}</p>
+            <p>{{ __('Refreshed every night. When two guides have the same channel, the one for the channel\'s own country is used, else the one added first.') }}</p>
         </div>
     </div>
     @if($sources->isEmpty())

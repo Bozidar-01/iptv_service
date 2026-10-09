@@ -83,6 +83,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('epg', [EpgSourceController::class, 'index'])->name('epg.index');
     Route::post('epg', [EpgSourceController::class, 'store'])->name('epg.store');
+    Route::post('epg/countries', [EpgSourceController::class, 'addCountries'])->name('epg.countries');
     Route::post('epg/match', [EpgSourceController::class, 'match'])->name('epg.match');
     Route::post('epg/{epgSource}/sync', [EpgSourceController::class, 'sync'])->name('epg.sync');
     Route::delete('epg/{epgSource}', [EpgSourceController::class, 'destroy'])->name('epg.destroy');
