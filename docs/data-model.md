@@ -40,6 +40,9 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 ### owner_hidden_channels
 `id`, `owner_id` FK → users nullable (`ON DELETE CASCADE`; null = the admins' own users, those without a reseller), `channel_id` FK → channels (`CASCADE`), unique (`owner_id`, `channel_id`; MySQL allows several null owners, so `ChannelHideService` skips rows that exist). A channel hidden for all users of that owner.
 
+### audit_logs
+`id`, `actor_id` FK → users nullable (`SET NULL`), `actor_name` (kept as text), `action` (`user.created`, `credits.given`… see `AuditLog` constants; indexed), `subject_type` (`user`, `source`, `bouquet`, `channel`; nullable), `subject_id`, `subject_name`, `details` (json: what changed), `ip`, `created_at` (indexed). Written by `AuditService`, never updated; pruned after 365 days.
+
 ### checklist_ticks
 `id`, `item` (key of a manual launch-checklist item, unique), `user_id` FK → users nullable (who ticked it, `SET NULL`), timestamps. Written by `LaunchChecklistService::toggle`; a row means the item is ticked off.
 

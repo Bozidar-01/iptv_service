@@ -68,6 +68,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/hide-channels` | `admin.hide-channels.bulk` | `bulk`: `action` hide\|show, `scope` selected\|filtered, `ids[]`, `filters[]`; edits the list for all of my users |
 | GET | `/admin/users/{user}/channels` | `admin.users.channels` | `user`: the user's channels, same filters |
 | POST | `/admin/users/{user}/channels` | `admin.users.channels.bulk` | `userBulk`: hide / show for this user alone |
+| GET | `/admin/audit-log` | `admin.audit.index` | `AuditLogController@index`: who changed what (`?actor=&action=&search=`); admins only |
 | GET | `/admin/launch-checklist` | `admin.launch-checklist.index` | `LaunchChecklistController@index`: what to have in place before launch (admins only) |
 | POST | `/admin/launch-checklist/{item}` | `admin.launch-checklist.toggle` | ticks / unticks a manual item (others: 404) |
 | GET | `/admin/statistics` | `admin.statistics.index` | `StatisticsController@index`: `?days=7\|30\|90` |

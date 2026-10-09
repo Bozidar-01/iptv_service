@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\ChannelHideService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -17,9 +19,12 @@ class HiddenChannelController extends Controller
 {
     protected $hide;
 
-    public function __construct(ChannelHideService $hide)
+    protected $audit;
+
+    public function __construct(ChannelHideService $hide, AuditService $audit)
     {
         $this->hide = $hide;
+        $this->audit = $audit;
     }
 
     /** The channels of my bouquets; hide them for all my users. */
@@ -124,6 +129,13 @@ class HiddenChannelController extends Controller
             $subject !== null => $this->hide->showForUser($subject, $channels),
             default => $this->hide->showForOwner($owner, $channels),
         };
+
+        if ($count > 0) {
+            $this->audit->record($data['action'] === 'hide' ? AuditLog::CHANNELS_HIDDEN : AuditLog::CHANNELS_SHOWN, $subject, [
+                'count' => $count,
+                'for' => $subject ? null : ($owner === null ? __('all of the admins\' own users') : __('all users of :name', ['name' => User::find($owner)?->username])),
+            ]);
+        }
 
         $message = $data['action'] === 'hide'
             ? ':count channel hidden.|:count channels hidden.'

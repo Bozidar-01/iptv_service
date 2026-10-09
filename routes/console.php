@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ActiveSession;
+use App\Models\AuditLog;
 use App\Models\LoginEvent;
 use App\Models\StreamLog;
 use Illuminate\Foundation\Inspiring;
@@ -12,7 +13,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Delete stale active_sessions rows and old play history (see ActiveSession::prunable, StreamLog::prunable, LoginEvent::prunable)
-Schedule::command('model:prune', ['--model' => [ActiveSession::class, StreamLog::class, LoginEvent::class]])->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('model:prune', ['--model' => [ActiveSession::class, StreamLog::class, LoginEvent::class, AuditLog::class]])->everyFifteenMinutes()->withoutOverlapping();
 
 // Refresh M3U sources that have auto-sync enabled (see Source::isDueForSync)
 Schedule::command('iptv:sync-sources --due')->hourly();

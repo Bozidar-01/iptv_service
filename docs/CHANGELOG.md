@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-09 — Audit log
+- New admin page **Audit log** (Account menu, admins only): who changed what, with filters (person, kind of change, name). Records user created / changed (what changed, never the password), deleted, enabled / disabled, trials, new playlist links, disconnected devices, credits given / taken / unlimited, channels hidden / shown, and deleted sources, bouquets and channels. Kept for a year.
+- Entries are written by `AuditService` after the change succeeded; a failed write is reported but never blocks the change. Nothing is recorded when a save changes nothing.
+- New table `audit_logs` (additive migration); pruned with `model:prune`.
+- Tests: `AuditLogTest` (12). 544 PHP tests.
+- Files: `app/Services/AuditService.php`, `app/Models/AuditLog.php`, `app/Http/Controllers/Admin/AuditLogController.php`, the user / trial / credit / hide / source / bouquet / channel controllers, `database/migrations/2026_10_09_000011_create_audit_logs_table.php`, `resources/views/admin/audit/index.blade.php`, `routes/web.php`, `routes/console.php`, `lang/mk.json`, docs.
+
 ### 2026-10-09 — Copy login message, trial accounts, hide a whole category
 - **Message for the user** on the user page (admins and resellers): server URL, username, password (when stored), playlist link, the user's own page and the end date as one text with a *Copy message* button, in the user's language. Paste it into WhatsApp / Viber.
 - **New trial** (Users page): a 24 hour / 3 day / 7 day test account with a random login and one device, free of credits. A reseller can make `TRIALS_PER_DAY` (default 5) per 24 hours and trials count against their user limit; admins are not limited. *Trial* badge in the list and user page, `is_trial` for Xtream apps; it stops being a trial when the end date is moved later. New column `users.is_trial` (additive migration).

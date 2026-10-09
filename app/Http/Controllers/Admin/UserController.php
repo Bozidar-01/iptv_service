@@ -6,14 +6,17 @@ use App\Exceptions\InsufficientCredits;
 use App\Exceptions\ResellerLimitReached;
 use App\Http\Controllers\Controller;
 use App\Models\ActiveSession;
+use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\CreditTransaction;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\CreditService;
 use App\Services\StreamService;
 use App\Services\UserService;
 use App\Support\Credits;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -24,10 +27,13 @@ class UserController extends Controller
 
     protected $credits;
 
-    public function __construct(UserService $userService, CreditService $credits)
+    protected $audit;
+
+    public function __construct(UserService $userService, CreditService $credits, AuditService $audit)
     {
         $this->userService = $userService;
         $this->credits = $credits;
+        $this->audit = $audit;
     }
 
     public function index(Request $request)
@@ -73,6 +79,7 @@ class UserController extends Controller
         abort_unless($session->user_id === $user->id, 404);
 
         $streams->disconnect($session);
+        $this->audit->record(AuditLog::USER_DISCONNECTED, $user, ['devices' => 1]);
 
         return back()->with('success', __('Device disconnected. It can not start a stream for :minutes minutes.', ['minutes' => StreamService::DEVICE_BLOCK_MINUTES]));
     }
@@ -80,6 +87,9 @@ class UserController extends Controller
     public function disconnectAllDevices(User $user, StreamService $streams)
     {
         $count = $streams->disconnectAll($user);
+        if ($count) {
+            $this->audit->record(AuditLog::USER_DISCONNECTED, $user, ['devices' => $count]);
+        }
 
         return back()->with('success', $count
             ? trans_choice(':count device disconnected. It can not start a stream for :minutes minutes.|:count devices disconnected. They can not start a stream for :minutes minutes.', $count, ['count' => $count, 'minutes' => StreamService::DEVICE_BLOCK_MINUTES])
@@ -89,6 +99,7 @@ class UserController extends Controller
     public function regeneratePlaylistToken(User $user)
     {
         $user->regeneratePlaylistToken();
+        $this->audit->record(AuditLog::USER_LINK, $user);
 
         return back()->with('success', __('New playlist link generated. The old link no longer works.'));
     }
@@ -140,6 +151,13 @@ class UserController extends Controller
             return back()->withInput()->with('error', __('Not enough credits: this needs :needed, you have :balance.', ['needed' => $e->needed, 'balance' => $e->balance]));
         }
 
+        $snapshot = $this->audit->snapshot($user);
+        $this->audit->record(AuditLog::USER_CREATED, $user, [
+            'set' => Arr::only($snapshot, ['role', 'reseller', 'expires', 'streams']),
+            'bouquets' => $snapshot['bouquets'],
+            'credits_spent' => $spent,
+        ]);
+
         return redirect()->route('admin.users.show', $user)->with('success', $this->withCreditNote(__('User created. Share the playlist link below.'), $actor, $spent));
     }
 
@@ -168,6 +186,7 @@ class UserController extends Controller
 
         $data = $this->applyRestrictions($actor, $data, $user);
         $data['bouquets'] = $data['bouquets'] ?? []; // unchecking every bouquet must clear them
+        $before = $this->audit->snapshot($user);
 
         try {
             $spent = DB::transaction(function () use ($actor, $user, $data) {
@@ -188,6 +207,11 @@ class UserController extends Controller
             });
         } catch (InsufficientCredits $e) {
             return back()->withInput()->with('error', __('Not enough credits: this needs :needed, you have :balance.', ['needed' => $e->needed, 'balance' => $e->balance]));
+        }
+
+        $changes = $this->audit->changes($before, $this->audit->snapshot($user)) + ['password' => !empty($data['password']), 'credits_spent' => $spent];
+        if (array_filter($changes)) {
+            $this->audit->record(AuditLog::USER_UPDATED, $user, $changes);
         }
 
         return redirect()->route('admin.users.show', $user)->with('success', $this->withCreditNote(__('User updated successfully.'), $actor, $spent));
@@ -215,6 +239,7 @@ class UserController extends Controller
             return back()->with('error', __('This reseller still has users. Move or delete them first.'));
         }
 
+        $this->audit->record(AuditLog::USER_DELETED, $user, ['set' => ['role' => $user->role, 'reseller' => $user->owner?->username]]);
         $this->userService->deleteUser($user);
 
         return redirect()->route('admin.users.index')->with('success', __('User deleted successfully.'));
@@ -305,6 +330,7 @@ class UserController extends Controller
     public function toggleStatus(User $user)
     {
         $this->userService->toggleStatus($user);
+        $this->audit->record($user->status === 'active' ? AuditLog::USER_ENABLED : AuditLog::USER_DISABLED, $user);
 
         return back()->with('success', __('User status updated.'));
     }

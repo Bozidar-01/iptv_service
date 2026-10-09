@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\InsufficientCredits;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\CreditTransaction;
 use App\Models\User;
+use App\Services\AuditService;
 use App\Services\CreditService;
 use Illuminate\Http\Request;
 
@@ -17,9 +19,12 @@ class CreditController extends Controller
 {
     protected $credits;
 
-    public function __construct(CreditService $credits)
+    protected $audit;
+
+    public function __construct(CreditService $credits, AuditService $audit)
     {
         $this->credits = $credits;
+        $this->audit = $audit;
     }
 
     public function index(Request $request)
@@ -54,6 +59,8 @@ class CreditController extends Controller
             return back()->withInput()->with('error', __('A balance can not go below 0: :name has :balance credits.', ['name' => $user->username, 'balance' => $e->balance]));
         }
 
+        $this->audit->record($data['amount'] > 0 ? AuditLog::CREDITS_GIVEN : AuditLog::CREDITS_TAKEN, $user, ['amount' => (int) $data['amount'], 'note' => $data['note'] ?? null]);
+
         return back()->with('success', $data['amount'] > 0
             ? trans_choice(':count credit given to :name.|:count credits given to :name.', (int) $data['amount'], ['count' => (int) $data['amount'], 'name' => $user->username])
             : trans_choice(':count credit taken back from :name.|:count credits taken back from :name.', abs((int) $data['amount']), ['count' => abs((int) $data['amount']), 'name' => $user->username]));
@@ -64,6 +71,7 @@ class CreditController extends Controller
         abort_unless($user->isReseller(), 404);
 
         $this->credits->makeUnlimited($request->user(), $user, $request->input('note'));
+        $this->audit->record(AuditLog::CREDITS_UNLIMITED, $user);
 
         return back()->with('success', __(':name is no longer limited by credits.', ['name' => $user->username]));
     }

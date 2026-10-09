@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\Channel;
 use App\Models\Source;
+use App\Services\AuditService;
 use App\Services\ChannelService;
 use App\Services\EpgService;
 use App\Services\StreamCheckService;
@@ -17,9 +19,12 @@ class ChannelController extends Controller
 {
     protected $channelService;
 
-    public function __construct(ChannelService $channelService)
+    protected $audit;
+
+    public function __construct(ChannelService $channelService, AuditService $audit)
     {
         $this->channelService = $channelService;
+        $this->audit = $audit;
     }
 
     public function index(Request $request)
@@ -71,6 +76,7 @@ class ChannelController extends Controller
 
     public function destroy(Channel $channel)
     {
+        $this->audit->record(AuditLog::CHANNELS_DELETED, ['type' => 'channel', 'id' => $channel->id, 'name' => $channel->name], ['count' => 1]);
         $this->channelService->deleteChannel($channel);
 
         return redirect()->route('admin.channels.index')->with('success', __('Channel deleted successfully.'));
@@ -98,6 +104,9 @@ class ChannelController extends Controller
             : Channel::whereIn('id', $data['ids']);
 
         $count = $this->channelService->bulkAction($data['action'], $query, $data['bouquet_id'] ?? null);
+        if ($data['action'] === 'delete' && $count > 0) {
+            $this->audit->record(AuditLog::CHANNELS_DELETED, null, ['count' => $count]);
+        }
 
         $message = [
             'enable' => ':count channel enabled.|:count channels enabled.',

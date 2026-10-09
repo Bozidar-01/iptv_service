@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\Source;
+use App\Services\AuditService;
 use App\Services\SourceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,9 +16,12 @@ class SourceController extends Controller
 {
     protected $sourceService;
 
-    public function __construct(SourceService $sourceService)
+    protected $audit;
+
+    public function __construct(SourceService $sourceService, AuditService $audit)
     {
         $this->sourceService = $sourceService;
+        $this->audit = $audit;
     }
 
     public function index()
@@ -62,6 +67,7 @@ class SourceController extends Controller
 
     public function destroy(Source $source)
     {
+        $this->audit->record(AuditLog::SOURCE_DELETED, ['type' => 'source', 'id' => $source->id, 'name' => $source->name], ['count' => (int) $source->channel_count]);
         $this->sourceService->deleteSource($source);
 
         return redirect()->route('admin.sources.index')->with('success', __('Source and its channels deleted.'));

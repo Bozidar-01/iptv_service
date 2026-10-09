@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\Category;
+use App\Services\AuditService;
 use App\Services\BouquetService;
 use Illuminate\Http\Request;
 
@@ -12,9 +14,12 @@ class BouquetController extends Controller
 {
     protected $bouquetService;
 
-    public function __construct(BouquetService $bouquetService)
+    protected $audit;
+
+    public function __construct(BouquetService $bouquetService, AuditService $audit)
     {
         $this->bouquetService = $bouquetService;
+        $this->audit = $audit;
     }
 
     public function index()
@@ -67,6 +72,7 @@ class BouquetController extends Controller
 
     public function destroy(Bouquet $bouquet)
     {
+        $this->audit->record(AuditLog::BOUQUET_DELETED, ['type' => 'bouquet', 'id' => $bouquet->id, 'name' => $bouquet->name], ['count' => $bouquet->channels()->count()]);
         $this->bouquetService->deleteBouquet($bouquet);
 
         return redirect()->route('admin.bouquets.index')->with('success', __('Bouquet deleted successfully.'));
