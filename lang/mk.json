@@ -977,5 +977,21 @@
     "The relay refused the secret. Check the secret of this source.": "Релејот ја одби тајната. Проверете ја тајната на овој извор.",
     "The relay answered with an error.": "Релејот одговори со грешка.",
     "The relay is running, but the receiver does not answer.": "Релејот работи, но приемникот не одговара.",
-    "Entries that point at a local stream address on the receiver (for example the Spanish radio and regional feeds) instead of a satellite channel. They only play if the receiver runs that stream service; try one first.": "Записи што покажуваат на локална адреса за стрим на приемникот (на пример шпанското радио и регионалните излези) наместо на сателитски канал. Се пуштаат само ако приемникот ја извршува таа услуга за стрим; пробајте прво еден."
+    "Entries that point at a local stream address on the receiver (for example the Spanish radio and regional feeds) instead of a satellite channel. They only play if the receiver runs that stream service; try one first.": "Записи што покажуваат на локална адреса за стрим на приемникот (на пример шпанското радио и регионалните излези) наместо на сателитски канал. Се пуштаат само ако приемникот ја извршува таа услуга за стрим; пробајте прво еден.",
+    "Organize by country": "Организирај по држави",
+    "Puts every channel in a category named after its country (Italy, Serbia, Germany…), so apps show a tidy list. The country comes from the channel's playlist id, its group, a tag in the name, the list it came from, its TV guide, or words like ORF or Freesat Romania. Radio and adult channels get their own category; what cannot be placed goes to International.": "Го става секој канал во категорија именувана по неговата држава (Италија, Србија, Германија…), за апликациите да прикажуваат уредна листа. Државата се одредува од ид на каналот во плејлистата, неговата група, ознака во името, листата од која доаѓа, неговиот ТВ водич или зборови како ORF или Freesat Romania. Радиото и каналите за возрасни добиваат своја категорија; она што не може да се смести оди во Меѓународни.",
+    "Split big countries by genre above": "Раздели ги големите држави по жанр над",
+    "enabled channels. A country with more gets categories like \"Italy – News\" and \"Italy – Sports\". 0 = never split.": "овозможени канали. Држава со повеќе добива категории како „Италија – Вести“ и „Италија – Спорт“. 0 = никогаш не дели.",
+    "A genre needs at least": "Жанрот бара најмалку",
+    "channels to get its own category; the rest stay in the plain country.": "канали за да добие своја категорија; останатите остануваат во самата држава.",
+    "Leave these sources as they are": "Остави ги овие извори како што се",
+    "Keep it on": "Остави го вклучено",
+    "Every import then puts new and changed channels in their country category too.": "Тогаш секој увоз ги става новите и променетите канали во категоријата на нивната држава.",
+    "Preview: :count enabled channels in :groups categories. Nothing is changed yet.": "Преглед: :count овозможени канали во :groups категории. Сè уште ништо не е променето.",
+    "Could not place, for example:": "Не можеа да се сместат, на пример:",
+    "Move all channels into their country categories now?": "Да се преместат сите канали во категориите на нивните држави сега?",
+    "Save and apply now": "Зачувај и примени сега",
+    ":count channels moved into country categories.": ":count канали се преместени во категории по држави.",
+    "Saved. Country categories are on: every import follows them.": "Зачувано. Категориите по држави се вклучени: секој увоз ги следи.",
+    "Saved. Country categories are off.": "Зачувано. Категориите по држави се исклучени."
 }

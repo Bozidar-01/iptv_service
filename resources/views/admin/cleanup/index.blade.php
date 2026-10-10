@@ -50,6 +50,66 @@
         </div>
     @endif
 
+    <form method="POST" action="{{ route('admin.cleanup.country') }}" class="card">
+        @csrf
+        <div class="card-header">
+            <div>
+                <h2>{{ __('Organize by country') }}</h2>
+                <p>{{ __('Puts every channel in a category named after its country (Italy, Serbia, Germany…), so apps show a tidy list. The country comes from the channel\'s playlist id, its group, a tag in the name, the list it came from, its TV guide, or words like ORF or Freesat Romania. Radio and adult channels get their own category; what cannot be placed goes to International.') }}</p>
+            </div>
+            <span class="badge {{ $country['enabled'] ? 'badge-success' : '' }} badge-dot">{{ $country['enabled'] ? __('On') : __('Off') }}</span>
+        </div>
+        <div class="card-body stack" style="gap: 16px">
+            <div class="form-grid">
+                <div class="field">
+                    <label class="label" for="country-split">{{ __('Split big countries by genre above') }}</label>
+                    <input class="input" id="country-split" name="split" type="number" min="0" value="{{ old('split', $country['split']) }}" required>
+                    <span class="help">{{ __('enabled channels. A country with more gets categories like "Italy – News" and "Italy – Sports". 0 = never split.') }}</span>
+                </div>
+                <div class="field">
+                    <label class="label" for="country-min">{{ __('A genre needs at least') }}</label>
+                    <input class="input" id="country-min" name="min" type="number" min="1" value="{{ old('min', $country['min']) }}" required>
+                    <span class="help">{{ __('channels to get its own category; the rest stay in the plain country.') }}</span>
+                </div>
+            </div>
+            <div class="field">
+                <div class="label">{{ __('Leave these sources as they are') }}</div>
+                <div class="check-list">
+                    @foreach($sources as $source)
+                        <label class="check-tile">
+                            <input type="checkbox" name="exclude[]" value="{{ $source->id }}" @checked(in_array($source->id, (array) old('exclude', $country['exclude'])))>
+                            <span class="name">{{ $source->name }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+            <label class="check">
+                <input type="checkbox" name="enabled" value="1" @checked(old('enabled', $country['enabled']))>
+                <div><strong>{{ __('Keep it on') }}</strong><span>{{ __('Every import then puts new and changed channels in their country category too.') }}</span></div>
+            </label>
+
+            @if(session('country_preview'))
+                @php($pv = session('country_preview'))
+                <div class="alert alert-info">
+                    <x-icon name="eye" />
+                    <div class="alert-body">
+                        <strong>{{ __('Preview: :count enabled channels in :groups categories. Nothing is changed yet.', ['count' => number_format($pv['total']), 'groups' => count($pv['counts'])]) }}</strong>
+                        @php($sorted = collect($pv['counts'])->sortDesc())
+                        <p style="margin: 8px 0 0">{{ $sorted->take(40)->map(fn ($n, $label) => $label.' ('.number_format($n).')')->implode(' · ') }}@if($sorted->count() > 40) · {{ __('and :count more', ['count' => $sorted->count() - 40]) }}@endif</p>
+                        @if($pv['international'])
+                            <p style="margin: 8px 0 0"><strong>{{ __('Could not place, for example:') }}</strong> {{ implode(' · ', $pv['international']) }}</p>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        </div>
+        <div class="card-footer">
+            <button class="btn btn-secondary" name="do" value="preview"><x-icon name="eye" /> {{ __('Preview') }}</button>
+            <button class="btn btn-secondary" name="do" value="save">{{ __('Save') }}</button>
+            <button class="btn btn-primary" name="do" value="apply" onclick="return confirm('{{ __('Move all channels into their country categories now?') }}')"><x-icon name="refresh" /> {{ __('Save and apply now') }}</button>
+        </div>
+    </form>
+
     <div class="card">
         <div class="card-header">
             <div>
