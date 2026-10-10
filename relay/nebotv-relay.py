@@ -8,7 +8,9 @@ exposing the receiver itself:
   GET /s/<channel>.ts?e=<expires>&x=<0|1>&s=<signature>
       Streams one channel from the receiver (port 8001, or 8002 transcoded when x=1).
       Only links signed by the NeboTV panel with the shared secret work, and only until
-      they expire. At most `max_streams` different channels at once (= tuners).
+      they expire. Channels on the same transponder share a tuner; at most `max_streams`
+      different transponders at once (= tuners). With `single_cable = yes` (both tuners on one dish
+      cable) also only one satellite at a time. Anything else gets an immediate 503.
   GET /playlist.m3u?key=<secret>
       The channels of the configured bouquets, for the panel to import. Markers inside a
       bouquet become categories. With fta_only, encrypted channels are left out.
@@ -37,7 +39,7 @@ import time
 import urllib.parse
 import urllib.request
 
-VERSION = '1.0'
+VERSION = '1.1'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -63,6 +65,8 @@ class Settings:
         if len(self.secret) < 16:
             raise SystemExit('Set "secret" in %s (at least 16 characters, the same as in the NeboTV panel).' % path)
         self.max_streams = int(get('max_streams', '2'))
+        # Both tuners fed by one dish cable (one DiSEqC switch): the receiver can be on one satellite at a time
+        self.single_cable = get('single_cable', 'no').lower() in ('1', 'yes', 'true', 'on')
         self.box_host = get('box_host', '127.0.0.1')
         self.webif_port = int(get('webif_port', '80'))
         self.stream_port = int(get('stream_port', '8001'))
@@ -155,6 +159,24 @@ def service_key(ref):
     return (sid, tsid, onid, ns)
 
 
+def transponder_key(ref):
+    """(tsid, onid, namespace) of a service reference. Channels with the same one are on the same transponder
+    (one frequency), so the receiver serves them all with one tuner."""
+    parts = ref.split(':')
+    try:
+        return tuple(int(parts[i] or '0', 16) for i in (4, 5, 6))
+    except (ValueError, IndexError):
+        return None
+
+
+def satellite_of(ref):
+    """The satellite of a service reference: the orbital position in tenths of a degree, which is the top half of the
+    namespace (0x820000 = 13.0 E). None for terrestrial (0xEEEE), cable (0xFFFF) and stream references (0)."""
+    key = transponder_key(ref)
+    high = key[2] >> 16 if key else 0
+    return high if 0 < high < 3600 else None
+
+
 def clean_name(name):
     name = re.sub(r'[•|:#«»®]+', ' ', name)
     return re.sub(r'\s+', ' ', name).strip(' -')
@@ -201,6 +223,27 @@ class Relay:
     def __init__(self, settings):
         self.settings = settings
         self.active = {}  # service ref -> number of viewers
+
+    def tuners_in_use(self):
+        """The transponders being played: one tuner each (channels on the same one share it)."""
+        return {transponder_key(ref) or ref for ref in self.active}
+
+    def refusal(self, ref):
+        """Why this channel can't start now, or None when it can. Viewers of a channel that is already playing, and of
+        another channel on the same transponder, share its tuner."""
+        if ref in self.active:
+            return None
+        in_use = self.tuners_in_use()
+        if (transponder_key(ref) or ref) in in_use:
+            return None
+        if len(in_use) >= self.settings.max_streams:
+            return 'All tuners are busy'
+        if self.settings.single_cable:
+            satellites = {satellite_of(r) for r in self.active} - {None}
+            satellite = satellite_of(ref)
+            if satellite is not None and satellites and satellite not in satellites:
+                return 'The receiver is on another satellite right now'
+        return None
 
     async def handle(self, reader, writer):
         try:
@@ -259,7 +302,8 @@ class Relay:
             box = False
         return {
             'ok': box, 'box': box, 'version': VERSION,
-            'active_channels': len(self.active), 'max_streams': self.settings.max_streams,
+            'active_channels': len(self.active), 'active_tuners': len(self.tuners_in_use()), 'max_streams': self.settings.max_streams,
+            'single_cable': self.settings.single_cable, 'satellites': sorted({satellite_of(r) for r in self.active} - {None}),
         }
 
     async def stream(self, writer, encoded, query, method):
@@ -272,9 +316,10 @@ class Relay:
             return await self.reply(writer, 403, 'Invalid link')
         if int(expires) < time.time():
             return await self.reply(writer, 403, 'Link expired')
-        # Viewers of a channel that is already playing share its tuner
-        if ref not in self.active and len(self.active) >= settings.max_streams:
-            return await self.reply(writer, 503, 'All tuners are busy')
+        reason = self.refusal(ref)
+        if reason:
+            log.warning('Refused %s: %s (%d tuners in use)', ref, reason, len(self.tuners_in_use()))
+            return await self.reply(writer, 503, reason, retry_after=10)
         if method == 'HEAD':
             return await self.reply(writer, 200, '', 'video/mp2t')
 
@@ -302,13 +347,15 @@ class Relay:
             return await self.reply(writer, 502, 'Receiver refused the stream (HTTP %s)' % code)
 
         self.active[ref] = self.active.get(ref, 0) + 1
-        log.info('Start %s (%d channels active)', ref, len(self.active))
+        log.info('Start %s (%d channels, %d tuners active)', ref, len(self.active), len(self.tuners_in_use()))
+        sent = 0
         try:
             writer.write(b'HTTP/1.1 200 OK\r\nContent-Type: video/mp2t\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n')
             while True:
                 chunk = await up_reader.read(CHUNK)
                 if not chunk:
                     break
+                sent += len(chunk)
                 writer.write(chunk)
                 await writer.drain()
         except (ConnectionError, asyncio.IncompleteReadError, OSError):
@@ -319,14 +366,16 @@ class Relay:
             self.active[ref] -= 1
             if self.active[ref] <= 0:
                 del self.active[ref]
-            log.info('Stop %s (%d channels active)', ref, len(self.active))
+            log.info('Stop %s (%d channels, %d tuners active)', ref, len(self.active), len(self.tuners_in_use()))
+            if sent == 0:
+                log.warning('No video from the receiver for %s: its tuner could not lock (busy on another satellite, no signal or encrypted?)', ref)
 
-    async def reply(self, writer, status, body, content_type='text/plain; charset=utf-8', cache=False):
+    async def reply(self, writer, status, body, content_type='text/plain; charset=utf-8', cache=False, retry_after=None):
         reasons = {200: 'OK', 400: 'Bad Request', 403: 'Forbidden', 404: 'Not Found', 405: 'Method Not Allowed',
                    431: 'Request Header Fields Too Large', 502: 'Bad Gateway', 503: 'Service Unavailable'}
         data = body if isinstance(body, bytes) else body.encode()
         head = 'HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\nConnection: close\r\n%s\r\n' % (
-            status, reasons.get(status, ''), content_type, len(data), 'Cache-Control: max-age=86400\r\n' if cache else '')
+            status, reasons.get(status, ''), content_type, len(data), ('Cache-Control: max-age=86400\r\n' if cache else '') + ('Retry-After: %d\r\n' % retry_after if retry_after else ''))
         try:
             writer.write(head.encode() + data)
             await writer.drain()
@@ -352,7 +401,7 @@ async def main():
     settings = load_settings()
     relay = Relay(settings)
     server = await asyncio.start_server(relay.handle, '0.0.0.0', settings.port)
-    log.info('NeboTV relay %s on port %d, max %d channels, bouquets: %s', VERSION, settings.port, settings.max_streams, ', '.join(settings.bouquets) or 'all')
+    log.info('NeboTV relay %s on port %d, max %d tuners%s, bouquets: %s', VERSION, settings.port, settings.max_streams, ' (one cable: one satellite at a time)' if settings.single_cable else '', ', '.join(settings.bouquets) or 'all')
     if settings.duckdns_domain and settings.duckdns_token:
         asyncio.ensure_future(update_duckdns(settings))
     async with server:

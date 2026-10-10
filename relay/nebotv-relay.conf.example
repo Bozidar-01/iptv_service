@@ -7,8 +7,14 @@ port = 28080
 # Shared secret: paste the one shown in the NeboTV panel (Sources > Satellite receiver).
 secret =
 
-# Different channels that can play at once: the number of tuners.
+# Different transponders (frequencies) that can play at once: the number of tuners.
+# Channels on the same transponder share one tuner, so many more channels can play together.
 max_streams = 2
+
+# Both tuners fed by ONE dish cable (one DiSEqC switch)? Then the receiver can be on one satellite at a time,
+# and a channel from another satellite is refused at once while something else is playing. Leave "no" when
+# each tuner has its own cable.
+single_cable = no
 
 # The receiver's stream login (OpenWebif "authentication for streaming" is on):
 # usually root and the box's root password.
