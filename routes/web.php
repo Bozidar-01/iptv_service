@@ -91,6 +91,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('channels/{channel}/preview', [ChannelController::class, 'preview'])->name('channels.preview');
     Route::get('cleanup', [CleanupRuleController::class, 'index'])->name('cleanup.index');
     Route::post('cleanup', [CleanupRuleController::class, 'store'])->name('cleanup.store');
+    Route::post('cleanup/country', [CleanupRuleController::class, 'country'])->name('cleanup.country');
     Route::post('cleanup/apply', [CleanupRuleController::class, 'apply'])->name('cleanup.apply');
     Route::post('cleanup/pack/{pack}', [CleanupRuleController::class, 'pack'])->name('cleanup.pack');
     Route::post('cleanup/{rule}/toggle', [CleanupRuleController::class, 'toggle'])->name('cleanup.toggle');

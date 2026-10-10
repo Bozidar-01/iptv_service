@@ -44,6 +44,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/channels/bulk` | `admin.channels.bulk` | `ChannelController@bulk` |
 | GET | `/admin/cleanup` | `admin.cleanup.index` | `CleanupRuleController@index`: rules, ready-made sets, add form (admins only) |
 | POST | `/admin/cleanup` | `admin.cleanup.store` | `store`: `kind`, `match`, `pattern`, `replacement`, `when_category`, `source_id`; `preview=1` shows the effect without saving |
+| POST | `/admin/cleanup/country` | `admin.cleanup.country` | `CleanupRuleController@country`: `do` preview\|save\|apply, `split`, `min`, `exclude[]`, `enabled`; organize channels by country |
 | POST | `/admin/cleanup/apply` | `admin.cleanup.apply` | applies the enabled rules to the stored channels |
 | POST | `/admin/cleanup/pack/{pack}` | `admin.cleanup.pack` | adds a ready-made set (`tags`, `radio`, `satellite`, `genres`) |
 | POST | `/admin/cleanup/{rule}/toggle` | `admin.cleanup.toggle` | enable / disable a rule |

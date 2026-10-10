@@ -170,6 +170,11 @@ class SourceSyncService
         app(EpgService::class)->matchChannels($source->id);
         app(EpgService::class)->refreshGuidesMissingProgrammes();
 
+        // Country categories (when switched on): the guide match above is one of the ways a channel's country is found
+        if (app(CountryOrganizeService::class)->settings()['enabled']) {
+            app(CountryOrganizeService::class)->apply($source->id);
+        }
+
         return Channel::where('source_id', $source->id)->count();
     }
 

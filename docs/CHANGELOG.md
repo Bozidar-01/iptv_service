@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-10 — Organize channels by country
+- **Cleanup rules → Organize by country:** every channel goes in a category named after its country, with *Radio*, *Adult* and *International* apart, and big countries split by genre ("Italy – News"). The country is read from the playlist id, group, name tag, source list name, TV guide country and keywords. Preview first, then save and apply; with *Keep it on*, every import follows it. Excluding sources is possible; repeatable and fast (0.5 s for 12,000 channels).
+- Tried on a copy of the production database: 457 categories became 183 (142 country groups among the 5,120 enabled channels).
+- No schema change (one `cleanup_rules` row of kind `country`). Tests: `CountryOrganizeTest` (44). 
+- Files: `app/Support/Countries.php`, `app/Services/CountryOrganizeService.php`, `app/Http/Controllers/Admin/CleanupRuleController.php`, `app/Services/SourceSyncService.php`, `resources/views/admin/cleanup/index.blade.php`, `routes/web.php`, `lang/mk.json`, docs.
+
 ### 2026-10-10 — Refused plays with the reason, receiver page, tidy the receiver's list
 - **Activity → Refused:** every refused play with the exact reason and what to do (disabled, expired, device disconnected, channel off, hidden, not in bouquet, too many devices), filters, and the latest five on the user page. The app still gets the same 403. New table `denied_plays` (additive migration), `StreamService::denialReason` / `authorize`.
 - **Receiver page** (Sources → Receiver): online, relay version, tuners in use, the satellite it is on now, one-cable or not, and the relay's latest refusals and no-video streams with channel names. Relay **1.2** reports them in `/status` (copy `relay/nebotv-relay.py` and restart).
