@@ -9,6 +9,7 @@ use App\Models\ActiveSession;
 use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\CreditTransaction;
+use App\Models\DeniedPlay;
 use App\Models\StreamAlert;
 use App\Models\User;
 use App\Services\AuditService;
@@ -73,6 +74,7 @@ class UserController extends Controller
         $isLocalHost = in_array($request->getHost(), ['localhost', '127.0.0.1', '::1'], true);
         $channelCount = $this->userService->channelCount($user);
         $loginMessage = $this->userService->loginMessage($user, $request->getSchemeAndHttpHost(), $playlistUrl, route('me', ['token' => $user->playlist_token]));
+        $refused = DeniedPlay::with('channel:id,name')->where('user_id', $user->id)->latest('id')->limit(5)->get();
         $addresses = $this->sharing->addresses($user);
         $recentAddressCount = $this->sharing->recentAddressCount($user);
         $recentLogs = $user->streamLogs()->with('channel')->orderByDesc('started_at')->limit(10)->get();
@@ -83,7 +85,7 @@ class UserController extends Controller
             'port' => $request->getPort(),
         ];
 
-        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage', 'addresses', 'recentAddressCount'));
+        return view('admin.users.show', compact('user', 'playlistUrl', 'isLocalHost', 'channelCount', 'recentLogs', 'server', 'devices', 'loginMessage', 'addresses', 'recentAddressCount', 'refused'));
     }
 
     /**

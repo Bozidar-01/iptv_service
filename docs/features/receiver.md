@@ -77,6 +77,11 @@ On a phone with Wi‑Fi off, open `http://nebotv-home.duckdns.org:28080/status?k
 ### 6. Optional: transcoding
 Turn on transcoding on the receiver (OpenATV: Setup → System → Transcoding, 720p / 1 Mbps). Port 8002 then answers, and the **Smaller streams** switch works.
 
+### Receiver page in the panel (`admin.receiver.show`)
+Sources → *Receiver* on a receiver source (admins). It reads the relay's `/status` (kept 15 s; *Refresh* clears it): online or not, relay version, **tuners in use / max**, the **satellite it is on now** (`13.0° E`), whether `single_cable` is on, and **Latest problems**: the relay's last 20 refusals (`All tuners are busy`, `another satellite`) and streams with **no video**, with channel names and times. Relay 1.2+ reports problems (an older one shows a hint to update it). Errors say whether the relay did not answer, refused the secret, or the box does not answer.
+
+**Shorten the channel list** (same page): switch off *Radio and data services* (service type radio/data or `(RADIO)` names), *Internal stream entries* (`http%3a` references: they only play if the receiver runs that local stream service, try one first) and/or *Channels without a TV guide*, each with its count. Receiver channels can't be stream-checked (a check would take a tuner), so this uses the reference and the guide. Nothing is deleted: switched-off channels stay off after syncs and can be enabled again. Audit-logged.
+
 ### Updating the relay on the receiver
 Copy the new program over the old one and restart it (your settings file stays as it is):
 
@@ -95,6 +100,7 @@ Flashing wipes `/usr/bin` and `/etc/init.d`. Add the three files to the image ba
 - `502 Receiver refused the stream (HTTP 401)`: wrong `box_password`.
 - `503 All tuners are busy`: both tuners are on other transponders (including recordings or your own TV).
 - `503 The receiver is on another satellite right now`: `single_cable = yes` and something is playing from a different satellite.
+- The Receiver page shows the same problems without SSH.
 - `No video from the receiver` in the log, and the player shows nothing after a few seconds: the receiver accepted the stream but its tuner couldn't lock. Test on the box: `wget -S -q -O - -T 10 "http://root:PASSWORD@127.0.0.1:8001/<service reference>" | head -c 200000 | wc -c` (type the real password; a number like 200000 means it streams, 0 means it can't tune: no free tuner for that satellite, no signal, or encrypted).
 - The Sources page shows *receiver online / offline*. An alert arrives when it changes.
 - Relay tests: `python3 relay/test_relay.py`.

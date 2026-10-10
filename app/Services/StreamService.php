@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ActiveSession;
 use App\Models\Channel;
+use App\Models\DeniedPlay;
 use App\Models\StreamLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
@@ -48,13 +49,32 @@ class StreamService
      */
     public function isAllowed(User $user, Channel $channel)
     {
-        if (!$user->isActive() || !$channel->is_active || $this->isBlocked($user)) {
-            return false;
+        return $this->denialReason($user, $channel) === null;
+    }
+
+    /**
+     * Why this user can't play this channel now (a DeniedPlay constant), or null when they can.
+     */
+    public function denialReason(User $user, Channel $channel): ?string
+    {
+        if ($user->status !== 'active') {
+            return DeniedPlay::DISABLED;
+        }
+        if ($user->isExpired()) {
+            return DeniedPlay::EXPIRED;
+        }
+        if ($this->isBlocked($user)) {
+            return DeniedPlay::BLOCKED;
+        }
+        if (!$channel->is_active) {
+            return DeniedPlay::CHANNEL_OFF;
         }
 
         // The channel must be in one of the user's bouquets and not hidden for them
         if (!Channel::availableTo($user)->whereKey($channel->id)->exists()) {
-            return false;
+            $inBouquet = $user->bouquets()->whereHas('channels', fn ($q) => $q->where('channels.id', $channel->id))->exists();
+
+            return $inBouquet ? DeniedPlay::HIDDEN : DeniedPlay::NOT_IN_BOUQUET;
         }
 
         // Check max connections: one slot per device (IP + user agent). The device's own session
@@ -65,10 +85,25 @@ class StreamService
             ->count();
 
         if ($otherDevices >= $user->max_connections) {
-            return false;
+            return DeniedPlay::LIMIT;
         }
 
-        return true;
+        return null;
+    }
+
+    /**
+     * Check a play and, when it is refused, record why (once a minute per user, channel and reason, so a player that retries
+     * does not fill the list). Returns whether the user may play.
+     */
+    public function authorize(User $user, Channel $channel): bool
+    {
+        $reason = $this->denialReason($user, $channel);
+
+        if ($reason !== null && Cache::add("denied:{$user->id}:{$channel->id}:{$reason}", true, now()->addMinute())) {
+            DeniedPlay::create(['user_id' => $user->id, 'channel_id' => $channel->id, 'reason' => $reason, 'ip' => Request::ip(), 'user_agent' => $this->userAgent()]);
+        }
+
+        return $reason === null;
     }
 
     /**

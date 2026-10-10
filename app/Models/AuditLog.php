@@ -63,6 +63,8 @@ class AuditLog extends Model
 
     public const CLEANUP_APPLIED = 'cleanup.applied';
 
+    public const CHANNELS_TIDIED = 'channels.tidied';
+
     public const USERS_BULK = 'users.bulk';
 
     public const USERS_IMPORTED = 'users.imported';
@@ -112,6 +114,7 @@ class AuditLog extends Model
             self::CHANNELS_DELETED => __('Channels deleted'),
             self::CHANNELS_DEDUPLICATED => __('Duplicate channels switched off'),
             self::CLEANUP_APPLIED => __('Cleanup rules applied'),
+            self::CHANNELS_TIDIED => __('Receiver channels switched off'),
             self::USERS_BULK => __('Bulk action on users'),
             self::USERS_IMPORTED => __('Users imported'),
             self::USERS_EXPORTED => __('Users exported with passwords'),

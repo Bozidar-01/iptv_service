@@ -232,6 +232,29 @@
         @endif
     </div>
 
+    @if($refused->isNotEmpty())
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2>{{ __('Refused plays') }}</h2>
+                    <p>{{ __('Why this user\'s latest plays were refused.') }}</p>
+                </div>
+                <a href="{{ route('admin.logs.refused', ['user' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('View all') }}</a>
+            </div>
+            <ul class="list">
+                @foreach($refused as $row)
+                    <li>
+                        <div>
+                            <strong>{{ $row->channel->name ?? __('Deleted channel') }}</strong> <span class="badge badge-warning">{{ $row->label() }}</span>
+                            <div class="muted">{{ $row->hint() }}</div>
+                        </div>
+                        <span class="muted" title="{{ $row->created_at }}">{{ $row->created_at->diffForHumans() }}</span>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     @if($addresses)
         <div class="card">
             <div class="card-header">

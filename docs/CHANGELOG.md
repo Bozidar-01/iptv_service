@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-10 — Refused plays with the reason, receiver page, tidy the receiver's list
+- **Activity → Refused:** every refused play with the exact reason and what to do (disabled, expired, device disconnected, channel off, hidden, not in bouquet, too many devices), filters, and the latest five on the user page. The app still gets the same 403. New table `denied_plays` (additive migration), `StreamService::denialReason` / `authorize`.
+- **Receiver page** (Sources → Receiver): online, relay version, tuners in use, the satellite it is on now, one-cable or not, and the relay's latest refusals and no-video streams with channel names. Relay **1.2** reports them in `/status` (copy `relay/nebotv-relay.py` and restart).
+- **Shorten the receiver's list:** switch off radio/data services, internal stream entries and/or channels without a guide, with counts (nothing deleted). On the dev data radio + internal would switch off 1,051 of 2,001 channels; try one internal entry first, they play only if the box runs that service.
+- Tests: `DeniedPlayTest` (11), `ReceiverStatusTest` (10), 2 more relay tests (19). 709 PHP tests.
+- Files: `app/Services/StreamService.php`, `app/Models/DeniedPlay.php`, `app/Http/Controllers/Admin/LogController.php`, `app/Services/ReceiverStatusService.php`, `app/Services/ReceiverTidyService.php`, `app/Http/Controllers/Admin/ReceiverController.php`, `relay/nebotv-relay.py`, views, routes, `lang/mk.json`, docs.
+
 ### 2026-10-10 — Receiver relay 1.1: channels on one transponder share a tuner
 - The relay counted **different channels** against the number of tuners, so a third channel was refused even when it was on the same frequency as one already playing. It now counts **transponders** (read from the service reference): any channels on the same transponder share one tuner. On the Octagon source that is 2,001 channels on 306 transponders, about 6.5 each.
 - New setting **`single_cable = yes`** for two tuners on one dish cable: the receiver can be on one satellite at a time, so a channel from another satellite is refused **at once** (`503 The receiver is on another satellite right now`, `Retry-After`) instead of the player waiting about 6 seconds and showing nothing.

@@ -40,7 +40,7 @@ class PlayController extends Controller
         }
 
         // 2. Validate Access (Subscription, Status, Max Connections)
-        if (!$this->streamService->isAllowed($user, $channel)) {
+        if (!$this->streamService->authorize($user, $channel)) {
             return response('Access denied or connection limit reached', 403);
         }
 
