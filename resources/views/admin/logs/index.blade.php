@@ -10,6 +10,8 @@
     </div>
 </div>
 
+@include('admin.partials.activity-tabs')
+
 <div class="card">
     <form method="GET" action="{{ route('admin.logs.index') }}" class="toolbar">
         <select class="select" name="user" onchange="this.form.submit()" aria-label="{{ __('User') }}">

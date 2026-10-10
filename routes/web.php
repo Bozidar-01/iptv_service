@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\HiddenChannelController;
 use App\Http\Controllers\Admin\LaunchChecklistController;
 use App\Http\Controllers\Admin\LiveController;
 use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\ReceiverController;
 use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
@@ -68,6 +69,7 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
+    Route::get('logs/refused', [LogController::class, 'refused'])->name('logs.refused');
     Route::get('credits', [CreditController::class, 'index'])->name('credits.index');
 
     Route::get('security', [SecurityController::class, 'index'])->name('security.index');
@@ -79,6 +81,9 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
 
 // Admin-only: content, sources, TV guide, statistics
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('sources/{source}/receiver', [ReceiverController::class, 'show'])->name('receiver.show');
+    Route::post('sources/{source}/receiver/refresh', [ReceiverController::class, 'refresh'])->name('receiver.refresh');
+    Route::post('sources/{source}/receiver/tidy', [ReceiverController::class, 'tidy'])->name('receiver.tidy');
     Route::post('sources/{source}/sync', [SourceController::class, 'sync'])->name('sources.sync');
     Route::resource('sources', SourceController::class)->except(['show']);
 

@@ -261,6 +261,18 @@ class StreamTest(unittest.IsolatedAsyncioTestCase):
             status, body = await self.get(self.link())
         self.assertEqual((status, body), (200, b''))
         self.assertTrue(any('No video from the receiver' in line for line in logs.output))
+        events = (await self.relay.status())['recent_events']
+        self.assertEqual([(e['kind'], e['ref']) for e in events], [('no_video', RAI1)])
+
+    async def test_remembers_refusals_for_the_panel(self):
+        first = await self.hold_first_stream()
+        await self.get(self.link(HOTBIRD_OTHER))
+        self.box.release.set()
+        await first
+
+        events = (await self.relay.status())['recent_events']
+        self.assertEqual([(e['kind'], e['ref'], e['reason']) for e in events], [('refused', HOTBIRD_OTHER, 'All tuners are busy')])
+        self.assertIsInstance(events[0]['t'], int)
 
     async def test_protects_playlist_and_status(self):
         self.assertEqual((await self.get('http://127.0.0.1:%d/status' % self.port))[0], 403)

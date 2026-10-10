@@ -73,7 +73,7 @@ class XtreamController extends Controller
             return response('Channel not found', 404);
         }
 
-        if (!$this->streamService->isAllowed($user, $channel)) {
+        if (!$this->streamService->authorize($user, $channel)) {
             return response('Access denied or connection limit reached', 403);
         }
 

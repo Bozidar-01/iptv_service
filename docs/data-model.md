@@ -40,6 +40,9 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 ### owner_hidden_channels
 `id`, `owner_id` FK → users nullable (`ON DELETE CASCADE`; null = the admins' own users, those without a reseller), `channel_id` FK → channels (`CASCADE`), unique (`owner_id`, `channel_id`; MySQL allows several null owners, so `ChannelHideService` skips rows that exist). A channel hidden for all users of that owner.
 
+### denied_plays
+`id`, `user_id` FK → users nullable (`SET NULL`), `channel_id` FK → channels nullable (`SET NULL`), `reason` (`disabled`, `expired`, `device_blocked`, `channel_off`, `hidden`, `not_in_bouquet`, `connection_limit`; indexed), `ip`, `user_agent`, `created_at` (indexed). Written by `StreamService::authorize`; pruned after `LOG_RETENTION_DAYS`.
+
 ### cleanup_rules
 `id`, `kind` (`channel_name`, `category`, `channel_category`), `match` (`contains`, `equals`, `regex`), `pattern`, `replacement` (nullable), `when_category` (nullable; channel_category only), `source_id` FK → sources nullable (`CASCADE`; null = all sources), `enabled`, `sort_order`, timestamps. See [features/cleanup-rules.md](features/cleanup-rules.md).
 

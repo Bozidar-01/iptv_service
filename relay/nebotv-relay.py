@@ -27,6 +27,7 @@ Settings: /etc/nebotv-relay.conf (see nebotv-relay.conf.example).
 
 import asyncio
 import base64
+import collections
 import configparser
 import hashlib
 import hmac
@@ -39,7 +40,7 @@ import time
 import urllib.parse
 import urllib.request
 
-VERSION = '1.1'
+VERSION = '1.2'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -223,6 +224,10 @@ class Relay:
     def __init__(self, settings):
         self.settings = settings
         self.active = {}  # service ref -> number of viewers
+        self.events = collections.deque(maxlen=20)  # latest refusals and streams without video, for /status
+
+    def note(self, kind, ref, reason):
+        self.events.append({'t': int(time.time()), 'kind': kind, 'ref': ref, 'reason': reason})
 
     def tuners_in_use(self):
         """The transponders being played: one tuner each (channels on the same one share it)."""
@@ -304,6 +309,7 @@ class Relay:
             'ok': box, 'box': box, 'version': VERSION,
             'active_channels': len(self.active), 'active_tuners': len(self.tuners_in_use()), 'max_streams': self.settings.max_streams,
             'single_cable': self.settings.single_cable, 'satellites': sorted({satellite_of(r) for r in self.active} - {None}),
+            'recent_events': list(self.events),
         }
 
     async def stream(self, writer, encoded, query, method):
@@ -319,6 +325,7 @@ class Relay:
         reason = self.refusal(ref)
         if reason:
             log.warning('Refused %s: %s (%d tuners in use)', ref, reason, len(self.tuners_in_use()))
+            self.note('refused', ref, reason)
             return await self.reply(writer, 503, reason, retry_after=10)
         if method == 'HEAD':
             return await self.reply(writer, 200, '', 'video/mp2t')
@@ -369,6 +376,7 @@ class Relay:
             log.info('Stop %s (%d channels, %d tuners active)', ref, len(self.active), len(self.tuners_in_use()))
             if sent == 0:
                 log.warning('No video from the receiver for %s: its tuner could not lock (busy on another satellite, no signal or encrypted?)', ref)
+                self.note('no_video', ref, 'The receiver sent no video')
 
     async def reply(self, writer, status, body, content_type='text/plain; charset=utf-8', cache=False, retry_after=None):
         reasons = {200: 'OK', 400: 'Bad Request', 403: 'Forbidden', 404: 'Not Found', 405: 'Method Not Allowed',

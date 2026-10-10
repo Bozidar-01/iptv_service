@@ -86,6 +86,9 @@
                                     @csrf
                                     <button class="btn btn-secondary btn-sm" @disabled($source->isBusy())><x-icon name="refresh" /> {{ __('Sync') }}</button>
                                 </form>
+                                @if($source->isReceiver())
+                                    <a href="{{ route('admin.receiver.show', $source) }}" class="btn btn-secondary btn-sm"><x-icon name="signal" /> {{ __('Receiver') }}</a>
+                                @endif
                                 <a href="{{ route('admin.sources.edit', $source) }}" class="btn btn-ghost btn-icon" title="{{ __('Edit') }}" aria-label="{{ __('Edit :name', ['name' => $source->name]) }}"><x-icon name="edit" /></a>
                                 <form method="POST" action="{{ route('admin.sources.destroy', $source) }}" class="inline-form"
                                       data-confirm="{{ __("Delete :name and its :count channels? This can't be undone.", ['name' => $source->name, 'count' => number_format($source->channel_count)]) }}">

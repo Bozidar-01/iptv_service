@@ -83,6 +83,10 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/hide-channels` | `admin.hide-channels.bulk` | `bulk`: `action` hide\|show, `scope` selected\|filtered, `ids[]`, `filters[]`; edits the list for all of my users |
 | GET | `/admin/users/{user}/channels` | `admin.users.channels` | `user`: the user's channels, same filters |
 | POST | `/admin/users/{user}/channels` | `admin.users.channels.bulk` | `userBulk`: hide / show for this user alone |
+| GET | `/admin/logs/refused` | `admin.logs.refused` | `LogController@refused`: refused plays with the reason (`?reason=&user=`); staff |
+| GET | `/admin/sources/{source}/receiver` | `admin.receiver.show` | `ReceiverController@show`: relay status and the tidy form (receiver sources, admins) |
+| POST | `/admin/sources/{source}/receiver/refresh` | `admin.receiver.refresh` | forget the cached status |
+| POST | `/admin/sources/{source}/receiver/tidy` | `admin.receiver.tidy` | `criteria[]` radio\|internal\|no_guide; switches off matching channels |
 | GET | `/admin/backups` | `admin.backups.index` | `BackupController@index`: backups per disk, last backup and check (admins only) |
 | POST | `/admin/backups/verify` | `admin.backups.verify` | checks the newest backup on every disk |
 | GET | `/admin/live` | `admin.live.index` | `LiveController@index`: devices watching now (staff; a reseller sees their own users) |
