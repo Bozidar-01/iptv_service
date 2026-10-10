@@ -65,6 +65,72 @@ class LamedbTest(unittest.TestCase):
         self.assertEqual(relay.clean_name('• 13,0 E - RAI • Mediaset • TivùSat'), '13,0 E - RAI Mediaset TivùSat')
 
 
+# Same transponder as RAI1 (tsid 1450, onid 13E, namespace 820000), another channel on it
+RAI_SAME_TRANSPONDER = '1:0:1:64D:1450:13E:820000:0:0:0:'
+# 13.0 E, another transponder
+HOTBIRD_OTHER = '1:0:19:D4A:1451:13E:820000:0:0:0:'
+# 19.2 E (namespace C00000)
+ASTRA = '1:0:1:100:2000:13E:C00000:0:0:0:'
+
+
+class TransponderTest(unittest.TestCase):
+    def test_transponder_key_and_satellite(self):
+        self.assertEqual(relay.transponder_key(RAI1), (0x1450, 0x13E, 0x820000))
+        self.assertEqual(relay.transponder_key(RAI_SAME_TRANSPONDER), relay.transponder_key(RAI1))
+        self.assertNotEqual(relay.transponder_key(HOTBIRD_OTHER), relay.transponder_key(RAI1))
+        self.assertIsNone(relay.transponder_key('1:0:1'))
+
+        self.assertEqual(relay.satellite_of(RAI1), 130)        # 13.0 E
+        self.assertEqual(relay.satellite_of(ASTRA), 192)       # 19.2 E
+        self.assertEqual(relay.satellite_of('1:0:1:1:1:1:A00000:0:0:0:'), 160)
+        self.assertEqual(relay.satellite_of('1:0:1:1:1:1:E080000:0:0:0:'), 0xE08)    # west positions are 3600 - degrees
+        self.assertIsNone(relay.satellite_of('1:0:1:1:1:1:EEEE0000:0:0:0:'))         # terrestrial
+        self.assertIsNone(relay.satellite_of('1:0:1:1:1:1:FFFF0000:0:0:0:'))         # cable
+        self.assertIsNone(relay.satellite_of('1:0:1:1:1:1:0:0:0:0:'))                # stream reference
+        self.assertIsNone(relay.satellite_of('garbage'))
+
+    def settings(self, **over):
+        conf = write('[relay]\nsecret = test-secret-1234567890\n')
+        settings = relay.Settings(conf)
+        for key, value in over.items():
+            setattr(settings, key, value)
+        return settings
+
+    def test_channels_on_one_transponder_share_a_tuner(self):
+        box = relay.Relay(self.settings(max_streams=1))
+        box.active[RAI1] = 1
+
+        self.assertIsNone(box.refusal(RAI1))                       # the same channel
+        self.assertIsNone(box.refusal(RAI_SAME_TRANSPONDER))       # another channel on the same transponder
+        self.assertEqual(box.refusal(HOTBIRD_OTHER), 'All tuners are busy')
+        self.assertEqual(box.refusal(ASTRA), 'All tuners are busy')
+
+    def test_two_tuners_two_transponders(self):
+        box = relay.Relay(self.settings(max_streams=2))
+        box.active[RAI1] = 1
+        box.active[RAI_SAME_TRANSPONDER] = 1        # still one tuner
+
+        self.assertIsNone(box.refusal(HOTBIRD_OTHER))
+        box.active[HOTBIRD_OTHER] = 1
+        self.assertEqual(box.refusal(ASTRA), 'All tuners are busy')
+
+    def test_one_cable_means_one_satellite(self):
+        box = relay.Relay(self.settings(max_streams=2, single_cable=True))
+        box.active[RAI1] = 1
+
+        self.assertIsNone(box.refusal(HOTBIRD_OTHER))                                   # same satellite
+        self.assertEqual(box.refusal(ASTRA), 'The receiver is on another satellite right now')
+        self.assertIsNone(box.refusal('1:0:1:1:1:1:EEEE0000:0:0:0:'))                   # not a satellite channel
+
+        box.active.clear()
+        self.assertIsNone(box.refusal(ASTRA))                                           # nothing playing: any satellite
+
+        # With two cables (the default) the other satellite is fine
+        two = relay.Relay(self.settings(max_streams=2, single_cable=False))
+        two.active[RAI1] = 1
+        self.assertIsNone(two.refusal(ASTRA))
+
+
 class FakeReceiver:
     """Answers like Enigma2's streaming port: checks the login, then sends a little TS data."""
     def __init__(self):
@@ -72,6 +138,7 @@ class FakeReceiver:
         # A stream stays open until this is set (set by default); tests that need it to stay busy clear it first
         self.release = asyncio.Event()
         self.release.set()
+        self.silent = False   # accept the stream but send no video, like a tuner that can't lock
 
     async def handle(self, reader, writer):
         head = (await reader.readuntil(b'\r\n\r\n')).decode()
@@ -79,7 +146,7 @@ class FakeReceiver:
         if 'Authorization: Basic cm9vdDpib3hwYXNz' not in head:  # root:boxpass
             writer.write(b'HTTP/1.0 401 Unauthorized\r\n\r\n')
         else:
-            writer.write(b'HTTP/1.0 200 OK\r\nContent-Type: video/mpeg\r\n\r\n' + b'\x47' * 1880)
+            writer.write(b'HTTP/1.0 200 OK\r\nContent-Type: video/mpeg\r\n\r\n' + (b'' if self.silent else b'\x47' * 1880))
             await writer.drain()
             await asyncio.wait_for(self.release.wait(), 10)
         writer.close()
@@ -126,23 +193,74 @@ class StreamTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.get(self.link(expires=int(time.time()) - 5)))[0], 403)
         self.assertEqual(self.box.requests, [])
 
-    async def test_limits_channels_to_the_tuners(self):
-        other = '1:0:19:D4A:1450:13E:820000:0:0:0:'
-        self.box.release.clear()   # the first stream stays open until we say so, however slow the machine is
-        first = asyncio.ensure_future(self.get(self.link()))
-        for _ in range(250):       # wait (up to 5 s) until the relay has taken the tuner
+    async def hold_first_stream(self, ref=RAI1):
+        """Start a stream that stays open until box.release is set, however slow the machine is; waits until the relay has it."""
+        self.box.release.clear()
+        first = asyncio.ensure_future(self.get(self.link(ref)))
+        for _ in range(250):       # up to 5 s
             if self.relay.active:
                 break
             await asyncio.sleep(0.02)
         self.assertTrue(self.relay.active)
+        return first
 
-        busy = await self.get(self.link(other))
+    async def test_limits_channels_to_the_tuners(self):
+        first = await self.hold_first_stream()
+
+        busy = await self.get(self.link(HOTBIRD_OTHER))       # another transponder needs a second tuner
         same = asyncio.ensure_future(self.get(self.link()))
         await asyncio.sleep(0.2)
         self.box.release.set()
-        self.assertEqual(busy[0], 503)   # another channel needs a second tuner
-        self.assertEqual((await same)[0], 200)   # same channel shares the tuner
+        self.assertEqual(busy[0], 503)
+        self.assertEqual(busy[1], b'All tuners are busy')
+        self.assertEqual((await same)[0], 200)                # the same channel shares the tuner
         await first
+
+    async def test_channels_on_the_same_transponder_share_the_tuner(self):
+        first = await self.hold_first_stream()
+
+        sibling = asyncio.ensure_future(self.get(self.link(RAI_SAME_TRANSPONDER)))
+        await asyncio.sleep(0.2)
+        self.assertEqual(len(self.relay.active), 2)           # two channels playing ...
+        self.assertEqual(len(self.relay.tuners_in_use()), 1)  # ... on one tuner
+        self.box.release.set()
+        self.assertEqual((await sibling)[0], 200)
+        await first
+
+    async def test_one_cable_refuses_another_satellite_at_once(self):
+        self.relay.settings.max_streams = 2
+        self.relay.settings.single_cable = True
+        first = await self.hold_first_stream()
+
+        started = time.time()
+        astra = await self.get(self.link(ASTRA))
+        self.assertEqual(astra[0], 503)
+        self.assertEqual(astra[1], b'The receiver is on another satellite right now')
+        self.assertLess(time.time() - started, 1)             # at once, not after the receiver gave up
+        self.assertEqual(len(self.box.requests), 1)           # the receiver was never asked
+
+        other_transponder = asyncio.ensure_future(self.get(self.link(HOTBIRD_OTHER)))   # same satellite: fine
+        await asyncio.sleep(0.2)
+        self.box.release.set()
+        self.assertEqual((await other_transponder)[0], 200)
+        await first
+
+    async def test_status_reports_the_tuners(self):
+        self.relay.settings.single_cable = True
+        first = await self.hold_first_stream()
+
+        status = await self.relay.status()
+        self.assertEqual((status['active_channels'], status['active_tuners'], status['max_streams']), (1, 1, 1))
+        self.assertEqual((status['single_cable'], status['satellites'], status['version']), (True, [130], relay.VERSION))
+        self.box.release.set()
+        await first
+
+    async def test_says_so_when_the_receiver_sends_no_video(self):
+        self.box.silent = True
+        with self.assertLogs('nebotv-relay', level='WARNING') as logs:
+            status, body = await self.get(self.link())
+        self.assertEqual((status, body), (200, b''))
+        self.assertTrue(any('No video from the receiver' in line for line in logs.output))
 
     async def test_protects_playlist_and_status(self):
         self.assertEqual((await self.get('http://127.0.0.1:%d/status' % self.port))[0], 403)

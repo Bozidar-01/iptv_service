@@ -17,13 +17,16 @@ TV app ──► router (port 28080 forwarded) ──► relay on the receiver (
 
 | Part | What it does |
 |---|---|
-| `relay/nebotv-relay.py` | Runs on the receiver (Python 3 standard library, nothing to install). `GET /s/<ref>.ts` streams a channel for a valid signed link. `/playlist.m3u?key=` returns the chosen bouquets as M3U, with markers inside a bouquet becoming `group-title`. `/status?key=` returns `{"ok", "box", "active_channels", "max_streams"}`. `/picon/*.png` serves logos. It can also keep a DuckDNS name updated every 5 minutes. |
+| `relay/nebotv-relay.py` | Runs on the receiver (Python 3 standard library, nothing to install). `GET /s/<ref>.ts` streams a channel for a valid signed link. `/playlist.m3u?key=` returns the chosen bouquets as M3U, with markers inside a bouquet becoming `group-title`. `/status?key=` returns `{"ok", "box", "version", "active_channels", "active_tuners", "max_streams", "single_cable", "satellites"}`. `/picon/*.png` serves logos. It can also keep a DuckDNS name updated every 5 minutes. |
 | Source type **Satellite receiver** | Relay address + shared secret (stored encrypted, `sources.relay_secret`) + **Smaller streams (transcoding)** (`sources.transcode`). Imports `<relay>/playlist.m3u?key=<secret>` like any other source. Stream checking is always off for it, since checking tunes the receiver. |
 | `ReceiverService::playUrl()` | Used by `/play`, Xtream `/live` and the admin preview. For receiver channels, appends `e` (expiry: now + `RECEIVER_LINK_MINUTES`, default 180), `x` (transcode) and `s` = first 32 hex characters of `HMAC-SHA256(secret, "<ref>|<e>|<x>")`. The format is shared with `sign()` in the relay; a test in each checks the same vector. |
 | `iptv:check-receivers` (every 5 min) | Calls `/status`. Saves `receiver_online` / `receiver_checked_at`, shown on the Sources page. Creates a `receiver_down` / `receiver_up` alert on changes (panel and email). Always on, no watching needed. |
 
 **Limits:**
-- **At most `max_streams` different channels at once** (2 tuners). More viewers of a channel that's already playing share its tuner. A request for another channel gets `503 All tuners are busy`.
+- **At most `max_streams` different transponders at once** (2 tuners). A transponder is one frequency that carries a bundle of channels (about 6 per transponder on the Octagon source: 2,001 channels on 306 transponders). **Channels on the same transponder share one tuner**, so many channels of a bundle can play together, and any number of viewers can watch the same channel. The transponder comes from the service reference (`1:0:19:D49:1450:13E:820000:…` → transponder id `1450`, network `13E`, namespace `820000`).
+- A request that needs a tuner that isn't there gets `503 All tuners are busy` **at once**, with `Retry-After: 10`.
+- **`single_cable = yes`** (both tuners on one dish cable and one DiSEqC switch): the receiver can only be on one satellite at a time, so a channel from another satellite is refused at once with `503 The receiver is on another satellite right now` while anything else is playing. The satellite is the top half of the namespace (`820000` = 13.0 E, `C00000` = 19.2 E, `A00000` = 16.0 E). Terrestrial, cable and stream references have none and are never refused for it. Set it when a second tuner can't reach the satellite the first one is on (the 503 appears after a few seconds of no video otherwise).
+- **No video:** when the receiver accepts a stream but sends no data (its tuner can't lock: busy on another satellite, no signal, encrypted), the relay logs `No video from the receiver for <ref>`.
 - **Upload bandwidth:** a raw HD channel uses about 8–15 Mbps, a transcoded one about 1 Mbps (720p).
 - **A signed link works for 3 hours** (`RECEIVER_LINK_MINUTES`), so players can reconnect after a drop. Someone who copies a link can use it until then.
 - **The relay speaks plain HTTP.** No passwords travel in its links, only signatures.
@@ -74,12 +77,24 @@ On a phone with Wi‑Fi off, open `http://nebotv-home.duckdns.org:28080/status?k
 ### 6. Optional: transcoding
 Turn on transcoding on the receiver (OpenATV: Setup → System → Transcoding, 720p / 1 Mbps). Port 8002 then answers, and the **Smaller streams** switch works.
 
+### Updating the relay on the receiver
+Copy the new program over the old one and restart it (your settings file stays as it is):
+
+```bash
+scp relay/nebotv-relay.py root@192.168.100.40:/usr/bin/nebotv-relay.py
+ssh root@192.168.100.40 '/etc/init.d/nebotv-relay restart && tail -n 3 /tmp/nebotv-relay.log'
+```
+
+The log line shows the version (`NeboTV relay 1.1`) and `(one cable: one satellite at a time)` when `single_cable = yes` is set. To use the new setting, add `single_cable = yes` under `[relay]` in `/etc/nebotv-relay.conf` first (see `relay/nebotv-relay.conf.example`).
+
 ### After an OpenATV image update
 Flashing wipes `/usr/bin` and `/etc/init.d`. Add the three files to the image backup (Setup → Software management → Backup settings → Select files), or repeat step 4.
 
 ## Checking and debugging
 - Relay log: `/tmp/nebotv-relay.log` (cleared on reboot).
 - `502 Receiver refused the stream (HTTP 401)`: wrong `box_password`.
-- `503 All tuners are busy`: both tuners are on other channels (including recordings or your own TV).
+- `503 All tuners are busy`: both tuners are on other transponders (including recordings or your own TV).
+- `503 The receiver is on another satellite right now`: `single_cable = yes` and something is playing from a different satellite.
+- `No video from the receiver` in the log, and the player shows nothing after a few seconds: the receiver accepted the stream but its tuner couldn't lock. Test on the box: `wget -S -q -O - -T 10 "http://root:PASSWORD@127.0.0.1:8001/<service reference>" | head -c 200000 | wc -c` (type the real password; a number like 200000 means it streams, 0 means it can't tune: no free tuner for that satellite, no signal, or encrypted).
 - The Sources page shows *receiver online / offline*. An alert arrives when it changes.
 - Relay tests: `python3 relay/test_relay.py`.

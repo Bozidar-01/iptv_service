@@ -4,6 +4,14 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-10 — Receiver relay 1.1: channels on one transponder share a tuner
+- The relay counted **different channels** against the number of tuners, so a third channel was refused even when it was on the same frequency as one already playing. It now counts **transponders** (read from the service reference): any channels on the same transponder share one tuner. On the Octagon source that is 2,001 channels on 306 transponders, about 6.5 each.
+- New setting **`single_cable = yes`** for two tuners on one dish cable: the receiver can be on one satellite at a time, so a channel from another satellite is refused **at once** (`503 The receiver is on another satellite right now`, `Retry-After`) instead of the player waiting about 6 seconds and showing nothing.
+- The relay logs `No video from the receiver for <ref>` when the receiver accepts a stream but sends nothing, and `/status` now reports `version`, `active_tuners`, `single_cable` and `satellites`.
+- Update on the receiver: copy `relay/nebotv-relay.py` and restart (docs/features/receiver.md#updating-the-relay-on-the-receiver). The panel needs no change.
+- Tests: 17 relay tests (was 9), repeated 15 times under full CPU load without a failure.
+- Files: `relay/nebotv-relay.py`, `relay/test_relay.py`, `relay/nebotv-relay.conf.example`, `docs/features/receiver.md`.
+
 ### 2026-10-09 — Fixed logo, language and account; only the menu scrolls
 - The sidebar has three zones: the **logo** on top and the **language, light/dark mode and account** at the bottom stay in place; only the **menu** between them scrolls (it got long with the new pages, and used to push the language and account out of view). The bell bar at the top of the page also stays in view while the page scrolls. On a phone the opened menu behaves the same.
 - Tests: three browser tests (`e2e/layout.spec.js`: logo, language/account and top bar stay put on a short window; the phone menu). They fail on the old CSS.
