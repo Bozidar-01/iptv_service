@@ -79,7 +79,7 @@ jobs:
           extensions: pdo_sqlite, intl, zip, pcntl, bcmath, mbstring
           coverage: none
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
