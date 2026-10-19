@@ -16,6 +16,9 @@ exposing the receiver itself:
       bouquet become categories. With fta_only, encrypted channels are left out.
   GET /status?key=<secret>
       JSON health report for the panel.
+  GET /epg.xml?key=<secret>
+      The receiver's own TV guide for the configured bouquets, as XMLTV, for the panel to import (channel ids are the
+      service references, like the playlist's tvg-id). Only channels the receiver has programmes for are listed.
   GET /picon/<file>.png
       Channel logos from the receiver.
 
@@ -39,8 +42,9 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+from xml.sax.saxutils import escape, quoteattr
 
-VERSION = '1.2'
+VERSION = '1.3'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -183,9 +187,15 @@ def clean_name(name):
     return re.sub(r'\s+', ' ', name).strip(' -')
 
 
-def build_playlist(settings, base_url):
+def selected_bouquets(settings):
+    """[ref, name] of the bouquets in the settings (all of them when none are set)."""
     bouquets = json.loads(webif_get(settings, '/api/bouquets'))['bouquets']
     wanted = [b.lower() for b in settings.bouquets]
+    wanted_clean = [clean_name(w).lower() for w in wanted]
+    return [[ref, name] for ref, name in bouquets if not wanted or clean_name(name).lower() in wanted_clean or name.lower() in wanted]
+
+
+def build_playlist(settings, base_url):
     encrypted = encrypted_services(settings.lamedb) if settings.fta_only else set()
     if encrypted is None:
         log.warning('Cannot read %s: encrypted channels cannot be left out', settings.lamedb)
@@ -193,9 +203,7 @@ def build_playlist(settings, base_url):
 
     lines = ['#EXTM3U']
     count = 0
-    for ref, name in bouquets:
-        if wanted and clean_name(name).lower() not in [clean_name(w).lower() for w in wanted] and name.lower() not in wanted:
-            continue
+    for ref, name in selected_bouquets(settings):
         group = clean_name(name)
         query = urllib.parse.urlencode({'sRef': ref, 'picon': 1})
         services = json.loads(webif_get(settings, '/api/getservices?' + query))['services']
@@ -218,6 +226,73 @@ def build_playlist(settings, base_url):
     return '\n'.join(lines) + '\n'
 
 
+EPG_DAYS = 3
+EPG_CACHE_SECONDS = 1800
+
+
+def xmltv_time(timestamp):
+    return time.strftime('%Y%m%d%H%M%S +0000', time.gmtime(timestamp))
+
+
+def epg_events(settings, bouquet_ref, start, end):
+    """The guide of one bouquet: OpenWebif's multi-EPG in one request, else each channel's own guide."""
+    try:
+        query = urllib.parse.urlencode({'bRef': bouquet_ref, 'time': start, 'endTime': end})
+        events = json.loads(webif_get(settings, '/api/epgmulti?' + query, timeout=60)).get('events') or []
+        if events:
+            return events
+    except Exception as error:
+        log.info('Multi-EPG not available (%s): reading each channel', error)
+    events = []
+    services = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': bouquet_ref})))['services']
+    for service in services:
+        sref = service.get('servicereference', '')
+        if not sref.startswith('1:0:'):
+            continue
+        try:
+            found = json.loads(webif_get(settings, '/api/epgservice?' + urllib.parse.urlencode({'sRef': sref}), timeout=15)).get('events') or []
+        except Exception:
+            continue
+        for event in found:
+            event.setdefault('sref', sref)
+            event.setdefault('sname', service.get('servicename', ''))
+        events.extend(found)
+    return events
+
+
+def build_epg(settings, now=None):
+    """XMLTV of the next EPG_DAYS days for the configured bouquets."""
+    now = int(now or time.time())
+    end = now + EPG_DAYS * 86400
+    channels = {}
+    programmes = []
+    seen = set()
+    for ref, _ in selected_bouquets(settings):
+        for event in epg_events(settings, ref, now, end):
+            sref = event.get('sref') or ''
+            begin = int(event.get('begin_timestamp') or event.get('begin') or 0)
+            duration = int(event.get('duration_sec') or event.get('duration') or 0)
+            title = (event.get('title') or '').strip()
+            if not sref.startswith('1:0:') or not title or duration <= 0 or begin + duration < now or begin > end:
+                continue
+            if (sref, begin) in seen:
+                continue
+            seen.add((sref, begin))
+            channels.setdefault(sref, (event.get('sname') or '').strip() or sref)
+            description = (event.get('longdesc') or event.get('shortdesc') or '').strip()
+            programmes.append((sref, begin, begin + duration, title, description))
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<tv generator-info-name="NeboTV relay %s">' % VERSION]
+    for sref, name in channels.items():
+        lines.append('<channel id=%s><display-name>%s</display-name></channel>' % (quoteattr(sref), escape(name)))
+    for sref, start, stop, title, description in sorted(programmes, key=lambda p: (p[0], p[1])):
+        lines.append('<programme start="%s" stop="%s" channel=%s><title>%s</title>%s</programme>' % (
+            xmltv_time(start), xmltv_time(stop), quoteattr(sref), escape(title), '<desc>%s</desc>' % escape(description) if description else ''))
+    lines.append('</tv>')
+    log.info('Guide: %d channels, %d programmes', len(channels), len(programmes))
+    return '\n'.join(lines) + '\n'
+
+
 # ---------------------------------------------------------------- HTTP server
 
 class Relay:
@@ -225,6 +300,7 @@ class Relay:
         self.settings = settings
         self.active = {}  # service ref -> number of viewers
         self.events = collections.deque(maxlen=20)  # latest refusals and streams without video, for /status
+        self.epg = (0, '')  # (made at, XMLTV): reading the whole guide takes a while
 
     def note(self, kind, ref, reason):
         self.events.append({'t': int(time.time()), 'kind': kind, 'ref': ref, 'reason': reason})
@@ -283,6 +359,12 @@ class Relay:
                     return await self.reply(writer, 403, 'Forbidden')
                 body = await asyncio.get_running_loop().run_in_executor(None, build_playlist, self.settings, base_url)
                 return await self.reply(writer, 200, body, 'audio/x-mpegurl')
+            if url.path == '/epg.xml':
+                if not self.authorised(query):
+                    return await self.reply(writer, 403, 'Forbidden')
+                if time.time() - self.epg[0] > EPG_CACHE_SECONDS:
+                    self.epg = (time.time(), await asyncio.get_running_loop().run_in_executor(None, build_epg, self.settings))
+                return await self.reply(writer, 200, self.epg[1], 'application/xml; charset=utf-8')
             if url.path == '/status':
                 if not self.authorised(query):
                     return await self.reply(writer, 403, 'Forbidden')

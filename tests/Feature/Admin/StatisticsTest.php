@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\ActiveSession;
 use App\Models\Channel;
+use App\Models\Source;
 use App\Models\StreamLog;
 use App\Models\User;
 use App\Services\StatisticsService;
@@ -105,8 +107,38 @@ it('uses a fixed number of queries however many plays there are', function () {
     });
     app(StatisticsService::class)->report(30);
 
-    // days, hours, top channels (+names), top users (+names), viewers, channels
-    expect($queries)->toBeLessThanOrEqual(8);
+    // days, hours, top channels (+names), top users (+names), viewers, channels, most at once (2), per source (3), unwatched
+    expect($queries)->toBeLessThanOrEqual(14);
+});
+
+it('counts the streams playing every 5 minutes and reports the most at once, per day and per source', function () {
+    $source = Source::create(['name' => 'Provider', 'type' => 'url', 'url' => 'http://p.test']);
+    $this->news->update(['source_id' => $source->id]);
+    $session = fn (User $user, Channel $channel, string $ip) => ActiveSession::create(['user_id' => $user->id, 'channel_id' => $channel->id, 'ip' => $ip, 'user_agent' => 'TV', 'started_at' => now(), 'last_activity_at' => now()]);
+    $session($this->anna, $this->news, '1.1.1.1');
+    $session($this->boris, $this->news, '2.2.2.2');
+    $session($this->boris, $this->sport, '3.3.3.3');
+    ActiveSession::create(['user_id' => $this->anna->id, 'channel_id' => $this->sport->id, 'ip' => '4.4.4.4', 'user_agent' => 'Old', 'started_at' => now()->subHour(), 'last_activity_at' => now()->subHour()]);
+
+    expect(app(StatisticsService::class)->sample())->toBe(3);
+    $this->travel(5)->minutes();
+    ActiveSession::where('ip', '2.2.2.2')->delete();
+    app(StatisticsService::class)->sample();
+    play($this->anna, $this->news, now());
+
+    $report = app(StatisticsService::class)->report(7);
+
+    expect($report['peak'])->toBe(3)
+        ->and($report['peak_per_day'][now()->toDateString()])->toBe(3)
+        ->and($report['sources'])->toBe([
+            ['name' => 'Provider', 'receiver' => false, 'plays' => 1, 'viewers' => 1, 'peak' => 2],
+            ['name' => null, 'receiver' => false, 'plays' => 0, 'viewers' => 0, 'peak' => 1],
+        ])
+        // Sport 1 is listed but nobody played it
+        ->and($report['unwatched'])->toBe(1);
+
+    $this->actingAs($this->admin)->get(route('admin.statistics.index', ['days' => 7]))->assertOk()
+        ->assertSee('Most at once')->assertSee('Per source')->assertSee('1 listed channel nobody played');
 });
 
 it('is cached for a few minutes', function () {

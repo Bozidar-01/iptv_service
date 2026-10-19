@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\InsufficientCredits;
 use App\Models\CreditTransaction;
+use App\Models\Sale;
 use App\Models\User;
 use App\Support\Credits;
 use Illuminate\Database\Eloquent\Builder;
@@ -99,7 +100,9 @@ class UserBulkService
             }
 
             foreach ($plan as [$user, $until]) {
+                $before = $user->expiration_date?->copy();
                 $user->forceFill(['expiration_date' => $until, 'is_trial' => false, 'status' => 'active'])->save();
+                app(SaleService::class)->record($user, $before, $until, Sale::RENEWAL, $actor);
             }
 
             return ['changed' => count($plan), 'spent' => $total];

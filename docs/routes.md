@@ -53,6 +53,11 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/cleanup/pack/{pack}` | `admin.cleanup.pack` | adds a ready-made set (`tags`, `radio`, `satellite`, `genres`) |
 | POST | `/admin/cleanup/{rule}/toggle` | `admin.cleanup.toggle` | enable / disable a rule |
 | DELETE | `/admin/cleanup/{rule}` | `admin.cleanup.destroy` | |
+| GET | `/admin/payments` | `admin.payments.index` | `PaymentController@index`: sales (`?status=unpaid\|paid\|all&search=&seller=own\|{id}`), resellers' balances, prices (admins and resellers) |
+| POST | `/admin/payments/prices` | `admin.payments.prices` | `prices`: admins `currency`, `price_per_month`, `credit_price`, `credit_prices[id]`; resellers `price_per_month` |
+| POST | `/admin/payments/sales/{sale}` | `admin.payments.paid` | `paid`: `paid` 1/0; 403 for another reseller's sale |
+| POST | `/admin/payments/resellers/{user}` | `admin.payments.reseller` | `payment` (admins only): `amount`, `note`, `paid_on` |
+| POST | `/admin/sources/{source}/receiver/guide` | `admin.receiver.guide` | `ReceiverController@guide`: adds the receiver's own guide (relay 1.3 `/epg.xml`) once and imports it |
 | GET | `/admin/playlist-options` | `admin.playlist-options.index` | `PlaylistOptionsController@index`: names, numbers, logos and guide IDs, catch-up (admins only) |
 | POST | `/admin/playlist-options` | `admin.playlist-options.update` | `update`: `quality_in_names`, `hide_worse_copies` |
 | POST | `/admin/playlist-options/renumber` | `admin.playlist-options.renumber` | `renumber`: numbers every channel again in playlist order |

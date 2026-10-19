@@ -1,5 +1,10 @@
 """Tests for nebotv-relay.py. Run: python3 relay/test_relay.py"""
 import asyncio
+import http.server
+import json
+import threading
+import urllib.parse
+from xml.etree import ElementTree
 import importlib.util
 import os
 import tempfile
@@ -276,7 +281,63 @@ class StreamTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_protects_playlist_and_status(self):
         self.assertEqual((await self.get('http://127.0.0.1:%d/status' % self.port))[0], 403)
+        self.assertEqual((await self.get('http://127.0.0.1:%d/epg.xml?key=wrong' % self.port))[0], 403)
         self.assertEqual((await self.get('http://127.0.0.1:%d/playlist.m3u?key=wrong' % self.port))[0], 403)
+
+
+class FakeWebif(http.server.BaseHTTPRequestHandler):
+    """OpenWebif's JSON API: one bouquet with two channels, guide events for one of them."""
+    multi = True
+
+    def do_GET(self):
+        url = urllib.parse.urlsplit(self.path)
+        query = dict(urllib.parse.parse_qsl(url.query))
+        now = int(query.get('time') or time.time())
+        events = [
+            {'sref': RAI1, 'sname': 'Rai 1 HD', 'title': 'Tg1 & Meteo', 'longdesc': 'News <live>', 'begin_timestamp': 1792400000, 'duration_sec': 1800},
+            {'sref': RAI1, 'sname': 'Rai 1 HD', 'title': 'Old one', 'begin_timestamp': 1, 'duration_sec': 60},
+        ]
+        body = {
+            '/api/bouquets': {'bouquets': [['1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.it.tv"', 'Italia'], ['1:7:1:x', 'Other']]},
+            '/api/epgmulti': {'events': events if FakeWebif.multi and 'it.tv' in query.get('bRef', '') else []},
+            '/api/getservices': {'services': [{'servicereference': RAI1, 'servicename': 'Rai 1 HD'}, {'servicereference': '1:0:1:7A:4B0:110:820000:0:0:0:', 'servicename': 'Canale5'}]},
+            '/api/epgservice': {'events': [{k: v for k, v in e.items() if k not in ('sref', 'sname')} for e in events] if query.get('sRef') == RAI1 else []},
+        }.get(url.path)
+        self.send_response(200 if body is not None else 404)
+        self.end_headers()
+        self.wfile.write(json.dumps(body or {}).encode())
+
+    def log_message(self, *args):
+        pass
+
+
+class EpgTest(unittest.TestCase):
+    def setUp(self):
+        self.server = http.server.HTTPServer(('127.0.0.1', 0), FakeWebif)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        conf = write('[relay]\nsecret = test-secret-1234567890\nbox_host = 127.0.0.1\nwebif_port = %d\nbouquets = Italia\n' % self.server.server_address[1])
+        self.settings = relay.Settings(conf)
+
+    def tearDown(self):
+        self.server.shutdown()
+        FakeWebif.multi = True
+
+    def test_writes_the_guide_of_the_chosen_bouquets_as_xmltv(self):
+        xml = relay.build_epg(self.settings, now=1792399000)
+        root = ElementTree.fromstring(xml)
+        self.assertEqual([c.get('id') for c in root.findall('channel')], [RAI1])
+        programmes = root.findall('programme')
+        self.assertEqual(len(programmes), 1)  # the one that already ended is left out
+        self.assertEqual(programmes[0].get('start'), relay.xmltv_time(1792400000))
+        self.assertEqual(programmes[0].get('stop'), relay.xmltv_time(1792401800))
+        self.assertEqual(programmes[0].findtext('title'), 'Tg1 & Meteo')
+        self.assertEqual(programmes[0].findtext('desc'), 'News <live>')
+
+    def test_reads_each_channel_when_the_receiver_has_no_multi_epg(self):
+        FakeWebif.multi = False
+        root = ElementTree.fromstring(relay.build_epg(self.settings, now=1792399000))
+        self.assertEqual([c.findtext('display-name') for c in root.findall('channel')], ['Rai 1 HD'])
+        self.assertEqual(len(root.findall('programme')), 1)
 
 
 if __name__ == '__main__':

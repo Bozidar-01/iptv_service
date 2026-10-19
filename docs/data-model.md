@@ -16,6 +16,8 @@ Migrations in `database/migrations/`. The base schema is `2026_04_20_063000_{1..
 | role | string(20): `admin`, `reseller`, `user` | default `user`; was an enum, now a string so roles can be added |
 | owner_id | FK → users, nullable, `ON DELETE SET NULL` | the reseller a subscriber belongs to (`User::owner()`, `customers()`) |
 | credits | int, nullable | reseller's credit balance (1 credit = 1 month of subscription for one user); null = not limited by credits (`CreditService`, `User::usesCredits()`) |
+| price_per_month | decimal 10,2, nullable | a reseller's price per month for their users ([payments.md](features/payments.md)) |
+| credit_price | decimal 10,2, nullable | what this reseller pays per credit (else the default) |
 | max_customers | unsigned int, nullable | reseller limit: how many users they can create (null = no limit) |
 | max_customer_connections | unsigned smallint, nullable | reseller limit: the most simultaneous streams they can give a user (null = no limit) |
 | expiration_date | datetime, nullable | null = never expires |
@@ -56,7 +58,7 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 `id`, `item` (key of a manual launch-checklist item, unique), `user_id` FK → users nullable (who ticked it, `SET NULL`), timestamps. Written by `LaunchChecklistService::toggle`; a row means the item is ticked off.
 
 ### credit_transactions
-`id`, `user_id` FK → users (the reseller, `ON DELETE CASCADE`), `actor_id` FK → users nullable (who did it: an admin, or the reseller spending; `SET NULL`), `customer_id` FK → users nullable (the user it was spent on; `SET NULL`), `amount` (+ given, − spent or taken; 0 for *unlimited*), `balance_after` (null when the account is unlimited), `reason` (`admin_grant`, `admin_take`, `admin_unlimited`, `new_subscription`, `extended_subscription`), `note`, `created_at` (indexed). Only ever added to.
+`id`, `user_id` FK → users (the reseller, `ON DELETE CASCADE`), `actor_id` FK → users nullable (who did it: an admin, or the reseller spending; `SET NULL`), `customer_id` FK → users nullable (the user it was spent on; `SET NULL`), `amount` (+ given, − spent or taken; 0 for *unlimited*), `balance_after` (null when the account is unlimited), `price` (decimal, nullable: price per credit when given or taken back, for what the reseller owes), `reason` (`admin_grant`, `admin_take`, `admin_unlimited`, `new_subscription`, `extended_subscription`), `note`, `created_at` (indexed). Only ever added to.
 
 ### categories
 `id`, `name`, timestamps. Has many channels.
@@ -117,6 +119,7 @@ Helpers: `isBusy()` (queued/syncing), `isDueForSync()`, `isReceiver()`, `playlis
 | backup_channel_id | FK → channels, nullable, `ON DELETE SET NULL` | admin's chosen backup |
 | using_backup_id | FK → channels, nullable, `ON DELETE SET NULL` | backup playing now (set by the stream check, when down or slow) |
 | better_copy_id | FK → channels, nullable, `ON DELETE SET NULL` | a better copy is listed instead (only with *List only the better copy*) |
+| backup_for_id | FK → channels, nullable, `ON DELETE SET NULL` | a hidden backup copy of that channel (Find duplicates): not listed or played by itself, used as its backup |
 | catchup, catchup_days, catchup_source | string(20) / smallint / string(2048), nullable | the provider's catch-up: style (`xc`, `shift`, `append`, `default`, `flussonic`), days, address template |
 
 Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isWatched()`. Scope `listedFor($user)` = `availableTo` without channels that have a better copy (when that option is on). `logo()` / `guideId()` fall back to the found logo / id.
@@ -124,8 +127,17 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 ### channel_check_days
 `channel_id` FK cascade, `day` (date), `ok`, `failed`, `slow`, `viewer_trouble` (uint, default 0). Primary key `(channel_id, day)`, index on `day`. One row per channel and day: stream check results and viewers whose device kept retrying. Kept 30 days.
 
+### viewing_samples
+`id`, `taken_at` (datetime, index), `source_id` (nullable; null = channels added by hand), `streams`. Streams playing at that moment per source, every 5 minutes (`iptv:sample-viewing`). Pruned after `LOG_RETENTION_DAYS`.
+
+### sales
+`id`, `owner_id` (FK users, nullable = the admins, `SET NULL`), `customer_id` (FK users, nullable, `SET NULL`), `customer_name`, `kind` (`new`/`renewal`), `months`, `amount` (decimal 10,2, nullable = no price), `paid_at` (nullable), `created_by` (FK users, `SET NULL`), timestamps. Index `(owner_id, paid_at)`, `created_at`. One row per months added to a user ([payments.md](features/payments.md)).
+
+### reseller_payments
+`id`, `reseller_id` (FK users, cascade), `amount` (decimal 10,2), `note`, `paid_on` (date), `recorded_by` (FK users, `SET NULL`), timestamps. Money a reseller paid for credits.
+
 ### app_settings
-`key` (string 100, primary), `value` (JSON text), timestamps. Panel-wide options set on a page (`AppSetting::get` / `put`, cached): `playlist_options`, `channel_catalog` (status of the iptv-org download).
+`key` (string 100, primary), `value` (JSON text), timestamps. Panel-wide options set on a page (`AppSetting::get` / `put`, cached): `playlist_options`, `channel_catalog` (status of the iptv-org download), `money` (currency, price per month, default price per credit).
 
 ### stream_alerts
 | Column | Type | Notes |
@@ -143,7 +155,7 @@ Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isW
 Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem()`, `isSystem()`.
 
 ### epg_sources
-`name`, `url`, `status` (as sources), `last_error`, `channel_count`, `programme_count`, `last_synced_at`, timestamps.
+`name`, `url`, `receiver_source_id` (FK sources, nullable, cascade: a receiver's own guide, downloaded from its relay with the key added; `EpgSource::downloadUrl()`), `status` (as sources), `last_error`, `channel_count`, `programme_count`, `last_synced_at`, timestamps.
 
 ### epg_channels
 `epg_source_id` FK cascade, `xmltv_id` (unique per source), `name`, `name_key` (indexed, `EpgService::nameKey`), `alt_keys` (text, nullable: the name keys of the channel's other display names, separated by `|`). No timestamps.

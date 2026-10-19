@@ -59,6 +59,8 @@
             <option value="slow" @selected(($filters['status'] ?? '') === 'slow')>{{ __('Slow') }}</option>
             <option value="unreliable" @selected(($filters['status'] ?? '') === 'unreliable')>{{ __('Often not working') }}</option>
             <option value="trouble" @selected(($filters['status'] ?? '') === 'trouble')>{{ __('Viewers had trouble') }}</option>
+            <option value="backup_copy" @selected(($filters['status'] ?? '') === 'backup_copy')>{{ __('Backup copies') }}</option>
+            <option value="unwatched" @selected(($filters['status'] ?? '') === 'unwatched')>{{ __('Not watched in 30 days') }}</option>
         </select>
         @if(array_filter($filters))
             <a href="{{ route('admin.channels.index') }}" class="btn btn-ghost btn-sm"><x-icon name="x" /> {{ __('Clear') }}</a>
@@ -85,6 +87,7 @@
             <option value="remove_from_bouquet">{{ __('Remove from bouquet') }}</option>
             <option value="alerts_on">{{ __('Turn alerts on') }}</option>
             <option value="alerts_off">{{ __('Turn alerts off') }}</option>
+            <option value="list_again">{{ __('List again (backup copies)') }}</option>
             <option value="delete">{{ __('Delete') }}</option>
         </select>
         <select class="select" name="bouquet_id" id="bulk-bouquet" hidden aria-label="{{ __('Bouquet') }}">
@@ -143,7 +146,9 @@
                         <td class="hide-sm">{!! $channel->source ? e($channel->source->name) : '<span class="faint">'.e(__('Manual')).'</span>' !!}</td>
                         <td class="hide-sm right">{{ $channel->bouquets_count }}</td>
                         <td>
-                            @if($channel->is_active && $channel->usingBackup)
+                            @if($channel->is_active && $channel->backupFor)
+                                <span class="badge badge-dot" title="{{ __('Not in any list. Stands in for :name when it stops working.', ['name' => $channel->backupFor->name]) }}">{{ __('Backup copy') }}</span>
+                            @elseif($channel->is_active && $channel->usingBackup)
                                 <span class="badge badge-warning badge-dot" title="{{ $channel->stream_error ? \App\Services\StreamCheckService::describeError($channel->stream_error) : __('Too slow') }} · {{ __('Playing :name instead until this stream works again.', ['name' => $channel->usingBackup->name]) }}">{{ __('Playing a backup') }}</span>
                             @elseif($channel->is_active)
                                 <span class="badge badge-success badge-dot">{{ __('Enabled') }}</span>

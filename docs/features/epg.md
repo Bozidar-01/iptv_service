@@ -27,7 +27,7 @@ Each channel gets `epg_source_id` + `epg_id` (the guide's channel id):
 
 **By hand:** the channel form has a **Guide ID** field. When filled, it is kept (`epg_manual`) and never overwritten. When empty, matching is automatic, and the placeholder shows the current match. The form also shows **On now** (times in the app timezone, UTC).
 
-Satellite receiver channels have a service reference as `tvg-id`, so they are matched by name (Rai 1 HD → `Rai1.it`). The receiver's own guide isn't used: Enigma2 only collects guide data for channels it has tuned, and it was empty on the Octagon.
+Satellite receiver channels have a service reference as `tvg-id`, so they are matched by name (Rai 1 HD → `Rai1.it`), or by id to the **receiver's own guide** when it is added from the Receiver page (relay 1.3 `/epg.xml`, [receiver.md](receiver.md#tv-guide-from-the-receiver)): its channel ids are the service references, so it wins for the channels it has programmes for.
 
 ## For TV apps
 

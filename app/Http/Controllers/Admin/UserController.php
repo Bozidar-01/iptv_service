@@ -10,10 +10,12 @@ use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\CreditTransaction;
 use App\Models\DeniedPlay;
+use App\Models\Sale;
 use App\Models\StreamAlert;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\CreditService;
+use App\Services\SaleService;
 use App\Services\SharingDetectionService;
 use App\Services\StreamService;
 use App\Services\UserBulkService;
@@ -38,8 +40,11 @@ class UserController extends Controller
 
     protected $sharing;
 
-    public function __construct(UserService $userService, CreditService $credits, AuditService $audit, SharingDetectionService $sharing)
+    protected $sales;
+
+    public function __construct(UserService $userService, CreditService $credits, AuditService $audit, SharingDetectionService $sharing, SaleService $sales)
     {
+        $this->sales = $sales;
         $this->sharing = $sharing;
         $this->userService = $userService;
         $this->credits = $credits;
@@ -156,12 +161,14 @@ class UserController extends Controller
         try {
             $spent = DB::transaction(function () use ($actor, $user, $months) {
                 $spent = 0;
+                $before = $user->expiration_date?->copy();
 
                 if ($actor->isReseller() && User::whereKey($actor->id)->lockForUpdate()->firstOrFail()->usesCredits()) {
                     $spent = Credits::months($user->expiration_date, $this->userService->renewedUntil($user, $months));
                 }
 
                 $this->userService->renew($user, $months);
+                $this->sales->record($user->fresh(), $before, $user->fresh()->expiration_date, Sale::RENEWAL, $actor);
 
                 if ($spent > 0) {
                     $this->credits->charge($actor, $spent, CreditTransaction::EXTENDED, $user);
@@ -241,6 +248,7 @@ class UserController extends Controller
                 }
 
                 $user = $this->userService->createUser($data);
+                $this->sales->record($user, null, $user->expiration_date, Sale::NEW, $actor);
 
                 if ($spent > 0) {
                     $this->credits->charge($actor, $spent, CreditTransaction::NEW_SUBSCRIPTION, $user);
@@ -299,6 +307,7 @@ class UserController extends Controller
         try {
             $spent = DB::transaction(function () use ($actor, $user, $data) {
                 $spent = 0;
+                $before = $user->expiration_date?->copy();
 
                 if ($actor->isReseller() && User::whereKey($actor->id)->lockForUpdate()->firstOrFail()->usesCredits()) {
                     // Only the time added beyond what the user already has is paid for
@@ -306,6 +315,9 @@ class UserController extends Controller
                 }
 
                 $this->userService->updateUser($user, $data);
+                // A later end date is months sold (as a new subscription when it had none)
+                $after = $user->fresh();
+                $this->sales->record($after, $before, $after->expiration_date, $before ? Sale::RENEWAL : Sale::NEW, $actor);
 
                 if ($spent > 0) {
                     $this->credits->charge($actor, $spent, CreditTransaction::EXTENDED, $user);

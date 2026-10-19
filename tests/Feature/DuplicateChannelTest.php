@@ -3,10 +3,13 @@
 use App\Models\AuditLog;
 use App\Models\Bouquet;
 use App\Models\Channel;
+use App\Models\DeniedPlay;
 use App\Models\Source;
 use App\Models\User;
 use App\Services\ChannelDuplicateService;
+use App\Services\ChannelFailoverService;
 use App\Services\StreamCheckService;
+use App\Services\StreamService;
 
 beforeEach(function () {
     $this->admin = User::factory()->admin()->create();
@@ -151,12 +154,36 @@ describe('the suggested copy', function () {
 });
 
 describe('applying', function () {
-    it('switches off the others, keeps the chosen one, and puts it in their bouquets', function () {
+    it('keeps the others as hidden backup copies of the kept one, which joins their bouquets', function () {
+        $keep = dup('Rai 1 HD', $this->iptv, ['stream_status' => 'online']);
+        $lose = dup('Rai 1', $this->iptv2, ['stream_status' => 'online'], $this->other);
+        $key = app(ChannelDuplicateService::class)->groups()[0]['key'];
+
+        $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'page', 'keep' => [$key => $keep->id]])
+            ->assertRedirect()->assertSessionHas('success', '1 channel is now a hidden backup copy. The best copy of each group stays in the lists.');
+
+        expect($lose->fresh())->is_active->toBeTrue()->backup_for_id->toBe($keep->id)
+            ->and($keep->bouquets()->pluck('bouquets.id')->sort()->values()->all())->toBe([$this->bouquet->id, $this->other->id])
+            // It stands in for the kept one, is out of Find duplicates, and nobody can list or play it by itself
+            ->and(app(ChannelFailoverService::class)->ranked($keep)->pluck('id')->all())->toBe([$lose->id])
+            ->and(app(ChannelDuplicateService::class)->groups())->toBe([]);
+        $viewer = User::factory()->create();
+        $viewer->bouquets()->attach($this->other);
+        expect(Channel::availableTo($viewer)->pluck('id')->all())->toBe([$keep->id])
+            ->and(app(StreamService::class)->denialReason($viewer, $lose->fresh()))->toBe(DeniedPlay::CHANNEL_OFF);
+
+        // Listed again with the bulk action
+        $this->post(route('admin.channels.bulk'), ['action' => 'list_again', 'scope' => 'selected', 'ids' => [$lose->id]])
+            ->assertSessionHas('success', '1 backup copy is listed again.');
+        expect($lose->fresh()->backup_for_id)->toBeNull();
+    });
+
+    it('can switch the others off instead, keeping the chosen one and putting it in their bouquets', function () {
         $keep = dup('Rai 1 HD', $this->iptv, ['stream_status' => 'online']);
         $lose = dup('Rai 1', $this->iptv2, [], $this->other);
         $key = app(ChannelDuplicateService::class)->groups()[0]['key'];
 
-        $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'page', 'keep' => [$key => $keep->id]])
+        $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'page', 'others' => 'off', 'keep' => [$key => $keep->id]])
             ->assertRedirect()->assertSessionHas('success', '1 channel switched off. The best copy of each group stays.');
 
         expect($keep->fresh()->is_active)->toBeTrue()->and($lose->fresh()->is_active)->toBeFalse()
@@ -185,7 +212,7 @@ describe('applying', function () {
         dup('Beta', $this->iptv2);
         $groups = collect(app(ChannelDuplicateService::class)->groups())->keyBy('name');
 
-        $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'page', 'keep' => [
+        $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'page', 'others' => 'off', 'keep' => [
             $groups['Alpha HD']['key'] => $chosen->id,
             $groups['Beta HD']['key'] => 0,
         ]])->assertRedirect();
@@ -201,10 +228,10 @@ describe('applying', function () {
         }
 
         $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'all', 'search' => 'amm'])->assertRedirect();
-        expect(Channel::where('is_active', false)->pluck('name')->all())->toBe(['Gamma']);
+        expect(Channel::whereNotNull('backup_for_id')->pluck('name')->all())->toBe(['Gamma']);
 
         $this->actingAs($this->admin)->post(route('admin.channels.duplicates.apply'), ['scope' => 'all'])->assertRedirect();
-        expect(Channel::where('is_active', false)->count())->toBe(3)->and(app(ChannelDuplicateService::class)->groups())->toBe([]);
+        expect(Channel::whereNotNull('backup_for_id')->count())->toBe(3)->and(app(ChannelDuplicateService::class)->groups())->toBe([]);
     });
 
     it('skips a group that changed and a channel that is not in its group', function () {

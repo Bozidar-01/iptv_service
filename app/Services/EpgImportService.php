@@ -33,7 +33,7 @@ class EpgImportService
         $path = null;
 
         try {
-            $path = $this->download($source->url);
+            $path = $this->download($source->downloadUrl());
             [$channels, $programmes] = $this->import($source, $path);
 
             $source->update([
@@ -43,7 +43,10 @@ class EpgImportService
                 'last_synced_at' => now(),
             ]);
         } catch (Throwable $e) {
-            $source->update(['status' => Source::STATUS_FAILED, 'last_error' => mb_substr(SentryScrubber::text($e->getMessage()), 0, 1000)]);
+            // Never store a receiver's relay key that a connection error may contain
+            $secret = (string) $source->receiverSource?->relay_secret;
+            $message = $secret !== '' ? str_replace([$secret, urlencode($secret)], '***', $e->getMessage()) : $e->getMessage();
+            $source->update(['status' => Source::STATUS_FAILED, 'last_error' => mb_substr(SentryScrubber::text($message), 0, 1000)]);
 
             throw $e;
         } finally {

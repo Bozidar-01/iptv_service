@@ -82,12 +82,12 @@ class PlaylistOptionsService
     {
         DB::table('channels')->whereNotNull('better_copy_id')->update(['better_copy_id' => null]);
 
-        $keys = DB::table('channels')->where('is_active', true)->whereNotNull('tvg_id')->where('tvg_id', '!=', '')
+        $keys = DB::table('channels')->where('is_active', true)->whereNull('backup_for_id')->whereNotNull('tvg_id')->where('tvg_id', '!=', '')
             ->selectRaw('LOWER(tvg_id) as k')->groupByRaw('LOWER(tvg_id)')->havingRaw('COUNT(*) > 1')->pluck('k')->all();
 
         $better = [];
         foreach (array_chunk($keys, 500) as $chunk) {
-            $channels = Channel::query()->where('is_active', true)
+            $channels = Channel::query()->where('is_active', true)->whereNull('backup_for_id')
                 ->whereIn(DB::raw('LOWER(tvg_id)'), $chunk)
                 ->get(['id', 'name', 'tvg_id', 'stream_status', 'quality_height', 'reliability']);
             $bouquets = DB::table('bouquet_channel')->whereIn('channel_id', $channels->pluck('id'))->get()

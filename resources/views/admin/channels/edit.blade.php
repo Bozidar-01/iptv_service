@@ -12,6 +12,13 @@
     </div>
 </div>
 
+@if($channel->backupFor)
+    <div class="alert alert-info">
+        <x-icon name="alert" />
+        <div class="alert-body">{!! __('This is a hidden backup copy of :name: viewers don\'t see it in their lists, and it plays when that channel stops working. To list it again, use "List again" on the Channels page.', ['name' => '<a href="'.e(route('admin.channels.edit', $channel->backupFor)).'">'.e($channel->backupFor->name).'</a>']) !!}</div>
+    </div>
+@endif
+
 <div class="card" style="margin-bottom: 16px">
     <div class="card-header"><div><h2>{{ __('How well it works') }}</h2><p>{{ __('From the stream checks of the last :days days and from what viewers ran into.', ['days' => \App\Services\ChannelHealthService::DAYS]) }}</p></div></div>
     <div class="card-body stack" style="gap: 12px">

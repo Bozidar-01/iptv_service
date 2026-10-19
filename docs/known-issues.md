@@ -27,7 +27,8 @@ _None currently known._
 - **Request limits are per minute, not per user:** `/play`, `/playlist` and `/epg` are limited per link + IP and per IP (`THROTTLE_*`), and the other app addresses too (`/m3u`, `/get.php`, `/xmltv.php`, `/live`, `/player_api.php`), but a hotel or block of flats with many TVs behind one router can still reach the per-IP limits (raise `THROTTLE_PER_IP` / `THROTTLE_API_PER_IP`).
 - **No Macedonian guide data:** the free iptv-epg.org Macedonia file only has "No Data" entries, so Macedonian channels show no programmes until a better XMLTV source is added on the TV guide page.
 - **Guide times in the panel are UTC:** apps get exact timestamps, but *On now* on the channel form shows UTC (`APP_TIMEZONE` isn't set).
-- **The receiver's own guide isn't used:** Enigma2 only has guide data for channels it has tuned. A `/epg.xml` relay endpoint could export it once the box collects EPG (e.g. with an EPG import plugin).
+- **The receiver's guide only has what the box collected:** Enigma2 keeps programmes only of channels it has tuned, so the receiver's guide (relay 1.3 `/epg.xml`) is thin without an EPG import plugin or the nightly EPG refresh on the box.
+- **Sales are recorded where months are added, not what was charged:** an admin editing a reseller's user records the months at the reseller's price (the user's seller), and moving a user to another reseller does not move earlier sales.
 - **Relay links can be shared for 3 hours:** a signed receiver link keeps working until it expires (`RECEIVER_LINK_MINUTES`), so a viewer could pass it on. The tuner limit caps the damage. A shorter time means more failed reconnects.
 - **Relay is wiped by image updates:** flashing OpenATV removes `/usr/bin/nebotv-relay.py` and the init script unless they are in the image backup ([receiver.md](receiver.md#after-an-openatv-image-update)).
 - **Relay uses plain HTTP:** links carry signatures, not passwords, but streams aren't encrypted in transit.

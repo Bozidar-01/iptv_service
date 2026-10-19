@@ -8,8 +8,8 @@ use Illuminate\Support\Collection;
 /**
  * Picks the stream to play instead when a channel's own stream is down, slow, or keeps failing for a viewer.
  *
- * Candidates are copies of the same channel: the admin's chosen backup, and every other channel with the same tvg-id (the same
- * programme from another source or another entry). A candidate must be enabled, not playing a backup itself, and working.
+ * Candidates are copies of the same channel: the admin's chosen backup, the backup copies Find duplicates kept for it
+ * (`backup_for_id`), and every other channel with the same tvg-id (the same programme from another source or another entry). A candidate must be enabled, not playing a backup itself, and working.
  * They are ranked best first:
  *  1. the admin's chosen backup;
  *  2. not slow (the last check found it arrives at least as fast as it plays);
@@ -22,7 +22,7 @@ class ChannelFailoverService
     /** Below this, a stream arrives slower than it plays (`channels.stream_speed`, percent). */
     public const SLOW_BELOW = 100;
 
-    private const COLUMNS = ['id', 'name', 'source_id', 'tvg_id', 'is_active', 'stream_status', 'reliability', 'stream_speed', 'quality_height', 'quality_kbps', 'using_backup_id'];
+    private const COLUMNS = ['id', 'name', 'source_id', 'tvg_id', 'is_active', 'stream_status', 'reliability', 'stream_speed', 'quality_height', 'quality_kbps', 'using_backup_id', 'backup_for_id'];
 
     /**
      * The best working copy for each channel, if there is one.
@@ -104,12 +104,10 @@ class ChannelFailoverService
         $tvgIds = $channels->pluck('tvg_id')->filter()->flatMap(fn ($id) => [$id, mb_strtolower($id)])->unique()->values()->all();
         $chosenIds = $channels->pluck('backup_channel_id')->filter()->unique()->values()->all();
 
-        if ($tvgIds === [] && $chosenIds === []) {
-            return collect();
-        }
+        $ownIds = $channels->pluck('id')->all();
 
         return Channel::query()
-            ->where(fn ($q) => $q->whereIn('id', $chosenIds)->orWhereIn('tvg_id', $tvgIds))
+            ->where(fn ($q) => $q->whereIn('id', $chosenIds)->orWhereIn('tvg_id', $tvgIds)->orWhereIn('backup_for_id', $ownIds))
             ->whereNotIn('id', array_values(array_unique($exclude)))
             ->where('is_active', true)
             ->whereNull('using_backup_id')
@@ -127,7 +125,7 @@ class ChannelFailoverService
         $tvg = $channel->tvg_id ? mb_strtolower($channel->tvg_id) : null;
 
         return $candidates->filter(fn (Channel $c) => $c->id !== $channel->id
-            && ($c->id === $channel->backup_channel_id || ($tvg !== null && mb_strtolower((string) $c->tvg_id) === $tvg)));
+            && ($c->id === $channel->backup_channel_id || $c->backup_for_id === $channel->id || ($tvg !== null && mb_strtolower((string) $c->tvg_id) === $tvg)));
     }
 
     /**

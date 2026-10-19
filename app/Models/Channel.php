@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * @property Carbon|null $stream_checked_at
  */
-#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id', 'quality_height', 'quality_kbps', 'reliability', 'stream_speed', 'hls_sequence', 'number', 'auto_logo_url', 'auto_tvg_id', 'better_copy_id', 'catchup', 'catchup_days', 'catchup_source'])]
+#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id', 'quality_height', 'quality_kbps', 'reliability', 'stream_speed', 'hls_sequence', 'number', 'auto_logo_url', 'auto_tvg_id', 'better_copy_id', 'backup_for_id', 'catchup', 'catchup_days', 'catchup_source'])]
 class Channel extends Model
 {
     protected static function booted(): void
@@ -50,7 +50,9 @@ class Channel extends Model
      */
     public function scopeAvailableTo($query, User $user)
     {
+        // A backup copy (kept by Find duplicates only to stand in for another channel) is never listed or played by itself
         return $query->where('channels.is_active', true)
+            ->whereNull('channels.backup_for_id')
             ->whereHas('bouquets', fn ($q) => $q->whereIn('bouquets.id', $user->bouquets()->select('bouquets.id')))
             ->whereNotIn('channels.id', DB::table('user_hidden_channels')->select('channel_id')->where('user_id', $user->id))
             ->whereNotIn('channels.id', DB::table('owner_hidden_channels')->select('channel_id')
@@ -113,6 +115,12 @@ class Channel extends Model
     public function backupChannel(): BelongsTo
     {
         return $this->belongsTo(Channel::class, 'backup_channel_id');
+    }
+
+    /** @return BelongsTo<Channel, $this> the channel this one is a hidden backup copy of */
+    public function backupFor(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class, 'backup_for_id');
     }
 
     /** @return BelongsTo<Channel, $this> */

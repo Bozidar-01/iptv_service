@@ -66,6 +66,8 @@ class SalesReportService
         )->addBinding([$now, $from, $now, $now->copy()->addDays(30), $recent, $now], 'select')
             ->groupBy('owner_id')->toBase()->get()->keyBy(fn ($row) => $row->owner_id ?? 0);
 
+        $balances = app(SaleService::class)->balances(User::where('role', 'reseller')->pluck('id')->all());
+
         $rows = [];
         foreach (User::where('role', 'reseller')->orderBy('username')->get(['id', 'username', 'credits', 'status']) as $reseller) {
             $c = $credits->get($reseller->id);
@@ -83,10 +85,11 @@ class SalesReportService
                 'new' => (int) ($u->new ?? 0),
                 'expiring' => (int) ($u->expiring ?? 0),
                 'expired' => (int) ($u->expired ?? 0),
+                'owes' => $balances[$reseller->id]['owes'] ?? 0.0,
             ];
         }
         if ($own = $users->get(0)) {
-            $rows[] = ['id' => null, 'name' => null, 'credits' => null, 'used' => 0, 'given' => 0, 'days_left' => null, 'total' => (int) $own->total, 'active' => (int) $own->active, 'new' => (int) $own->new, 'expiring' => (int) $own->expiring, 'expired' => (int) $own->expired];
+            $rows[] = ['id' => null, 'name' => null, 'credits' => null, 'used' => 0, 'given' => 0, 'days_left' => null, 'total' => (int) $own->total, 'active' => (int) $own->active, 'new' => (int) $own->new, 'expiring' => (int) $own->expiring, 'expired' => (int) $own->expired, 'owes' => null];
         }
 
         return [

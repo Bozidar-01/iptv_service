@@ -123,6 +123,7 @@ class ChannelController extends Controller
             'delete' => ':count channel deleted.|:count channels deleted.',
             'alerts_on' => 'Alerts turned on for :count channel.|Alerts turned on for :count channels.',
             'alerts_off' => 'Alerts turned off for :count channel.|Alerts turned off for :count channels.',
+            'list_again' => ':count backup copy is listed again.|:count backup copies are listed again.',
         ][$data['action']];
 
         return back()->with('success', trans_choice($message, $count, ['count' => number_format($count)]));
@@ -161,6 +162,7 @@ class ChannelController extends Controller
         $data = $request->validate([
             'scope' => ['required', 'in:page,all'],
             'search' => ['nullable', 'string', 'max:255'],
+            'others' => ['nullable', 'in:backup,off'],
             'keep' => ['required_if:scope,page', 'array'],
             'keep.*' => ['integer', 'min:0'],
         ]);
@@ -170,13 +172,16 @@ class ChannelController extends Controller
             ? collect($duplicates->groups($search))->mapWithKeys(fn ($g) => [$g['key'] => $g['suggested']])->all()
             : array_filter($data['keep'] ?? [], fn ($id) => (int) $id > 0);
 
-        $result = $duplicates->apply($keep, $search);
+        $asBackups = ($data['others'] ?? 'backup') === 'backup';
+        $result = $duplicates->apply($keep, $search, $asBackups);
 
         if ($result['groups'] > 0) {
             $this->audit->record(AuditLog::CHANNELS_DEDUPLICATED, null, ['groups' => $result['groups'], 'count' => $result['disabled']]);
         }
 
-        $message = trans_choice(':count channel switched off. The best copy of each group stays.|:count channels switched off. The best copy of each group stays.', $result['disabled'], ['count' => number_format($result['disabled'])]);
+        $message = $asBackups
+            ? trans_choice(':count channel is now a hidden backup copy. The best copy of each group stays in the lists.|:count channels are now hidden backup copies. The best copy of each group stays in the lists.', $result['disabled'], ['count' => number_format($result['disabled'])])
+            : trans_choice(':count channel switched off. The best copy of each group stays.|:count channels switched off. The best copy of each group stays.', $result['disabled'], ['count' => number_format($result['disabled'])]);
         if ($result['skipped'] > 0) {
             $message .= ' '.trans_choice(':count group changed in the meantime and was skipped.|:count groups changed in the meantime and were skipped.', $result['skipped'], ['count' => $result['skipped']]);
         }

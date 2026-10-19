@@ -14,6 +14,10 @@ Both rules join groups (a name match and a guide-id match together make one grou
 
 In this order: it **works** (stream check says online, then never checked, then not working), it is **not slow**, it is the most **reliable** over the last 7 days in steps of 10% (so 92% and 99% count the same; [channel-health.md](channel-health.md)), the best **quality**: the picture size the **stream check measured** (it reads the highest `RESOLUTION` and `BANDWIDTH` from an HLS master playlist while it checks channels: 2000+ px = 4K, 1000+ = Full HD, 700+ = HD, less = SD, saved in `channels.quality_height` / `quality_kbps`), else the tag in the name (4K, Full HD, HD, no tag, SD); then a higher measured bitrate (in 0.5 Mbps steps). Only HLS channels with a master playlist are measured (not raw TS streams or receiver channels), so run *Check streams* to get real numbers. The page shows a *Quality* column: a green badge such as `1080p · 4.5 Mbps` when measured, grey text when guessed, with "N% working" and *Slow* under it, **not a satellite receiver** (one tuner serves only a few streams), in the most **bouquets**, checked most recently, then the oldest. Run *Check streams* first so "works" is current.
 
+## Backup copies or switching off
+
+By default the other copies of a group become **hidden backup copies** of the kept one (`channels.backup_for_id`): they stay enabled and checked, are left out of every list and can't be played by themselves (`Channel::scopeAvailableTo`), and stand in when the kept one stops working ([channel-health.md](channel-health.md#backups-channelfailoverservice)). They no longer show in Find duplicates. Choose *Switch the others off* on the page to disable them instead. Channels → status *Backup copies* lists them, the badge says *Backup copy*, and the bulk action *List again (backup copies)* takes them back into the lists.
+
 ## Switching off
 
 Per page you choose which copy to keep in each group (or *Leave all as they are*) and press *Switch off the others on this page*; or *Keep the suggested copy in all N groups* applies the suggestion to every group (limited to the search when there is one). For every group:

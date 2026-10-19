@@ -6,6 +6,7 @@ use App\Exceptions\InsufficientCredits;
 use App\Exceptions\ResellerLimitReached;
 use App\Models\Bouquet;
 use App\Models\CreditTransaction;
+use App\Models\Sale;
 use App\Models\User;
 use App\Support\Credits;
 use Illuminate\Database\Eloquent\Builder;
@@ -205,6 +206,7 @@ class UserCsvService
                         $spent = $reseller->usesCredits() ? Credits::months(null, $expires) : 0;
                     }
                     $user = $this->users->createUser($data);
+                    app(SaleService::class)->record($user, null, $user->expiration_date, Sale::NEW, $actor);
                     if ($spent > 0) {
                         $this->credits->charge($actor, $spent, CreditTransaction::NEW_SUBSCRIPTION, $user);
                     }

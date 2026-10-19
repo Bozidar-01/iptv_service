@@ -27,7 +27,7 @@ Every HLS stream the basic check finds working gets a second look in the same jo
 
 ## Backups (`ChannelFailoverService`)
 
-Copies of a channel are the admin's chosen **Backup channel** and every other channel with the same `tvg-id`. A copy must be enabled, working and not on a backup itself. They are ranked: the chosen backup first, then not slow, then most reliable (unknown = 50%), then best picture, then lowest id. The edit page lists them as *Backups, best first*.
+Copies of a channel are the admin's chosen **Backup channel**, the hidden **backup copies** Find duplicates kept for it (`backup_for_id`), and every other channel with the same `tvg-id`. A copy must be enabled, working and not on a backup itself. They are ranked: the chosen backup first, then not slow, then most reliable (unknown = 50%), then best picture, then lowest id. The edit page lists them as *Backups, best first*.
 
 - **At check time:** a channel that is down plays its best copy (`using_backup_id`) instead of being switched off. A **slow** channel moves to a copy that is not slow, and stays on. Both go back to their own stream when a check finds it working well. Channels playing a backup are checked every 15 minutes with the watched channels.
 - **While a viewer tries to play:** from the third request in a minute, the device is sent to the next copy (`ChannelFailoverService::forRetry`: copies best first, then the channel's own stream again, so one bad copy doesn't keep anyone stuck). The choice is kept for that device for `StreamService::RETRY_CHOICE_MINUTES` (10), also for the parts of a stream played through the server. Other viewers are not affected. Applies to `/play`, Xtream `/live` and catch-up.

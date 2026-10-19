@@ -5,6 +5,7 @@ use App\Models\AuditLog;
 use App\Models\DeniedPlay;
 use App\Models\LoginEvent;
 use App\Models\StreamLog;
+use App\Models\ViewingSample;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -14,7 +15,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Delete stale active_sessions rows and old play history (see ActiveSession::prunable, StreamLog::prunable, LoginEvent::prunable)
-Schedule::command('model:prune', ['--model' => [ActiveSession::class, StreamLog::class, LoginEvent::class, AuditLog::class, DeniedPlay::class]])->everyFifteenMinutes()->withoutOverlapping();
+Schedule::command('model:prune', ['--model' => [ActiveSession::class, StreamLog::class, LoginEvent::class, AuditLog::class, DeniedPlay::class, ViewingSample::class]])->everyFifteenMinutes()->withoutOverlapping();
+
+// Streams playing at once, per source, for the Statistics page (StatisticsService::sample)
+Schedule::command('iptv:sample-viewing')->everyFiveMinutes();
 
 // Refresh M3U sources that have auto-sync enabled (see Source::isDueForSync)
 Schedule::command('iptv:sync-sources --due')->hourly();

@@ -65,6 +65,19 @@
             @endif
         </div>
 
+        @php($m = $statement['money'])
+        <div class="card">
+            <div class="card-header"><div><h2>{{ __('Money') }}</h2><p>{{ __('From the prices on the Payments page.') }}</p></div><a href="{{ route('admin.payments.index', Auth::user()->isAdmin() ? ['seller' => $statement['reseller']['id']] : []) }}" class="btn btn-ghost btn-sm">{{ __('Payments') }}</a></div>
+            <ul class="list ledger">
+                <li><span>{{ __('Sold to users this month') }}</span><strong>{{ \App\Support\Money::format($m['sold']) }}</strong></li>
+                <li><span>{{ __('Received from users this month') }}</span><strong class="ledger-in">{{ \App\Support\Money::format($m['received']) }}</strong></li>
+                <li><span>{{ __('Not paid by users yet (all months)') }}</span><strong>{{ \App\Support\Money::format($m['unpaid']) }}</strong></li>
+                <li><span>{{ __('Credits charged this month') }}</span><strong class="ledger-out">{{ \App\Support\Money::format($m['credits_cost']) }}</strong></li>
+                <li><span>{{ __('Paid for credits this month') }}</span><strong>{{ \App\Support\Money::format($m['paid_for_credits']) }}</strong></li>
+                <li class="ledger-total"><span>{{ __('Owed for credits now') }}</span><strong>{{ \App\Support\Money::format(max(0, $m['owes'])) }}</strong></li>
+            </ul>
+        </div>
+
         <div class="card">
             <div class="card-header"><h2>{{ __('Credit history of the month') }}</h2></div>
             @if($statement['lines'] === [])
