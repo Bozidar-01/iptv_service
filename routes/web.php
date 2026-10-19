@@ -108,6 +108,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('playlist-options', [PlaylistOptionsController::class, 'index'])->name('playlist-options.index');
     Route::post('playlist-options', [PlaylistOptionsController::class, 'update'])->name('playlist-options.update');
     Route::post('playlist-options/renumber', [PlaylistOptionsController::class, 'renumber'])->name('playlist-options.renumber');
+    Route::post('playlist-options/announcement', [PlaylistOptionsController::class, 'announcement'])->name('playlist-options.announcement');
     Route::post('playlist-options/fill-info', [PlaylistOptionsController::class, 'fillInfo'])->name('playlist-options.fill-info');
     Route::get('channels/duplicates', [ChannelController::class, 'duplicates'])->name('channels.duplicates');
     Route::post('channels/duplicates', [ChannelController::class, 'applyDuplicates'])->name('channels.duplicates.apply');

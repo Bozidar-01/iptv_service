@@ -11,6 +11,26 @@
 </div>
 
 <div class="stack">
+    <form method="POST" action="{{ route('admin.playlist-options.announcement') }}" class="card">
+        @csrf
+        <div class="card-header">
+            <div><h2>{{ __('Message to viewers') }}</h2><p>{{ __('Shown by TiviMate, IPTV Smarters and other Xtream apps after the login, and at the top of every viewer\'s own page. For example: "Maintenance tonight 02:00–03:00" or "New sports channels added".') }}</p></div>
+            @if($announcementShown)<span class="badge badge-success badge-dot">{{ __('Shown now') }}</span>@endif
+        </div>
+        <div class="card-body form-grid">
+            <div class="field full">
+                <label class="label" for="announcement-text">{{ __('Message') }} <span class="optional">{{ __('(empty = none)') }}</span></label>
+                <textarea class="input" id="announcement-text" name="text" rows="2" maxlength="{{ \App\Services\AnnouncementService::MAX_LENGTH }}">{{ old('text', $announcement['text']) }}</textarea>
+            </div>
+            <div class="field">
+                <label class="label" for="announcement-until">{{ __('Show until') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                <input class="input" id="announcement-until" name="until" type="date" value="{{ old('until', $announcement['until']) }}">
+                <span class="help">{{ __('The last day it is shown. Empty = until you remove it.') }}</span>
+            </div>
+        </div>
+        <div class="card-footer"><button class="btn btn-primary">{{ __('Save message') }}</button></div>
+    </form>
+
     <form method="POST" action="{{ route('admin.playlist-options.update') }}" class="card">
         @csrf
         <div class="card-header"><div><h2>{{ __('Channel names') }}</h2></div></div>

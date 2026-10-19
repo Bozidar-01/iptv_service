@@ -91,7 +91,8 @@ class XtreamService
             'user_info' => [
                 'username' => $user->username,
                 'password' => $password,
-                'message' => '',
+                // The panel's message to viewers: apps show it after the login (AnnouncementService)
+                'message' => app(AnnouncementService::class)->current() ?? '',
                 'auth' => 1,
                 'status' => $this->status($user),
                 'exp_date' => $user->expiration_date ? (string) $user->expiration_date->timestamp : null,

@@ -3,11 +3,8 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\QrCode;
 use App\Support\Totp;
-use BaconQrCode\Renderer\Image\SvgImageBackEnd;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -134,10 +131,7 @@ class TwoFactorService
     /** The QR code for the setup page, as an inline SVG. */
     public function qrSvg(User $user, string $secret): string
     {
-        $uri = Totp::uri($secret, $user->username, config('app.name'));
-        $writer = new Writer(new ImageRenderer(new RendererStyle(200, 0), new SvgImageBackEnd));
-
-        return preg_replace('/^<\?xml[^>]*\?>\s*/', '', $writer->writeString($uri));
+        return QrCode::svg(Totp::uri($secret, $user->username, config('app.name')), 200);
     }
 
     private function useRecoveryCode(User $user, string $input): bool

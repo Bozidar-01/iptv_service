@@ -4,6 +4,11 @@
 
 **Files:** `PlaylistOptionsController`, `PlaylistOptionsService`, `ChannelNumberService`, `ChannelCatalogService`, `CatchupService`, `CatchupController`, `app/Jobs/FillChannelInfo.php`, `app/Console/Commands/ChannelUpkeepCommand.php`. Settings are one `app_settings` row (`playlist_options`).
 
+## Message to viewers (`AnnouncementService`)
+
+- One message to every viewer (`POST admin/playlist-options/announcement`: `text` up to 300 characters, empty = none; `until` = last day, optional, today or later). Stored in `app_settings` (`announcement`).
+- Shown by Xtream apps (TiviMate, IPTV Smarters…) after the login, from `user_info.message` of `player_api.php`, and as a banner at the top of every viewer's own page (`/me/{token}`). After its last day it is no longer shown. The card says *Shown now* while it is.
+
 ## Channel names
 
 - **Show the picture quality in channel names** (`quality_in_names`, off by default): "Rai 1" becomes "Rai 1 FHD". The label is 4K / FHD / HD / SD from the measured picture height (`quality_height`), else the tag in the name (`PlaylistOptionsService::label`). Tags already in the name (HD, FHD, 1080p…) are replaced. Used for the M3U name and `tvg-name` and the Xtream `name`.

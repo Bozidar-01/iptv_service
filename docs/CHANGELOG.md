@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Message to viewers, QR codes
+- **Message to viewers** (Playlist options): one message, optionally until a date, shown by Xtream apps after the login (`user_info.message`) and as a banner on every viewer's own page. Stored in `app_settings` (`announcement`).
+- **QR codes**: the user page shows the user's own page and the playlist link as QR codes, the viewer's page shows the playlist link as one (`App\Support\QrCode`, server-made SVG; the two-factor setup uses the same helper).
+- Tests: `AnnouncementTest` (5). `StatementTest` no longer fails when the stylesheet's version number (a file time) happens to contain "99": it checks which statement is shown instead.
+- Files: `app/Services/AnnouncementService.php`, `app/Support/QrCode.php`, `app/Services/{XtreamService,TwoFactorService}.php`, `app/Http/Controllers/Admin/PlaylistOptionsController.php`, `app/Http/Controllers/SelfServiceController.php`, `routes/web.php`, views (playlist options, user page, viewer page), `public/css/admin.css`, `lang/mk.json`, `lang/mk/validation.php`, docs.
+
 ### 2026-10-21 — Relay 1.8: all satellite bouquets, no internet streams
 - `skip_bouquets` (default `IPTV`): with all bouquets, bouquets whose name contains one of the words are left out. Internet-stream entries in any bouquet are never relayed: the relay is for channels the receiver tunes. On the Octagon: 67 of 274 bouquets, 2,509 channels, playlist built in 3 s (the 207 IPTV / VOD bouquets had made it run out of memory).
 - Tests: relay 24 (+1).

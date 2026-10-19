@@ -80,6 +80,19 @@
                     </div>
                     <p class="help" style="margin: 6px 0 0">{{ __('Send this to the user: it shows their expiry, the playlist link and a button to ask for a renewal. It stops working when you make a new playlist link.') }}</p>
                 </div>
+                <details>
+                    <summary class="label" style="cursor: pointer">{{ __('Show as QR codes') }}</summary>
+                    <div class="qr-pair">
+                        <figure>
+                            <div class="qr" role="img" aria-label="{{ __('QR code of the user\'s page') }}">{!! \App\Support\QrCode::svg(route('me', ['token' => $user->playlist_token])) !!}</div>
+                            <figcaption class="help">{{ __('The user\'s page: they scan it with their phone camera.') }}</figcaption>
+                        </figure>
+                        <figure>
+                            <div class="qr" role="img" aria-label="{{ __('QR code of the playlist link') }}">{!! \App\Support\QrCode::svg($playlistUrl) !!}</div>
+                            <figcaption class="help">{{ __('The playlist link, for a phone or tablet app.') }}</figcaption>
+                        </figure>
+                    </div>
+                </details>
                 @endif
 
                 <div>
