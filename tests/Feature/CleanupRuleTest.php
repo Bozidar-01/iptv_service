@@ -185,9 +185,9 @@ describe('on the channels we have', function () {
 describe('the page', function () {
     beforeEach(fn () => $this->admin = User::factory()->admin()->create());
 
-    it('is for admins only and is in the menu', function () {
+    it('is for admins only and is a tab of the Channels section', function () {
         $this->actingAs($this->admin)->get(route('admin.cleanup.index'))->assertOk()->assertSee('Cleanup rules')->assertSee('Remove tags in square brackets');
-        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertSee(route('admin.cleanup.index'), false);
+        $this->actingAs($this->admin)->get(route('admin.channels.index'))->assertSee(route('admin.cleanup.index'), false);
 
         $this->actingAs(User::factory()->create(['role' => 'reseller']))->get(route('admin.cleanup.index'))->assertForbidden();
         auth()->logout();

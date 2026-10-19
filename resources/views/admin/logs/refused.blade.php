@@ -10,7 +10,6 @@
     </div>
 </div>
 
-@include('admin.partials.activity-tabs')
 
 <div class="card">
     <form method="GET" action="{{ route('admin.logs.refused') }}" class="toolbar">

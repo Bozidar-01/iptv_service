@@ -2,7 +2,23 @@
 
 **Branding:** the panel is called **NeboTV** ("nebo" = sky). The name comes from `config('app.name')` (`APP_NAME`, default `NeboTV`) and is shown in every `<title>` and, as a wordmark via `<x-brand-name />` (a trailing "TV" gets the `--brand-from`/`--brand-to` gradient), in the sidebar, the mobile top bar and the sign-in page; it is a brand name, so it is not translated. The logo is the `nebotv` icon (a TV with a star) on the indigo gradient `.brand-mark`. Favicons and home-screen icons live in `public/` (`favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `site.webmanifest`) and are linked from `admin/partials/favicons`, included by the layout and the sign-in page. Full logo (icon + wordmark) for use outside the panel: `public/logo.svg` / `logo.png` (light backgrounds) and `public/logo-dark.svg` / `logo-dark.png` (dark backgrounds); the SVGs use system fonts, so use the PNGs where exact lettering matters.
 
-**Layout:** `resources/views/layouts/admin.blade.php`. Sidebar navigation (Overview / Content / Subscribers), an alerts bell in the header ([alerts.md](alerts.md)), flash messages and validation errors rendered once for every page (`admin/partials/flash`), a language menu with flags (English / Macedonian, see [localization.md](localization.md)) and a light / dark / system switch ([theme.md](theme.md)) above the account footer, and a slide-out menu below 860 px. Styling lives in `public/css/admin.css` (see [architecture.md](../architecture.md#ui-conventions)). The theme follows the OS setting unless the admin picks light or dark.
+**Layout:** `resources/views/layouts/admin.blade.php`. Sidebar navigation (see *Menu and tabs* below), an alerts bell in the header ([alerts.md](alerts.md)), flash messages and validation errors rendered once for every page (`admin/partials/flash`), a language menu with flags (English / Macedonian, see [localization.md](localization.md)) and a light / dark / system switch ([theme.md](theme.md)) above the account footer, and a slide-out menu below 860 px. Styling lives in `public/css/admin.css` (see [architecture.md](../architecture.md#ui-conventions)). The theme follows the OS setting unless the admin picks light or dark.
+
+**Menu and tabs** (`App\Support\AdminNav`, the only place to add a page to the menu): the sidebar groups pages by what you are doing:
+- *Overview*: Dashboard, Alerts, Watching now (`admin.live.index`).
+- *Channels*: Channels, Bouquets, Categories, Sources (with the Receiver page), TV guide.
+- *Users*: Users, Hide channels, Activity.
+- *Money*: one link to Payments.
+- *Reports*: Statistics.
+- *Maintenance*: Backups, Audit log, Launch checklist.
+- **Security** (your two-step sign-in) is the shield button next to *Sign out* under your name; language and theme are above it.
+
+Pages that belong together share a tab bar above the page (`.tabs`, the current one `aria-current="page"`, scrolled into view on a narrow screen) instead of each having a menu link:
+- *Channels*: All channels · Duplicates · Cleanup rules · Playlist options.
+- *Activity*: Plays · Refused.
+- *Money*: Payments · Sales · Statements · Credit history.
+
+The menu link of a section stays highlighted on all its tabs. Resellers see Overview, Users and Money (Payments, Statements, Credit history), and sections without a link they can open are left out. The addresses of all pages are unchanged.
 
 Shared behaviours (in the layout script):
 - `<form data-confirm="…">` asks for confirmation before submitting (all deletes).
@@ -94,7 +110,7 @@ The backups on every disk (the main one and the off-site copy), the time of the 
 ## Housekeeping of subscribers
 `iptv:cleanup-users` runs daily at 05:00 (`UserCleanupService`): a **trial** is deleted `TRIAL_KEEP_DAYS` (7) days after it ended, and an active **subscriber** whose subscription ended more than `EXPIRED_DISABLE_DAYS` (60) days ago is switched off (`0` = never for either). Admins and resellers are never touched. Both are written to the audit log as "system" with the number and the first names. **Renewing** (the Renew button, the alert button, bulk renew) turns a switched-off user back on.
 
-## Live (`admin.live.index`)
+## Watching now (`admin.live.index`)
 Who is watching right now: the devices that played something in the last 5 minutes (`ActiveSession::active()`), newest first, up to 500: user, channel, IP, player and since when, with **Disconnect** (same as on the user page: the device can't start a stream for 10 minutes). Cards: devices watching (and how many users) and the most watched channel now. Refreshes itself every 20 seconds (a checkbox, remembered in the browser). An admin sees everyone, a reseller their own users.
 
 ## Sharing alerts and addresses
