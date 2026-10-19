@@ -9,13 +9,14 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Xtream Codes compatible API, so TV apps (IPTV Smarters, TiviMate, XCIPTV, ...) can log in
- * with server URL + username + password instead of an M3U link. Live TV only: the VOD and
- * series actions answer with empty lists, EPG with nothing.
+ * with server URL + username + password instead of an M3U link. Live TV (with catch-up where the provider has it): the VOD
+ * and series actions answer with empty lists.
  */
 class XtreamService
 {
@@ -23,6 +24,9 @@ class XtreamService
     public const MAX_FAILED_ATTEMPTS = 20;
 
     public const LOCKOUT_SECONDS = 600;
+
+    /** Seconds a right app password is remembered (see authenticate). */
+    public const REMEMBER_SECONDS = 600;
 
     /**
      * Check app credentials (Xtream API, /m3u, /get.php, /live). After too many wrong attempts
@@ -41,8 +45,22 @@ class XtreamService
         }
 
         $user = User::where('username', $username)->first();
+        if (!$user) {
+            RateLimiter::hit($throttleKey, self::LOCKOUT_SECONDS);
 
-        if ($user && Hash::check($password, $user->password)) {
+            return null;
+        }
+
+        // Apps send the password with every request: remember a right one for a while instead of checking the slow hash each
+        // time. The key changes with the stored password, so a new password needs a fresh check.
+        $remembered = 'player-auth:'.hash_hmac('sha256', $user->id.'|'.$password, $user->password.'|'.config('app.key'));
+        if (Cache::has($remembered)) {
+            return $user;
+        }
+
+        if (Hash::check($password, $user->password)) {
+            Cache::put($remembered, true, now()->addSeconds(self::REMEMBER_SECONDS));
+
             return $user;
         }
 
@@ -112,7 +130,7 @@ class XtreamService
      */
     public function liveCategories(User $user): array
     {
-        $ids = Channel::availableTo($user)->distinct()->pluck('category_id');
+        $ids = Channel::listedFor($user)->distinct()->pluck('category_id');
         $favourites = app(FavoriteService::class)->count($user) > 0;
 
         $categories = Category::whereIn('id', $ids->filter())->orderBy('name')->get()
@@ -146,7 +164,7 @@ class XtreamService
 
     public function liveStreamsQuery(User $user, mixed $categoryId = null): Builder
     {
-        return Channel::availableTo($user)
+        return Channel::listedFor($user)
             ->when(is_numeric($categoryId), fn ($q) => (int) $categoryId === 0
                 ? $q->whereNull('category_id')
                 : $q->where('category_id', (int) $categoryId))
@@ -158,20 +176,22 @@ class XtreamService
         $categoryId = $category ?? $channel->category_id ?? 0;
 
         return [
-            'num' => $num,
-            'name' => $channel->name,
+            // The fixed channel number (ChannelNumberService), so it stays the same after every reload
+            'num' => $channel->number ?? $num,
+            'name' => app(PlaylistOptionsService::class)->displayName($channel),
             'stream_type' => 'live',
             'stream_id' => $channel->id,
-            'stream_icon' => $channel->logo_url ?? '',
+            'stream_icon' => $channel->logo() ?? '',
             'epg_channel_id' => $channel->guideId(),
             'added' => (string) $channel->created_at?->timestamp,
             'is_adult' => 0,
             'category_id' => (string) $categoryId,
             'category_ids' => [$categoryId],
             'custom_sid' => '',
-            'tv_archive' => 0,
+            // Catch-up the provider offers: apps then ask /timeshift/... (CatchupController)
+            'tv_archive' => $channel->catchup ? 1 : 0,
             'direct_source' => '',
-            'tv_archive_duration' => 0,
+            'tv_archive_duration' => $channel->catchup ? ($channel->catchup_days ?: CatchupService::DEFAULT_DAYS) : 0,
         ];
     }
 }

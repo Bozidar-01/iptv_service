@@ -20,7 +20,7 @@ TV apps show what's on now and next for every channel that has a guide. The guid
 
 Each channel gets `epg_source_id` + `epg_id` (the guide's channel id):
 
-1. Its `tvg-id` equals a guide channel id. iptv-org's `@SD` / `@HD` suffix is also tried without the suffix: `Kanal5.mk@SD` → `Kanal5.mk`.
+1. Its `tvg-id` (or, when it has none, the iptv-org id found by name: `auto_tvg_id`, [playlist-options.md](playlist-options.md#logos-and-guide-ids-channelcatalogservice)) equals a guide channel id. iptv-org's `@SD` / `@HD` suffix is also tried without the suffix: `Kanal5.mk@SD` → `Kanal5.mk`.
 2. Otherwise, the normalised names are equal (`EpgService::nameKey`). Normalising removes a country prefix (`MK - `), brackets (`(1080p)`, `[Geo-blocked]`), quality tags (HD, FHD, 4K…) and punctuation, transliterates Cyrillic and lower-cases. So `Канал 5`, `MK - Kanal 5` and `Kanal 5 HD` all become `kanal5`.
 3. The guide channel's other display names count too (`alt_keys`).
 4. When several guides have the channel, the guide of the channel's **own country** wins (from a playlist id like `Name.de@SD`; `uk` = `gb`; the guide's country comes from its file name `epg-de.xml.gz`), else the guide added first.
@@ -33,7 +33,7 @@ Satellite receiver channels have a service reference as `tvg-id`, so they are ma
 
 | Where | What |
 |---|---|
-| Playlist link `/playlist/{token}.m3u` | Header `#EXTM3U x-tvg-url="…/epg/{token}.xml" url-tvg="…"`. `tvg-id` is the guide id (`Channel::guideId()`: `epg_id`, else `tvg_id`). |
+| Playlist link `/playlist/{token}.m3u` | Header `#EXTM3U x-tvg-url="…/epg/{token}.xml" url-tvg="…"`. `tvg-id` is the guide id (`Channel::guideId()`: `epg_id`, else `tvg_id`, else `auto_tvg_id`). |
 | `GET /epg/{token}.xml` (`epg`) | XMLTV for the user's channels, from 2 hours ago to `EPG_DAYS` ahead, streamed. `404` for unknown or disabled users. |
 | `/m3u` and `/get.php` (username + password) | Header points to `/xmltv.php?username=…&password=…`. |
 | `GET /xmltv.php?username=&password=` | Same XMLTV. An empty `<tv></tv>` for wrong credentials or inactive accounts. |

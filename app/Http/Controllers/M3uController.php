@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\EpgService;
 use App\Services\TokenService;
 use App\Services\XtreamService;
+use App\Support\GzipOutput;
 use Illuminate\Http\Request;
 
 class M3uController extends Controller
@@ -28,13 +29,13 @@ class M3uController extends Controller
             return response('Invalid credentials', 401);
         }
 
-        return $this->playlistFor($user, route('xtream.xmltv', ['username' => $user->username, 'password' => $request->input('password')]));
+        return $this->playlistFor($request, $user, route('xtream.xmltv', ['username' => $user->username, 'password' => $request->input('password')]));
     }
 
     /**
      * GET /playlist/{token}.m3u: the shareable link shown in the admin panel.
      */
-    public function playlist(string $token)
+    public function playlist(Request $request, string $token)
     {
         $user = User::where('playlist_token', $token)->first();
 
@@ -42,13 +43,13 @@ class M3uController extends Controller
             return response('Playlist not found', 404);
         }
 
-        return $this->playlistFor($user, route('epg', ['token' => $token]));
+        return $this->playlistFor($request, $user, route('epg', ['token' => $token]));
     }
 
     /**
      * GET /epg/{token}.xml: TV guide for the playlist link (linked from its header).
      */
-    public function epg(string $token, EpgService $epg)
+    public function epg(Request $request, string $token, EpgService $epg)
     {
         $user = User::where('playlist_token', $token)->first();
 
@@ -56,12 +57,15 @@ class M3uController extends Controller
             return response('Guide not found', 404);
         }
 
-        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) {
-            echo $chunk;
-        }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+        $gzip = new GzipOutput($request);
+
+        return response()->stream(function () use ($epg, $user, $gzip) {
+            $epg->writeXmltv($user, fn ($chunk) => $gzip->write($chunk));
+            $gzip->finish();
+        }, 200, ['Content-Type' => 'application/xml; charset=utf-8', ...$gzip->headers()]);
     }
 
-    private function playlistFor(User $user, ?string $guideUrl = null)
+    private function playlistFor(Request $request, User $user, ?string $guideUrl = null)
     {
         if ($user->status !== 'active') {
             return response('Account disabled', 403);
@@ -71,16 +75,20 @@ class M3uController extends Controller
             return response('Account expired', 403);
         }
 
-        $token = $this->tokenService->playbackToken($user);
+        // Each download gets its own device key in the play links, so every app that loads the playlist is its own device
+        $tokenValue = $this->tokenService->playbackToken($user)->token.'_'.TokenService::newDeviceKey();
 
-        // Streamed in chunks: a big playlist is never held in memory
+        // Streamed in chunks (compressed when the app accepts it): a big playlist is never held in memory
+        $gzip = new GzipOutput($request);
+
         return response()->stream(
-            function () use ($user, $token, $guideUrl) {
+            function () use ($user, $tokenValue, $guideUrl, $gzip) {
                 try {
-                    $this->tokenService->writeM3u($user, $token->token, $guideUrl, function (string $chunk) {
-                        echo $chunk;
+                    $this->tokenService->writeM3u($user, $tokenValue, $guideUrl, function (string $chunk) use ($gzip) {
+                        $gzip->write($chunk);
                         flush();
                     });
+                    $gzip->finish();
                 } catch (\Throwable $e) {
                     // The status line is already sent: the app gets a short playlist, so at least record why
                     report($e);
@@ -89,7 +97,7 @@ class M3uController extends Controller
                 }
             },
             200,
-            ['Content-Type' => 'audio/x-mpegurl', 'Content-Disposition' => 'attachment; filename="playlist.m3u"']
+            ['Content-Type' => 'audio/x-mpegurl', 'Content-Disposition' => 'attachment; filename="playlist.m3u"', ...$gzip->headers()]
         );
     }
 }

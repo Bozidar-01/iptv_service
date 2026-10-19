@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     Http::fake([
-        'live.test/*' => fn () => Http::response("#EXTM3U\n", 200),
+        'live.test/*' => fn () => Http::response("#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:1\n#EXTINF:6.0,\nseg1.ts\n", 200),
         'dead.test/*' => fn () => Http::response('', 404),
     ]);
 });

@@ -11,33 +11,3 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Models/Channel.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/StreamCheckService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,App\\Models\\Channel\>\:\:filter\(\) expects \(callable\(App\\Models\\Channel, int\)\: bool\)\|null, Closure\(mixed\)\: \(string\|null\) given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/StreamCheckService.php
-
-		-
-			message: '#^Parameter \#1 \$channels of method App\\Services\\StreamCheckService\:\:probe\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Channel\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Services/StreamCheckService.php
-
-		-
-			message: '#^Parameter \#1 \$channels of method App\\Services\\StreamCheckService\:\:recordAlerts\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Channel\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/StreamCheckService.php
-
-		-
-			message: '#^Parameter \#1 \$dead of method App\\Services\\StreamCheckService\:\:findBackups\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\Channel\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/StreamCheckService.php

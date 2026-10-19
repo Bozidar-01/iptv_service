@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Channel;
 use App\Services\EpgService;
 use App\Services\FavoriteService;
+use App\Services\ListCacheService;
 use App\Services\StreamProxyService;
 use App\Services\StreamService;
 use App\Services\TokenService;
 use App\Services\XtreamService;
+use App\Support\GzipOutput;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -51,7 +53,7 @@ class XtreamController extends Controller
 
         return match ($action) {
             'get_live_categories' => response()->json($this->xtreamService->liveCategories($user)),
-            'get_live_streams' => $this->streamLiveStreams($user, $request->input('category_id')),
+            'get_live_streams' => $this->streamLiveStreams($request, $user, $request->input('category_id')),
             'get_short_epg' => $this->epgListings($user, $request, false),
             'get_simple_data_table' => $this->epgListings($user, $request, true),
             // Live TV only for now: VOD, series and anything else are empty
@@ -93,9 +95,12 @@ class XtreamController extends Controller
             return response("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<tv></tv>\n")->header('Content-Type', 'application/xml');
         }
 
-        return response()->stream(fn () => $epg->writeXmltv($user, function ($chunk) {
-            echo $chunk;
-        }), 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+        $gzip = new GzipOutput($request);
+
+        return response()->stream(function () use ($epg, $user, $gzip) {
+            $epg->writeXmltv($user, fn ($chunk) => $gzip->write($chunk));
+            $gzip->finish();
+        }, 200, ['Content-Type' => 'application/xml; charset=utf-8', ...$gzip->headers()]);
     }
 
     /**
@@ -115,25 +120,50 @@ class XtreamController extends Controller
     }
 
     /**
-     * The channel list can have tens of thousands of entries: write the JSON as it is read.
+     * The channel list can have tens of thousands of entries: write the JSON as it is read, compressed when the app accepts it.
+     * The full list comes from a ready file shared by viewers who see the same channels (ListCacheService).
      */
-    private function streamLiveStreams($user, $categoryId)
+    private function streamLiveStreams(Request $request, $user, $categoryId)
     {
         $favouritesOnly = (string) $categoryId === FavoriteService::XTREAM_CATEGORY;
-        $query = $favouritesOnly ? null : $this->xtreamService->liveStreamsQuery($user, $categoryId);
+        $everything = !$favouritesOnly && !is_numeric($categoryId);
         // Favourites are listed first as their own category, and with no category chosen also among the rest
-        $favourites = $favouritesOnly || !is_numeric($categoryId) ? $this->xtreamService->favouriteStreams($user) : collect();
+        $favourites = $favouritesOnly || $everything ? $this->xtreamService->favouriteStreams($user) : collect();
+        $gzip = new GzipOutput($request);
 
-        return response()->stream(function () use ($query, $favourites) {
-            echo '[';
+        $writeRest = function (callable $write, bool $first) use ($user, $categoryId, $favouritesOnly) {
+            if ($favouritesOnly) {
+                return;
+            }
+            $num = 0;
+            foreach ($this->xtreamService->liveStreamsQuery($user, $categoryId)->lazy(1000) as $channel) {
+                $write(($first && $num === 0 ? '' : ',').json_encode($this->xtreamService->liveStream($channel, ++$num), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            }
+        };
+
+        return response()->stream(function () use ($user, $favourites, $everything, $writeRest, $gzip) {
+            $gzip->write('[');
             $num = 0;
             foreach ($favourites as $channel) {
-                echo ($num ? ',' : '').json_encode($this->xtreamService->liveStream($channel, ++$num, FavoriteService::XTREAM_CATEGORY), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $gzip->write(($num ? ',' : '').json_encode($this->xtreamService->liveStream($channel, ++$num, FavoriteService::XTREAM_CATEGORY), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
             }
-            foreach ($query ? $query->lazy(1000) : [] as $channel) {
-                echo ($num ? ',' : '').json_encode($this->xtreamService->liveStream($channel, ++$num), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+            if ($everything) {
+                // Written without the leading comma, so it fits after the favourites or alone
+                $path = app(ListCacheService::class)->path($user, 'xtream', fn (callable $write) => $writeRest($write, true));
+                $handle = fopen($path, 'r');
+                $firstChunk = true;
+                while (!feof($handle) && ($chunk = fread($handle, 65536)) !== false && $chunk !== '') {
+                    $gzip->write(($firstChunk && $num > 0 ? ',' : '').$chunk);
+                    $firstChunk = false;
+                }
+                fclose($handle);
+            } else {
+                $writeRest(fn (string $part) => $gzip->write($part), $num === 0);
             }
-            echo ']';
-        }, 200, ['Content-Type' => 'application/json']);
+
+            $gzip->write(']');
+            $gzip->finish();
+        }, 200, ['Content-Type' => 'application/json', ...$gzip->headers()]);
     }
 }

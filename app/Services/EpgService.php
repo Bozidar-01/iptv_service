@@ -18,7 +18,8 @@ use Illuminate\Support\Str;
  * the guide to TV apps (XMLTV for playlists, short EPG for the Xtream API).
  *
  * Matching, for channels the admin hasn't set by hand (epg_manual):
- *  1. the channel's tvg-id equals a guide channel id (also without iptv-org's "@SD"/"@HD" suffix);
+ *  1. the channel's tvg-id (or the id found in the iptv-org database when it has none) equals a guide channel id (also without
+ *     iptv-org's "@SD"/"@HD" suffix);
  *  2. otherwise the normalised names are equal (nameKey: "Канал 5 HD" and "MK - Kanal 5" both
  *     become "kanal5"), also against the guide channel's other display names.
  * When several guides have the channel, the guide of the channel's own country wins (from a tvg-id like
@@ -68,9 +69,9 @@ class EpgService
     {
         $ids = $names = [];
 
-        Channel::query()->where('is_active', true)->select(['id', 'name', 'tvg_id', 'epg_id', 'epg_manual'])->chunkById(5000, function ($channels) use (&$ids, &$names) {
+        Channel::query()->where('is_active', true)->select(['id', 'name', 'tvg_id', 'auto_tvg_id', 'epg_id', 'epg_manual'])->chunkById(5000, function ($channels) use (&$ids, &$names) {
             foreach ($channels as $channel) {
-                $tvg = mb_strtolower((string) $channel->tvg_id);
+                $tvg = mb_strtolower((string) ($channel->tvg_id ?: $channel->auto_tvg_id));
                 if ($tvg !== '') {
                     $ids[$tvg] = true;
                     $ids[preg_replace('/@[^@]*$/', '', $tvg)] = true;
@@ -112,7 +113,7 @@ class EpgService
 
         Channel::query()
             ->when($sourceId, fn ($q) => $q->where('source_id', $sourceId))
-            ->select(['id', 'name', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual'])
+            ->select(['id', 'name', 'tvg_id', 'auto_tvg_id', 'epg_source_id', 'epg_id', 'epg_manual'])
             ->chunkById(self::CHUNK_SIZE, function (Collection $channels) use ($byId, $byName) {
                 $changes = [];
 
@@ -122,9 +123,11 @@ class EpgService
                         $match = $channel->epg_id ? ($byId[mb_strtolower($channel->epg_id)] ?? null) : null;
                         $match = $match ? [$match[0], $channel->epg_id] : [null, $channel->epg_id];
                     } else {
-                        $tvg = mb_strtolower((string) $channel->tvg_id);
+                        // The playlist's tvg-id, else the one found in the iptv-org database (ChannelCatalogService)
+                        $guideId = $channel->tvg_id ?: $channel->auto_tvg_id;
+                        $tvg = mb_strtolower((string) $guideId);
                         $match = ($tvg !== '' ? ($byId[$tvg] ?? $byId[preg_replace('/@[^@]*$/', '', $tvg)] ?? null) : null)
-                            ?? $this->byName($byName[self::nameKey($channel->name)] ?? [], self::countryOf($channel->tvg_id))
+                            ?? $this->byName($byName[self::nameKey($channel->name)] ?? [], self::countryOf($guideId))
                             ?? [null, null];
                     }
 

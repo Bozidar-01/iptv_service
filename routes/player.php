@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatchupController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\M3uController;
 use App\Http\Controllers\PlayController;
@@ -22,6 +23,8 @@ Route::middleware('throttle:player')->group(function () {
     Route::get('/playlist/{token}.m3u', [M3uController::class, 'playlist'])->name('playlist');
     Route::get('/play/{channel_id}/{token}', [PlayController::class, 'play'])->name('play');
     Route::get('/epg/{token}.xml', [M3uController::class, 'epg'])->name('epg');
+    // Catch-up of a programme, where the provider has an archive (CatchupService)
+    Route::get('/catchup/{channel_id}/{token}', [CatchupController::class, 'play'])->name('catchup');
 });
 
 // A subscriber's own page (status, expiry, playlist link, "ask to renew"): see SelfServiceController
@@ -39,3 +42,5 @@ Route::match(['get', 'post'], '/player_api.php', [XtreamController::class, 'api'
 Route::match(['get', 'post'], '/get.php', [M3uController::class, 'generate'])->middleware('throttle:player')->name('xtream.playlist');
 Route::get('/xmltv.php', [XtreamController::class, 'xmltv'])->middleware('throttle:player')->name('xtream.xmltv');
 Route::get('/live/{username}/{password}/{stream}', [XtreamController::class, 'live'])->middleware('throttle:live')->name('xtream.live');
+Route::get('/timeshift/{username}/{password}/{duration}/{start}/{stream}', [CatchupController::class, 'timeshift'])->middleware('throttle:live')->name('xtream.timeshift');
+Route::get('/streaming/timeshift.php', [CatchupController::class, 'timeshiftPhp'])->middleware('throttle:live')->name('xtream.timeshift-php');

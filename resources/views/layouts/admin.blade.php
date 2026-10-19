@@ -19,6 +19,7 @@
         ['route' => 'admin.categories.index', 'match' => 'admin.categories.*', 'icon' => 'folder', 'label' => __('Categories')],
         ['route' => 'admin.bouquets.index', 'match' => 'admin.bouquets.*', 'icon' => 'package', 'label' => __('Bouquets')],
         ['route' => 'admin.cleanup.index', 'match' => 'admin.cleanup.*', 'icon' => 'edit', 'label' => __('Cleanup rules')],
+        ['route' => 'admin.playlist-options.index', 'match' => 'admin.playlist-options.*', 'icon' => 'signal', 'label' => __('Playlist options')],
         ['route' => 'admin.epg.index', 'match' => 'admin.epg.*', 'icon' => 'clock', 'label' => __('TV guide')],
         ['section' => __('Subscribers')],
         ['route' => 'admin.users.index', 'match' => 'admin.users.*', 'icon' => 'users', 'label' => __('Users')],

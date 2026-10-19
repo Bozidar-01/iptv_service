@@ -8,7 +8,7 @@ _None currently known._
 
 ## Tooling
 
-- **PHPStan baseline:** `phpstan-baseline.neon` lists 8 findings that are the analyser's limits, not bugs (Eloquent collection generics, a nullsafe on a relation). Date columns of a model are declared with `@property` in the model's docblock, because the analyser doesn't read the `casts()` method: do the same for new date columns. Don't add to it: fix new findings. Shrink it when you touch those spots (`vendor/bin/phpstan analyse --generate-baseline`).
+- **PHPStan baseline:** `phpstan-baseline.neon` lists 2 findings that are the analyser's limits, not bugs (Eloquent collection generics, a nullsafe on a relation). Date columns of a model are declared with `@property` in the model's docblock, because the analyser doesn't read the `casts()` method: do the same for new date columns. Don't add to it: fix new findings. Shrink it when you touch those spots (`vendor/bin/phpstan analyse --generate-baseline`).
 - **Browser tests need Google Chrome** on the machine (`channel: 'chrome'`). The Watch player (hls.js / mpegts.js from a CDN) is not covered.
 
 ## Design gaps / risks
@@ -32,12 +32,15 @@ _None currently known._
 - **Relay is wiped by image updates:** flashing OpenATV removes `/usr/bin/nebotv-relay.py` and the init script unless they are in the image backup ([receiver.md](receiver.md#after-an-openatv-image-update)).
 - **Relay uses plain HTTP:** links carry signatures, not passwords, but streams aren't encrypted in transit.
 - **Old admin password in git history:** commit `82be74b` put a real-looking admin password in `AdminSeeder.php`. The seeder now reads `.env`, but that password is still in the history: change it on any server that used it.
-- **Devices are told apart by IP + user agent:** two identical TVs with the same app version behind one router look like one device and share a slot. Suggested fix: a per-device token.
+- **Xtream apps are told apart by IP + user agent:** M3U playlist links carry a device key, but Xtream apps build their own links, so two identical TVs with the same Xtream app behind one router still share a slot.
+- **Device keys and a playlist reload:** an app that loads its playlist again gets a new key and takes over its old slot only when that slot's last play was before the reload. A twin TV that last switched channel before the other TV reloaded is treated as the same device until it plays again (as before device keys).
 - **No heartbeat without the proxy:** a session only stays "active" for 5 minutes after the last `/play` request, so long viewing frees the slot. With **Hide provider address** (`php` mode, or HLS) the session is kept alive while data flows.
 - **Channels without a tvg-id are keyed by group + name:** if a provider renames such a channel or moves it to another group, it is re-created (new ID).
 - **Bulk-deleted imported channels come back** on the next sync. Disable them instead.
-- **Xtream Codes API is live TV only:** VOD, series, catch-up and EPG actions return empty data.
-- **Xtream password checks are not cached:** every `player_api.php` and `/live` request runs `Hash::check` (bcrypt). Fine for a few users. With many, cache the result briefly or lower the bcrypt cost.
+- **Xtream Codes API is live TV only:** VOD and series actions return empty data. Catch-up works where the provider's playlist says it has an archive.
+- **Catch-up start times for Xtream providers are sent in UTC:** Xtream servers read the start in their own time zone, which NeboTV doesn't know (`CatchupService::xtreamUrl`). A provider on another time zone starts the programme off by the difference. Suggested fix: a time zone per source.
+- **Speed is measured from the server:** `stream_speed` says how fast video reaches the server, not the viewer. A stream far from the server can look slow while it plays fine nearby (and the other way round); slow channels only move to a faster copy, they are never switched off.
+- **Ready lists can lag up to 10 minutes:** `ListCacheService` sees changes by counts and last-change times in whole seconds; a change in the same second as the previous one, or a raw query that doesn't touch `updated_at`, shows when the list is made again (at most `MAX_AGE`, 10 minutes). Call `ListCacheService::bump()` after such changes.
 - **Docker setup is development-grade:** code is bind-mounted, `APP_DEBUG` comes from `.env`, MySQL passwords are fixed in `docker-compose.yml`, and there's no HTTPS.
 - **Partly translated:** `/m3u`, `/playlist` and `/play` error bodies and `sources.last_error` are always English; numbers use English separators (`1,234`) in Macedonian too. Laravel's Macedonian plural rule treats 11 like 1 ("11 канал").
 - **No Content-Security-Policy:** panel pages send basic security headers, but the views use inline scripts, so a CSP is not set yet.

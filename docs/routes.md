@@ -27,12 +27,15 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/me/{token}/favourite` | `me.favourite` | `SelfServiceController@favourite`: `do` add\|remove\|up\|down, `channel`; no session (422 when invalid) |
 | POST | `/me/{token}/renew` | `me.renew` | `SelfServiceController@renew`: creates a `renewal_requested` alert (once per 24 h), redirects back to the page |
 | GET | `/epg/{token}.xml` | `epg` | `M3uController@epg` | XMLTV guide for the playlist link |
-| GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream, or the stream itself for sources with *Hide provider address*; token may end in `.m3u8`/`.ts`/… |
+| GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream, or the stream itself for sources with *Hide provider address*; token = `{token}_{device key}` in playlists (or just the token), may end in `.m3u8`/`.ts`/… |
 | GET | `/stream/{channel_id}/{token}?u=` | `stream` | `PlayController@stream` | one part (segment, key, variant) of a proxied stream; `u` = encrypted provider address; own limit `THROTTLE_STREAM_PER_TOKEN` |
 | GET, POST | `/player_api.php` | `xtream.api` | `XtreamController@api` | Xtream Codes API: `username`, `password`, optional `action`, `category_id` |
 | GET, POST | `/get.php` | `xtream.playlist` | `M3uController@generate` | Xtream Codes M3U |
 | GET | `/xmltv.php` | `xtream.xmltv` | `XtreamController@xmltv` | XMLTV guide (username + password) |
 | GET | `/live/{username}/{password}/{stream}` | `xtream.live` | `XtreamController@live` | `{stream}` = channel id + optional `.ts`/`.m3u8` |
+| GET | `/catchup/{channel_id}/{token}?utc=&duration=` | `catchup` | `CatchupController@play` | catch-up from the M3U `catchup-source`: start (Unix), length (s); redirect to the provider's archive, 404 without one; `player` limiter |
+| GET | `/timeshift/{username}/{password}/{duration}/{start}/{stream}` | `xtream.timeshift` | `CatchupController@timeshift` | Xtream catch-up: minutes, `Y-m-d:H-i`, channel id + `.ts`; `live` limiter |
+| GET | `/streaming/timeshift.php` | `xtream.timeshift-php` | `CatchupController@timeshiftPhp` | the same with `username`, `password`, `stream`, `start`, `duration` |
 
 ## Admin (`auth` + `admin` middleware, prefix `/admin`, name prefix `admin.`)
 
@@ -50,6 +53,10 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/cleanup/pack/{pack}` | `admin.cleanup.pack` | adds a ready-made set (`tags`, `radio`, `satellite`, `genres`) |
 | POST | `/admin/cleanup/{rule}/toggle` | `admin.cleanup.toggle` | enable / disable a rule |
 | DELETE | `/admin/cleanup/{rule}` | `admin.cleanup.destroy` | |
+| GET | `/admin/playlist-options` | `admin.playlist-options.index` | `PlaylistOptionsController@index`: names, numbers, logos and guide IDs, catch-up (admins only) |
+| POST | `/admin/playlist-options` | `admin.playlist-options.update` | `update`: `quality_in_names`, `hide_worse_copies` |
+| POST | `/admin/playlist-options/renumber` | `admin.playlist-options.renumber` | `renumber`: numbers every channel again in playlist order |
+| POST | `/admin/playlist-options/fill-info` | `admin.playlist-options.fill-info` | `fillInfo`: queues `FillChannelInfo` (downloads the iptv-org database again) |
 | GET | `/admin/channels/duplicates` | `admin.channels.duplicates` | `ChannelController@duplicates`: groups of copies with the suggested one (`?search=&page=`) |
 | POST | `/admin/channels/duplicates` | `admin.channels.duplicates.apply` | `applyDuplicates`: `scope` page (`keep[group]=id`) or all, `search`; disables the other copies |
 | POST | `/admin/channels/check-streams` | `admin.channels.check-streams` | `ChannelController@checkStreams` (optional `source_id`) |

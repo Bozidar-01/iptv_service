@@ -21,7 +21,7 @@ function streamChannel(string $url, array $attributes = []): Channel
 function fakeStreams(): void
 {
     Http::fake([
-        'live.test/*' => fn () => Http::response("#EXTM3U\n#EXT-X-VERSION:3\nseg1.ts\n", 200, ['Content-Type' => 'text/plain']),
+        'live.test/*' => fn () => Http::response("#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:1\n#EXTINF:6.0,\nseg1.ts\n", 200, ['Content-Type' => 'text/plain']),
         'ts.test/*' => fn () => Http::response(str_repeat("\x47", 376), 200, ['Content-Type' => 'video/mp2t']),
         'gone.test/*' => fn () => Http::response('Not found', 404),
         'html.test/*' => fn () => Http::response('<html>Blocked in your country</html>', 200, ['Content-Type' => 'text/html']),
@@ -154,14 +154,15 @@ describe('admin', function () {
 it('tries failed streams once more before switching them off', function () {
     $calls = 0;
     Http::fake(['flaky.test/*' => function () use (&$calls) {
-        return ++$calls === 1 ? Http::response('', 503) : Http::response("#EXTM3U\n", 200);
+        return ++$calls === 1 ? Http::response('', 503) : Http::response("#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:1\n#EXTINF:6.0,\nseg1.ts\n", 200);
     }]);
     $channel = streamChannel('http://flaky.test/a.m3u8');
 
     app(StreamCheckService::class)->checkChannels([$channel->id]);
 
     expect($channel->fresh())->is_active->toBeTrue()->stream_status->toBe('online')->stream_error->toBeNull()
-        ->and($calls)->toBe(2);
+        // Two tries, then the closer look at the playlist that worked
+        ->and($calls)->toBe(3);
     Sleep::assertSlept(fn ($duration) => $duration->totalSeconds == StreamCheckService::RETRY_DELAY, 1);
 });
 

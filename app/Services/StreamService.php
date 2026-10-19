@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\Request;
 
 class StreamService
 {
-    public function __construct(private ReceiverService $receiverService) {}
+    public function __construct(private ReceiverService $receiverService, private ChannelHealthService $health, private ChannelFailoverService $failover) {}
+
+    /** Minutes a device keeps the copy it was moved to after retrying a channel. */
+    public const RETRY_CHOICE_MINUTES = 10;
 
     /**
      * Minutes after the last play request that a session still counts as active.
@@ -40,8 +43,45 @@ class StreamService
         // 2. Manage session
         $this->touch($user, $channel);
 
-        // 3. Return target URL: the stream itself, or a signed link for receiver channels
+        // 3. A device that keeps asking for the channel can't play it: try the next working copy (ChannelFailoverService)
+        $attempt = $this->health->recordPlay($user, $channel, $this->deviceId());
+        if ($attempt >= ChannelHealthService::RETRY_PLAYS) {
+            Cache::put($this->choiceKey($user, $channel), $this->failover->forRetry($channel, $attempt)->id, now()->addMinutes(self::RETRY_CHOICE_MINUTES));
+        }
+        $this->applyDeviceChoice($user, $channel);
+
+        // 4. Return target URL: the stream itself, or a signed link for receiver channels
         return $this->receiverService->playUrl($channel->playbackChannel());
+    }
+
+    /**
+     * Play the copy this device was moved to after retrying (for a while), also for the parts of a stream played through the
+     * server. Only in memory: other viewers keep the channel's own stream.
+     */
+    public function applyDeviceChoice(User $user, Channel $channel): void
+    {
+        $chosen = Cache::get($this->choiceKey($user, $channel));
+        if ($chosen === null) {
+            return;
+        }
+
+        if ((int) $chosen === $channel->id) {
+            $channel->using_backup_id = null;
+            $channel->setRelation('usingBackup', null);
+
+            return;
+        }
+
+        $copy = Channel::find($chosen);
+        if ($copy && $copy->is_active) {
+            $channel->using_backup_id = $copy->id;
+            $channel->setRelation('usingBackup', $copy);
+        }
+    }
+
+    private function choiceKey(User $user, Channel $channel): string
+    {
+        return 'retry-choice:'.$user->id.':'.$channel->id.':'.sha1($this->deviceId());
     }
 
     /**
@@ -77,11 +117,12 @@ class StreamService
             return $inBouquet ? DeniedPlay::HIDDEN : DeniedPlay::NOT_IN_BOUQUET;
         }
 
-        // Check max connections: one slot per device (IP + user agent). The device's own session
-        // doesn't count, so it can switch channels; any other device needs a free slot.
+        // Check max connections: one slot per device. The device's own session doesn't count, so it can
+        // switch channels; any other device needs a free slot.
         $otherDevices = ActiveSession::where('user_id', $user->id)
             ->where('last_activity_at', '>', now()->subMinutes(self::SESSION_TIMEOUT_MINUTES))
             ->whereNot(fn ($query) => $this->whereDevice($query))
+            ->whereNot(fn ($query) => $this->whereReplaced($query))
             ->count();
 
         if ($otherDevices >= $user->max_connections) {
@@ -148,9 +189,11 @@ class StreamService
      */
     public function touch(User $user, Channel $channel): void
     {
-        // One row per device: switching channels updates it
+        // One row per device: switching channels updates it. A device that loaded its playlist again takes over its old row.
         $session = $this->whereDevice(ActiveSession::where('user_id', $user->id))->first()
+            ?? $this->whereReplaced(ActiveSession::where('user_id', $user->id))->latest('last_activity_at')->first()
             ?? new ActiveSession(['user_id' => $user->id, 'ip' => Request::ip(), 'user_agent' => $this->userAgent()]);
+        $session->device_key = $this->deviceKey();
 
         // A new channel or a session that went stale counts as a new viewing, so restart it
         if (!$session->exists || $session->channel_id != $channel->id
@@ -164,11 +207,47 @@ class StreamService
     }
 
     /**
-     * Limit a session query to the requesting device.
+     * Limit a session query to the requesting device: by the device key in its play links (M3U playlists, see TokenService),
+     * else by IP + user agent (Xtream apps build their own links).
      */
     private function whereDevice($query)
     {
-        return $query->where('ip', Request::ip())->where('user_agent', $this->userAgent());
+        $key = $this->deviceKey();
+
+        return $key !== null
+            ? $query->where('device_key', $key)
+            : $query->whereNull('device_key')->where('ip', Request::ip())->where('user_agent', $this->userAgent());
+    }
+
+    /**
+     * Sessions the requesting device takes over: when it loads its playlist again it gets a new key, and its sessions from the
+     * same IP and app that were last used before that key was made are its own old ones. A second identical TV behind the same
+     * router keeps playing with its own key after that time, so it keeps its own slot.
+     */
+    private function whereReplaced($query)
+    {
+        $key = $this->deviceKey();
+        if ($key === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('ip', Request::ip())->where('user_agent', $this->userAgent())
+            ->where(fn ($q) => $q->whereNull('device_key')
+                ->orWhere(fn ($q) => $q->where('device_key', '!=', $key)->where('last_activity_at', '<', TokenService::deviceKeyIssuedAt($key))));
+    }
+
+    /** The device key of the play link being answered (set by PlayController), or null. */
+    public function deviceKey(): ?string
+    {
+        $key = Request::instance()->attributes->get('device_key');
+
+        return is_string($key) ? $key : null;
+    }
+
+    /** What tells this device apart: its key, else IP + user agent. */
+    private function deviceId(): string
+    {
+        return $this->deviceKey() ?? Request::ip().'|'.$this->userAgent();
     }
 
     private function userAgent(): string

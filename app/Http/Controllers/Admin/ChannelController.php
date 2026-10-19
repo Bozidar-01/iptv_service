@@ -9,6 +9,8 @@ use App\Models\Channel;
 use App\Models\Source;
 use App\Services\AuditService;
 use App\Services\ChannelDuplicateService;
+use App\Services\ChannelFailoverService;
+use App\Services\ChannelHealthService;
 use App\Services\ChannelService;
 use App\Services\EpgService;
 use App\Services\StreamCheckService;
@@ -36,8 +38,9 @@ class ChannelController extends Controller
         $categories = $this->channelService->getAllCategories();
         $sources = Source::orderBy('name')->get();
         $bouquets = Bouquet::orderBy('name')->get();
+        $trouble = app(ChannelHealthService::class)->troubleCounts($channels->pluck('id')->all());
 
-        return view('admin.channels.index', compact('channels', 'filters', 'categories', 'sources', 'bouquets'));
+        return view('admin.channels.index', compact('channels', 'filters', 'categories', 'sources', 'bouquets', 'trouble'));
     }
 
     public function create()
@@ -61,8 +64,10 @@ class ChannelController extends Controller
         $categories = $this->channelService->getAllCategories();
         $backupSuggestions = $this->channelService->backupSuggestions($channel);
         $nowPlaying = app(EpgService::class)->nowPlaying($channel);
+        $health = app(ChannelHealthService::class)->summary($channel);
+        $ranked = app(ChannelFailoverService::class)->ranked($channel);
 
-        return view('admin.channels.edit', compact('channel', 'categories', 'backupSuggestions', 'nowPlaying'));
+        return view('admin.channels.edit', compact('channel', 'categories', 'backupSuggestions', 'nowPlaying', 'health', 'ranked'));
     }
 
     public function update(Request $request, Channel $channel)
@@ -224,8 +229,13 @@ class ChannelController extends Controller
             'alert_on_down' => 'boolean',
             'backup_channel_id' => ['nullable', 'integer', 'exists:channels,id', Rule::notIn([$request->route('channel')?->id])],
             'epg_id' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'integer', 'min:1', 'max:999999'],
         ]);
         $data['epg_id'] = filled($data['epg_id'] ?? null) ? trim($data['epg_id']) : null;
+        // An empty number keeps the channel's number (a new channel gets the next free one)
+        if (!filled($data['number'] ?? null)) {
+            unset($data['number']);
+        }
         $data['epg_manual'] = $data['epg_id'] !== null;
         $data['is_active'] = $request->boolean('is_active');
         $data['alert_on_down'] = $request->boolean('alert_on_down');

@@ -35,6 +35,9 @@ Schedule::command('iptv:sync-epg')->dailyAt('03:30');
 Schedule::command('iptv:check-streams')->dailyAt('04:00');
 Schedule::command('iptv:check-streams --watched')->everyFifteenMinutes();
 
+// Number new channels, better copies, old check history, unused channel lists; logos and guide ids from iptv-org weekly
+Schedule::command('iptv:channel-upkeep')->dailyAt('04:45');
+
 // Back up the database every night (BackupService); failures raise an alert
 Schedule::command('iptv:backup')->dailyAt('02:30');
 

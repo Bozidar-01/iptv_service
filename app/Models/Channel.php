@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PlaylistOptionsService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,9 +13,17 @@ use Illuminate\Support\Facades\DB;
 /**
  * @property Carbon|null $stream_checked_at
  */
-#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id', 'quality_height', 'quality_kbps'])]
+#[Fillable(['name', 'stream_url', 'logo_url', 'category_id', 'is_active', 'source_id', 'external_key', 'tvg_id', 'epg_source_id', 'epg_id', 'epg_manual', 'http_user_agent', 'http_referrer', 'sort_order', 'stream_status', 'stream_checked_at', 'stream_error', 'auto_disabled', 'alert_on_down', 'backup_channel_id', 'using_backup_id', 'quality_height', 'quality_kbps', 'reliability', 'stream_speed', 'hls_sequence', 'number', 'auto_logo_url', 'auto_tvg_id', 'better_copy_id', 'catchup', 'catchup_days', 'catchup_source'])]
 class Channel extends Model
 {
+    protected static function booted(): void
+    {
+        // A channel added by hand gets the next free number (imports number theirs in one go, see ChannelNumberService)
+        static::creating(function (Channel $channel) {
+            $channel->number ??= (int) static::query()->max('number') + 1;
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -49,6 +58,24 @@ class Channel extends Model
     }
 
     /**
+     * What a viewer's playlist and apps list: availableTo, without channels that have a better copy when the admin chose to list
+     * only the better one (PlaylistOptionsService), unless that better copy is hidden for the viewer.
+     */
+    public function scopeListedFor($query, User $user)
+    {
+        $query->availableTo($user);
+
+        if (app(PlaylistOptionsService::class)->settings()['hide_worse_copies']) {
+            $query->where(fn ($q) => $q->whereNull('channels.better_copy_id')
+                ->orWhereIn('channels.better_copy_id', DB::table('user_hidden_channels')->select('channel_id')->where('user_id', $user->id))
+                ->orWhereIn('channels.better_copy_id', DB::table('owner_hidden_channels')->select('channel_id')
+                    ->when($user->owner_id === null, fn ($q) => $q->whereNull('owner_id'), fn ($q) => $q->where('owner_id', $user->owner_id))));
+        }
+
+        return $query;
+    }
+
+    /**
      * Playlist order: category name, then position in the source, then name.
      */
     public function scopePlaylistOrder($query)
@@ -71,7 +98,15 @@ class Channel extends Model
      */
     public function guideId(): ?string
     {
-        return $this->epg_id ?: $this->tvg_id;
+        return $this->epg_id ?: $this->tvg_id ?: $this->auto_tvg_id;
+    }
+
+    /**
+     * Logo for playlists and apps: the source's own, else the one found in the iptv-org database (ChannelCatalogService).
+     */
+    public function logo(): ?string
+    {
+        return $this->logo_url ?: $this->auto_logo_url;
     }
 
     /** @return BelongsTo<Channel, $this> */

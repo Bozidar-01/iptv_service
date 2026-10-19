@@ -32,7 +32,13 @@
 
         <div class="field">
             <label class="label" for="logo_url">{{ __('Logo URL') }} <span class="optional">{{ __('(optional)') }}</span></label>
-            <input class="input" id="logo_url" name="logo_url" type="url" value="{{ old('logo_url', $channel->logo_url ?? '') }}" placeholder="https://…/logo.png">
+            <input class="input" id="logo_url" name="logo_url" type="url" value="{{ old('logo_url', $channel->logo_url ?? '') }}" placeholder="{{ isset($channel) && $channel->auto_logo_url ? __('Found automatically: :url', ['url' => $channel->auto_logo_url]) : 'https://…/logo.png' }}">
+        </div>
+
+        <div class="field">
+            <label class="label" for="number">{{ __('Channel number') }} <span class="optional">{{ __('(optional)') }}</span></label>
+            <input class="input" id="number" name="number" type="number" min="1" max="999999" value="{{ old('number', $channel->number ?? '') }}" placeholder="{{ __('Next free number') }}">
+            <span class="help">{{ __('The number apps show, for the number keys on the remote.') }}</span>
         </div>
 
         @isset($backupSuggestions)
@@ -60,7 +66,7 @@
                         </option>
                     @endforeach
                 </select>
-                <span class="help">{{ __('When this stream stops working, viewers get the backup instead of a dead channel, until it works again. Listed: channels with the same name or guide ID.') }}</span>
+                <span class="help">{{ __('When this stream stops working or is too slow, viewers get the backup instead, until it works well again. The chosen backup comes first; other working copies with the same guide ID follow, best first. Listed: channels with the same name or guide ID.') }}</span>
             </div>
         @endisset
 
