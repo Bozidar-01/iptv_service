@@ -30,6 +30,10 @@ webif_password =
 bouquets =
     • 13,0 E - RAI • Mediaset • TivùSat
 
+# With bouquets empty (all bouquets): leave out bouquets whose name contains one of these words,
+# comma separated, any case. Internet-stream (IPTV) bouquets are never relayed anyway.
+skip_bouquets = IPTV
+
 # Leave out channels that are encrypted (keeps free-to-air only).
 fta_only = yes
 

@@ -374,6 +374,14 @@ class EpgTest(unittest.TestCase):
         with self.assertRaises(Exception):
             relay.build_playlist(self.settings, 'http://relay.test')
 
+    def test_all_bouquets_without_skipped_ones_and_without_internet_streams(self):
+        conf = write('[relay]\nsecret = test-secret-1234567890\nbox_host = 127.0.0.1\nwebif_port = %d\nfta_only = no\nskip_bouquets = other\n' % self.server.server_address[1])
+        settings = relay.Settings(conf)
+        self.assertEqual([n for _, n in relay.selected_bouquets(settings)], ['Italia'])
+        self.assertTrue(relay.is_satellite(RAI1))
+        self.assertFalse(relay.is_satellite('1:0:1:0:0:0:0:0:0:0:http%3a//iptv.test/live/1.ts:Some IPTV'))
+        self.assertEqual(relay.Settings(write('[relay]\nsecret = test-secret-1234567890\n')).skip_bouquets, ['iptv'])
+
     def test_stops_when_the_receiver_runs_low_on_memory(self):
         relay.free_memory_mb = lambda: 50
         body, summary = relay.build_epg(self.settings, now=1792399000)

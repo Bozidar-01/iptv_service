@@ -100,8 +100,10 @@ ssh root@192.168.100.40 'chmod +x /etc/init.d/nebotv-relay; /etc/init.d/nebotv-r
 
 The log line shows the version (`NeboTV relay 1.5`) and `(one cable: one satellite at a time)` when `single_cable = yes` is set. To use the new setting, add `single_cable = yes` under `[relay]` in `/etc/nebotv-relay.conf` first (see `relay/nebotv-relay.conf.example`).
 
-### Slow bouquets
-**Set `bouquets` to the ones you offer.** With `bouquets =` empty the relay reads every bouquet on the box (274 on the Octagon, about 3,500 channels, many of them technical lists and radio) for each sync: slow, and on a box with about 200 MB free it was killed for using too much memory (exit code 137) while building the playlist. Print the names with `wget -qO- http://127.0.0.1/api/bouquets` on the box.
+### Which bouquets
+- `bouquets =` empty means every bouquet on the box, except those whose name contains a word in `skip_bouquets` (default `IPTV`, comma separated, any case). Or list the ones you offer, one per line. Print the names with `wget -qO- http://127.0.0.1/api/bouquets` on the box.
+- **Internet streams are never relayed** (relay 1.8, `is_satellite`): a bouquet entry whose reference carries an address (`…http%3a//…`) is someone else's internet stream, not a channel the receiver tunes. On the Octagon 207 of 274 bouquets were such IPTV / VOD lists; reading them all got the relay killed for memory (exit code 137). Without them: 67 satellite bouquets, 2,509 channels, playlist in 3 s.
+- `fta_only = yes` leaves out encrypted channels (pay TV, icam).
 
 With many bouquets (274 on the Octagon) the box sometimes takes more than 10 s to list one. Relay 1.6 waits up to 60 s and tries twice (`bouquet_services`). A bouquet that still doesn't answer gets its channel list from the last time it was read, so its channels don't disappear from the panel (an import deletes channels missing from the playlist); only a bouquet never read since the relay started makes the playlist fail (`502`, the panel keeps its channels). The log says `Bouquet … did not answer (…): using its last channel list`.
 
