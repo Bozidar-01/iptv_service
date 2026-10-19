@@ -18,7 +18,10 @@ class ReceiverStatusService
     public const CACHE_SECONDS = 15;
 
     /**
-     * @return array{online: bool, error: ?string, version: ?string, active_channels: int, active_tuners: ?int, max_streams: int, single_cable: ?bool, satellites: list<string>, events: list<array{when: int, kind: string, reason: string, channel: string}>, has_events: bool}
+     * `guide`: whether the relay reads the receiver's own TV guide (relay 1.5): `off` (guide = no), `reading` (not ready yet),
+     * `ready`, or null for an older relay that doesn't say.
+     *
+     * @return array{online: bool, error: ?string, version: ?string, active_channels: int, active_tuners: ?int, max_streams: int, single_cable: ?bool, satellites: list<string>, events: list<array{when: int, kind: string, reason: string, channel: string}>, has_events: bool, guide: ?string}
      */
     public function status(Source $source): array
     {
@@ -27,7 +30,7 @@ class ReceiverStatusService
 
     private function fetch(Source $source): array
     {
-        $empty = ['online' => false, 'error' => null, 'version' => null, 'active_channels' => 0, 'active_tuners' => null, 'max_streams' => 0, 'single_cable' => null, 'satellites' => [], 'events' => [], 'has_events' => false];
+        $empty = ['online' => false, 'error' => null, 'version' => null, 'active_channels' => 0, 'active_tuners' => null, 'max_streams' => 0, 'single_cable' => null, 'satellites' => [], 'events' => [], 'has_events' => false, 'guide' => null];
 
         try {
             $response = Http::timeout(8)->get(rtrim((string) $source->url, '/').'/status', ['key' => $source->relay_secret]);
@@ -62,6 +65,12 @@ class ReceiverStatusService
                 'channel' => $names[$e['ref'] ?? ''] ?? (string) ($e['ref'] ?? ''),
             ], array_reverse($events))),
             'has_events' => array_key_exists('recent_events', $data),
+            'guide' => match (true) {
+                !array_key_exists('guide', $data) => null,
+                $data['guide'] === false => 'off',
+                is_array($data['guide']) => 'ready',
+                default => 'reading',
+            },
         ];
     }
 

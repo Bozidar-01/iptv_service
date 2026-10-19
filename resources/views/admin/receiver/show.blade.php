@@ -70,26 +70,40 @@
     </div>
 
     <div class="card">
-        <div class="card-header"><div><h2>{{ __('TV guide from the receiver') }}</h2><p>{{ __('The programmes the receiver itself has collected, for its channels: often the only guide for satellite channels. It is imported every night with the other guides.') }}</p></div></div>
+        <div class="card-header"><div><h2>{{ __('TV guide for the receiver\'s channels') }}</h2><p>{{ __('Apps show programme information for a channel when one of the guides on the TV guide page has it, matched by name or guide ID.') }}</p></div></div>
         <div class="card-body stack" style="gap: 12px">
-            @if($status['version'] && version_compare($status['version'], '1.5', '<'))
-                <div class="alert alert-warning" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ __('This needs relay 1.5 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.', ['version' => $status['version']]) }}</div></div>
-            @endif
-            @if($guide)
-                <p>
-                    {{ __('Last import: :status', ['status' => $guide->last_synced_at ? $guide->last_synced_at->diffForHumans() : __('not yet')]) }} ·
-                    {{ trans_choice(':count channel|:count channels', $guide->channel_count ?? 0, ['count' => number_format($guide->channel_count ?? 0)]) }} ·
-                    {{ trans_choice(':count programme|:count programmes', $guide->programme_count ?? 0, ['count' => number_format($guide->programme_count ?? 0)]) }}
-                </p>
-                @if($guide->last_error)
-                    <div class="alert alert-danger" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ $guide->last_error }}</div></div>
+            <p>
+                {{ __(':with of :total channels have a TV guide.', ['with' => number_format($guideCoverage['with']), 'total' => number_format($guideCoverage['total'])]) }}
+                @if($guideCoverage['with'] < $guideCoverage['total'])
+                    <a href="{{ route('admin.channels.index', ['source' => $source->id, 'status' => 'no_guide']) }}">{{ __('Show the ones without') }}</a>
                 @endif
+            </p>
+            <p class="help" style="margin: 0">{{ __('For an important channel without one, type its guide ID on the channel\'s edit page. Radio and data services never have a guide: Shorten the channel list below leaves them out.') }}</p>
+            @if($status['guide'] === 'off')
+                <div class="alert alert-info" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ __('Reading the guide from the receiver itself is switched off (guide = no in the relay settings). On a box with little free memory it can overload the receiver, so these channels get their guide from the TV guide page only.') }}</div></div>
+            @else
+                <div>
+                    <div class="label" style="margin-bottom: 6px">{{ __('The receiver\'s own guide') }}</div>
+                    @if($status['version'] && version_compare($status['version'], '1.5', '<'))
+                        <div class="alert alert-warning" style="margin: 0 0 12px"><x-icon name="alert" /><div class="alert-body">{{ __('This needs relay 1.5 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.', ['version' => $status['version']]) }}</div></div>
+                    @endif
+                    @if($guide)
+                        <p>
+                            {{ __('Last import: :status', ['status' => $guide->last_synced_at ? $guide->last_synced_at->diffForHumans() : __('not yet')]) }} ·
+                            {{ trans_choice(':count channel|:count channels', $guide->channel_count ?? 0, ['count' => number_format($guide->channel_count ?? 0)]) }} ·
+                            {{ trans_choice(':count programme|:count programmes', $guide->programme_count ?? 0, ['count' => number_format($guide->programme_count ?? 0)]) }}
+                        </p>
+                        @if($guide->last_error)
+                            <div class="alert alert-danger" style="margin: 0 0 12px"><x-icon name="alert" /><div class="alert-body">{{ $guide->last_error }}</div></div>
+                        @endif
+                    @endif
+                    <p class="help" style="margin: 0 0 12px">{{ __('The relay reads the guide 5 minutes after it starts and every 6 hours, one channel at a time; with many bouquets that takes 10 to 15 minutes, so an import right after a restart may have to wait. Enigma2 only keeps programmes of channels it has tuned. An EPG import plugin, or the nightly EPG refresh in the receiver\'s settings, fills it for all channels.') }}</p>
+                    <form method="POST" action="{{ route('admin.receiver.guide', $source) }}" class="inline-form">
+                        @csrf
+                        <button class="btn btn-secondary"><x-icon name="clock" /> {{ $guide ? __('Import the guide now') : __('Use the receiver\'s TV guide') }}</button>
+                    </form>
+                </div>
             @endif
-            <p class="help" style="margin: 0">{{ __('The relay reads the guide 5 minutes after it starts and every 6 hours, one channel at a time; with many bouquets that takes 10 to 15 minutes, so an import right after a restart may have to wait. Enigma2 only keeps programmes of channels it has tuned. An EPG import plugin, or the nightly EPG refresh in the receiver\'s settings, fills it for all channels.') }}</p>
-            <form method="POST" action="{{ route('admin.receiver.guide', $source) }}" class="inline-form">
-                @csrf
-                <button class="btn btn-secondary"><x-icon name="clock" /> {{ $guide ? __('Import the guide now') : __('Use the receiver\'s TV guide') }}</button>
-            </form>
         </div>
     </div>
 

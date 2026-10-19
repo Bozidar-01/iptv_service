@@ -1180,5 +1180,14 @@
     "Pages in this section": "Страници во овој дел",
     "Maintenance": "Одржување",
     "The relay reads the guide 5 minutes after it starts and every 6 hours, one channel at a time; with many bouquets that takes 10 to 15 minutes, so an import right after a restart may have to wait. Enigma2 only keeps programmes of channels it has tuned. An EPG import plugin, or the nightly EPG refresh in the receiver's settings, fills it for all channels.": "Релејот го чита водичот 5 минути по стартувањето и на секои 6 часа, канал по канал; со многу пакети тоа трае 10 до 15 минути, па увоз веднаш по рестарт можеби ќе треба да почека. Enigma2 чува емисии само за каналите што ги наместил. Додаток за увоз на EPG, или ноќното освежување на EPG во поставките на приемникот, го пополнува за сите канали.",
-    "This needs relay 1.5 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.": "Ова бара релеј 1.5 или понов на приемникот (има :version). Копирајте ја новата датотека на релејот на приемникот и рестартирајте го."
+    "This needs relay 1.5 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.": "Ова бара релеј 1.5 или понов на приемникот (има :version). Копирајте ја новата датотека на релејот на приемникот и рестартирајте го.",
+    "TV guide for the receiver's channels": "ТВ водич за каналите на приемникот",
+    "Apps show programme information for a channel when one of the guides on the TV guide page has it, matched by name or guide ID.": "Апликациите прикажуваат информации за емисиите на канал кога некој од водичите на страницата ТВ водич го има, спарен по име или ID за водичот.",
+    ":with of :total channels have a TV guide.": ":with од :total канали имаат ТВ водич.",
+    "Show the ones without": "Прикажи ги оние без водич",
+    "For an important channel without one, type its guide ID on the channel's edit page. Radio and data services never have a guide: Shorten the channel list below leaves them out.": "За важен канал без водич, внесете го неговиот ID за водичот на страницата за уредување на каналот. Радијата и податочните услуги никогаш немаат водич: Скрати ја листата со канали подолу ги изоставува.",
+    "Reading the guide from the receiver itself is switched off (guide = no in the relay settings). On a box with little free memory it can overload the receiver, so these channels get their guide from the TV guide page only.": "Читањето на водичот од самиот приемник е исклучено (guide = no во поставките на релејот). На уред со малку слободна меморија може да го преоптовари приемникот, па овие канали го добиваат водичот само од страницата ТВ водич.",
+    "The receiver's own guide": "Сопствениот водич на приемникот",
+    "No TV guide": "Без ТВ водич",
+    "Only with a receiver channel": "Само со канал од приемникот"
 }

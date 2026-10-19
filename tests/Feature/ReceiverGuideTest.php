@@ -28,7 +28,7 @@ it('adds the receiver\'s guide once, without the relay key in its address, and i
     // The second press finds an import already waiting
     Queue::assertPushed(SyncEpgSource::class, 1);
 
-    $this->get(route('admin.receiver.show', $this->source))->assertOk()->assertSee('TV guide from the receiver')->assertSee('Import the guide now');
+    $this->get(route('admin.receiver.show', $this->source))->assertOk()->assertSee('TV guide for the receiver\'s channels')->assertSee('Import the guide now');
 });
 
 it('downloads the guide with the key and never stores the key in an error', function () {
@@ -59,6 +59,21 @@ it('imports the relay\'s guide: gzipped, the channel list and the programmes as 
 
     expect($guide->fresh())->channel_count->toBe(1)->programme_count->toBe(1)
         ->and($channel->fresh()->epg_source_id)->toBe($guide->id);
+});
+
+it('shows how many receiver channels have a guide, and no import button when the relay\'s guide reading is off', function () {
+    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.5', 'guide' => false])]);
+    $guide = EpgSource::create(['name' => 'Italy', 'url' => 'http://g.test/it.xml']);
+    Channel::create(['name' => 'Rai 1', 'stream_url' => 'http://relay.test/s/a.ts', 'source_id' => $this->source->id, 'epg_source_id' => $guide->id]);
+    Channel::create(['name' => 'Radio X', 'stream_url' => 'http://relay.test/s/b.ts', 'source_id' => $this->source->id]);
+
+    $this->actingAs($this->admin)->get(route('admin.receiver.show', $this->source))->assertOk()
+        ->assertSee('1 of 2 channels have a TV guide.')
+        ->assertSee(route('admin.channels.index', ['source' => $this->source->id, 'status' => 'no_guide']))
+        ->assertSee('Reading the guide from the receiver itself is switched off')
+        ->assertDontSee('Use the receiver\'s TV guide');
+
+    $this->get(route('admin.channels.index', ['source' => $this->source->id, 'status' => 'no_guide']))->assertSee('Radio X')->assertDontSee('Rai 1');
 });
 
 it('says when the relay is too old for it', function () {

@@ -68,11 +68,13 @@ class ChannelDuplicateService
     }
 
     /**
-     * Every group of copies with the suggested one, sorted by name.
+     * Every group of copies with the suggested one, sorted by name. With $withReceiver only groups that have a satellite
+     * receiver channel: keeping a provider copy and the receiver channel as its hidden backup is the receiver's standby (and
+     * the other way round).
      *
      * @return list<array{key: string, name: string, suggested: int, channels: list<array<string, mixed>>}>
      */
-    public function groups(?string $search = null): array
+    public function groups(?string $search = null, bool $withReceiver = false): array
     {
         $components = $this->components();
         if ($components === []) {
@@ -135,6 +137,10 @@ class ChannelDuplicateService
         }
 
         usort($groups, fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        if ($withReceiver) {
+            $groups = array_values(array_filter($groups, fn ($g) => collect($g['channels'])->contains('receiver', true)));
+        }
 
         if ($search !== null && $search !== '') {
             $needle = mb_strtolower($search);

@@ -40,3 +40,6 @@ CLAUDE.local.md
 /storage/e2e.sqlite
 /test-results
 /playwright-report
+
+# Python bytecode (relay tests)
+__pycache__/

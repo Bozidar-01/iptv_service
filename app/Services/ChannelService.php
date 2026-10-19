@@ -17,7 +17,8 @@ class ChannelService
      * Filters: search, category (id or "none"), source (id or "manual"), bouquet (id),
      * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on|"backup" = playing a backup|
      * "slow" = arrives slower than it plays|"unreliable" = worked in under 90% of last week's checks|"trouble" = several viewers had trouble|
-     * "backup_copy" = kept hidden as a backup of another channel|"unwatched" = enabled and listed, but not played in 30 days).
+     * "backup_copy" = kept hidden as a backup of another channel|"unwatched" = enabled and listed, but not played in 30 days|
+     * "no_guide" = enabled and listed, without a TV guide).
      */
     public function filteredQuery(array $filters): Builder
     {
@@ -38,6 +39,7 @@ class ChannelService
                 'unreliable' => $q->where('reliability', '<', 90),
                 'trouble' => $q->whereIn('channels.id', app(ChannelHealthService::class)->troubledIds()),
                 'backup_copy' => $q->whereNotNull('backup_for_id'),
+                'no_guide' => $q->where('is_active', true)->whereNull('backup_for_id')->whereNull('epg_source_id'),
                 'unwatched' => $q->where('is_active', true)->whereNull('backup_for_id')
                     ->whereNotIn('channels.id', DB::table('stream_logs')->select('channel_id')->where('started_at', '>=', now()->subDays(30))),
                 default => $q->where('is_active', $status === 'active'),

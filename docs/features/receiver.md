@@ -83,19 +83,27 @@ Sources → *Receiver* on a receiver source (admins). It reads the relay's `/sta
 **Shorten the channel list** (same page): switch off *Radio and data services* (service type radio/data or `(RADIO)` names), *Internal stream entries* (`http%3a` references: they only play if the receiver runs that local stream service, try one first) and/or *Channels without a TV guide*, each with its count. Receiver channels can't be stream-checked (a check would take a tuner), so this uses the reference and the guide. Nothing is deleted: switched-off channels stay off after syncs and can be enabled again. Audit-logged.
 
 ### TV guide from the receiver
+**Coverage** on the Receiver page: how many of its (listed) channels have a TV guide from any guide, with a link to Channels → status *No TV guide* for that source. When the relay reports `guide = no` the card says so and offers no import.
+
 Relay **1.5** serves `GET /epg.xml?key=<secret>`: the receiver's own guide for the configured bouquets, as gzipped XMLTV (next 3 days, channel ids = service references like the playlist's `tvg-id`, only channels it has programmes for; the channel list and the programmes are two gzip members of one file, which the panel reads as one). It is read in the background 5 minutes after the relay starts and every 6 hours, **one channel at a time** with OpenWebif's `/api/epgservice` (each channel once, however many bouquets it is in; encrypted ones left out with `fta_only`), 0.1 s apart, and compressed as it is read. It stops early when the box has less than 100 MB free (`/proc/meminfo`). `/status` reports `guide` (channels, programmes, compressed size, when, complete or not). Until the first read is done it answers `503` with `Retry-After`; with `guide = no` in the settings it answers `404` and reads nothing.
 
 Never ask OpenWebif for a whole bouquet's guide at once (`/api/epgmulti`): it ignores the end time, so a big bouquet answers with every programme it has (13 MB for 110 channels on the Octagon), and on a box with about 240 MB free that crashed the relay and once the receiver's own program (Enigma2 restarted by itself). On the Octagon: 3,521 channels in 274 bouquets, about 0.2 s each, so about 12 minutes. On the Receiver page, **Use the receiver's TV guide** (`POST admin/sources/{source}/receiver/guide`) adds it once as a guide source (`epg_sources.receiver_source_id`; the key is added from the receiver source only when downloading, never stored in the guide's address or its errors) and imports it; it is then imported every night with the other guides. A relay older than 1.5 shows a hint to update it. Enigma2 only keeps programmes of channels it has tuned: an EPG import plugin, or the nightly EPG refresh in the receiver's settings, fills it for all channels. Receiver channels the box has no programmes for keep matching other guides by name.
 
 ### Updating the relay on the receiver
-Copy the new program over the old one and restart it (your settings file stays as it is):
+Copy the new program and start script over the old ones and restart it (your settings file stays as it is):
 
 ```bash
 scp relay/nebotv-relay.py root@192.168.100.40:/usr/bin/nebotv-relay.py
-ssh root@192.168.100.40 '/etc/init.d/nebotv-relay restart && tail -n 3 /tmp/nebotv-relay.log'
+scp relay/nebotv-relay.init root@192.168.100.40:/etc/init.d/nebotv-relay
+ssh root@192.168.100.40 'chmod +x /etc/init.d/nebotv-relay; /etc/init.d/nebotv-relay restart && tail -n 3 /tmp/nebotv-relay.log'
 ```
 
-The log line shows the version (`NeboTV relay 1.1`) and `(one cable: one satellite at a time)` when `single_cable = yes` is set. To use the new setting, add `single_cable = yes` under `[relay]` in `/etc/nebotv-relay.conf` first (see `relay/nebotv-relay.conf.example`).
+The log line shows the version (`NeboTV relay 1.5`) and `(one cable: one satellite at a time)` when `single_cable = yes` is set. To use the new setting, add `single_cable = yes` under `[relay]` in `/etc/nebotv-relay.conf` first (see `relay/nebotv-relay.conf.example`).
+
+### Standby: when the relay or the receiver stops
+- **The relay restarts itself.** The start script (`relay/nebotv-relay.init`) runs the relay in a loop: when it stops for any reason it writes `WARNING Relay stopped (exit code N, …)` to the log (137 = killed, usually out of memory) and starts it again after 10 s. The log, which lives in memory, is cut back to its last 500 lines past 1 MB. `/etc/init.d/nebotv-relay status` says whether it runs. A box that reboots starts it at boot (`update-rc.d`).
+- **Provider copies stand in for receiver channels.** Channels → Duplicates → *Only with a receiver channel* lists the receiver channels that a provider playlist also has (matched by name). Keeping the suggested copy (usually the provider's: a tuner serves only a few streams) with *Keep the others as hidden backups* makes the receiver channel its hidden backup, and the other way round. When one stops working, viewers get the other ([channel-health.md](channel-health.md)).
+- Not covered: the home internet or power going down takes all receiver channels with it; a UPS for the box and the router helps against short power cuts.
 
 ### After an OpenATV image update
 Flashing wipes `/usr/bin` and `/etc/init.d`. Add the three files to the image backup (Setup → Software management → Backup settings → Select files), or repeat step 4.

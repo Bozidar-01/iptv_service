@@ -135,7 +135,8 @@ class ChannelController extends Controller
     public function duplicates(Request $request, ChannelDuplicateService $duplicates)
     {
         $search = is_string($request->query('search')) ? $request->query('search') : null;
-        $groups = $duplicates->groups($search);
+        $receiver = $request->boolean('receiver');
+        $groups = $duplicates->groups($search, $receiver);
         $perPage = 25;
 
         $page = new LengthAwarePaginator(
@@ -143,12 +144,13 @@ class ChannelController extends Controller
             count($groups),
             $perPage,
             max(1, (int) $request->query('page', 1)),
-            ['path' => $request->url(), 'query' => array_filter(['search' => $search])]
+            ['path' => $request->url(), 'query' => array_filter(['search' => $search, 'receiver' => $receiver ? 1 : null])]
         );
 
         return view('admin.channels.duplicates', [
             'groups' => $page,
             'search' => $search,
+            'receiver' => $receiver,
             'extra' => array_sum(array_map(fn ($g) => count($g['channels']) - 1, $groups)),
         ]);
     }
@@ -163,13 +165,14 @@ class ChannelController extends Controller
             'scope' => ['required', 'in:page,all'],
             'search' => ['nullable', 'string', 'max:255'],
             'others' => ['nullable', 'in:backup,off'],
+            'receiver' => ['nullable', 'boolean'],
             'keep' => ['required_if:scope,page', 'array'],
             'keep.*' => ['integer', 'min:0'],
         ]);
         $search = $data['search'] ?? null;
 
         $keep = $data['scope'] === 'all'
-            ? collect($duplicates->groups($search))->mapWithKeys(fn ($g) => [$g['key'] => $g['suggested']])->all()
+            ? collect($duplicates->groups($search, (bool) ($data['receiver'] ?? false)))->mapWithKeys(fn ($g) => [$g['key'] => $g['suggested']])->all()
             : array_filter($data['keep'] ?? [], fn ($id) => (int) $id > 0);
 
         $asBackups = ($data['others'] ?? 'backup') === 'backup';
