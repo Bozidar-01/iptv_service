@@ -170,7 +170,7 @@ describe('catch-up', function () {
         expect($arch)->catchup->toBe('shift')->catchup_days->toBe(4);
 
         $playlist = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
-        expect($playlist)->toMatch('#catchup="default" catchup-days="4" catchup-source="http://localhost:8000/catchup/'.$arch->id.'/[A-Za-z0-9]{32}_[0-9a-z]+\?utc=\{utc\}&duration=\{duration\}"#')
+        expect($playlist)->toMatch('#catchup="default" catchup-days="4" catchup-source="'.preg_quote(url('/catchup'), '#').'/'.$arch->id.'/[A-Za-z0-9]{32}_[0-9a-z]+\?utc=\{utc\}&duration=\{duration\}"#')
             ->and(substr_count($playlist, 'catchup='))->toBe(1);
 
         $streams = collect(json_decode($this->get(route('xtream.api', ['username' => $user->username, 'password' => 'password', 'action' => 'get_live_streams']))->streamedContent(), true))->keyBy('name');
