@@ -21,7 +21,7 @@ it('returns a playlist with a play url per active subscribed channel', function 
     $token = AccessToken::where('user_id', $user->id)->value('token');
 
     expect($body)->toStartWith('#EXTM3U x-tvg-url="'.route('xtream.xmltv', ['username' => $user->username, 'password' => 'password']).'"')
-        ->toContain('tvg-name="Sport 1" tvg-logo="https://logo.test/1.png" group-title="Sports",Sport 1')
+        ->toContain('tvg-name="Sport 1" tvg-logo="https://logo.test/1.png" tvg-chno="'.$active->fresh()->number.'" group-title="Sports",Sport 1')
         ->toContain(route('play', ['channel_id' => $active->id, 'token' => $token]))
         ->not->toContain('Hidden')
         ->and(substr_count($body, '/play/'))->toBe(1);
@@ -122,8 +122,9 @@ it('orders channels by category then source order and keeps the stream extension
     $body = $this->get(route('playlist', ['token' => $user->playlist_token]))->streamedContent();
 
     expect(strpos($body, ',First'))->toBeLessThan(strpos($body, ',Second'))
-        ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}\.m3u8\n#')
-        ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}\.ts\n#');
+        // The token, the device key of this download, then the stream's own extension
+        ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}_[0-9a-z]{8,16}\.m3u8\n#')
+        ->and($body)->toMatch('#/play/\d+/[A-Za-z0-9]{32}_[0-9a-z]{8,16}\.ts\n#');
 });
 
 it('issues a fresh playback token when the current one expires within a week', function () {

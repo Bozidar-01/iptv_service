@@ -1,6 +1,6 @@
 # Playlist & Streaming
 
-**Files:** `M3uController`, `PlayController`, `XtreamController`, `TokenService`, `StreamService`, `XtreamService`. Routes are in `routes/player.php`, loaded **without** the `web` middleware group: TV apps get no session, cookies or CSRF check.
+**Files:** `M3uController`, `PlayController`, `XtreamController`, `CatchupController`, `TokenService`, `StreamService`, `XtreamService`, `ListCacheService`, `App\Support\GzipOutput`. Routes are in `routes/player.php`, loaded **without** the `web` middleware group: TV apps get no session, cookies or CSRF check.
 
 ## 1. Playlist
 
@@ -14,15 +14,16 @@ Two equivalent entry points:
 
 Then, for both:
 1. `status !== 'active'` → `403 Account disabled`; past `expiration_date` → `403 Account expired`.
-2. **Playback token** (`TokenService::playbackToken`): reuse an access token that is still valid for more than 7 days, otherwise create one (`Str::random(32)`, valid 1 month). A playlist cached by a TV app keeps working until its next refresh.
+2. **Playback token** (`TokenService::playbackToken`): reuse an access token that is still valid for more than 7 days, otherwise create one (`Str::random(32)`, valid 1 month). A playlist cached by a TV app keeps working until its next refresh. Each download adds its own **device key** to the play links (`{token}_{key}`, `TokenService::newDeviceKey`: when it was made, base 36, plus 5 random characters), see the connection limit below.
 3. Build the playlist (`TokenService::writeM3u`; `getM3u` returns it as a string for tests):
-   - every **enabled** channel in any of the user's bouquets, **once** (de-duplicated across bouquets)
+   - the viewer's favourites first (group *Favourites*), then every **enabled** channel in any of the user's bouquets, **once** (`Channel::listedFor`: also without channels that have a better copy when that [playlist option](playlist-options.md) is on)
    - ordered by category name, then source order (`sort_order`), then name
-   - read from the DB in chunks of 1000 and sent to the app in chunks of about 64 KB (`response()->stream`), so a 100k-channel playlist is never held in memory. No `Content-Length` header. Play URLs are made from one `route('play')` template by replacing the channel id and token
+   - **ready lists** (`ListCacheService`): the channel entries are written once to a file shared by viewers who see the same channels (same bouquets, reseller and own hidden channels, same address used), with a placeholder for the token, and sent with each viewer's token filled in line by line. A file is made again when channels, categories, bouquets, hidden channels or playlist options change (counts and last-change times, checked at most every 15 s; `ListCacheService::bump()` for changes it can't see) and at least every 10 minutes. Files live in `storage/framework/cache/lists` (`LIST_CACHE_DIR`), unused ones are deleted daily
+   - sent in chunks of about 64 KB (`response()->stream`), **gzip-compressed** when the app sends `Accept-Encoding: gzip` (`GzipOutput`; off when PHP's `zlib.output_compression` already is), so a 100k-channel playlist is never held in memory. No `Content-Length` header
 
 ```
 #EXTM3U
-#EXTINF:-1 tvg-id="{tvg_id or channel.id}" tvg-name="{name}" tvg-logo="{logo_url}" group-title="{category or General}",{name}
+#EXTINF:-1 tvg-id="{guide id or channel.id}" tvg-name="{name}" tvg-logo="{logo}" tvg-chno="{number}" group-title="{category or General}"[ catchup="default" catchup-days="N" catchup-source="…"],{name}
 {scheme://host:port}/play/{channel.id}/{token}{.ext}
 ```
 
@@ -30,7 +31,8 @@ Then, for both:
 - Play URLs use the host the playlist was requested from. TVs must request it via a LAN address, not `localhost`.
 - Escaping: inside quoted attributes, `"` becomes `'`. Line breaks become spaces everywhere.
 - Channels with `http_user_agent` / `http_referrer` get `#EXTVLCOPT:http-user-agent=…` / `#EXTVLCOPT:http-referrer=…` lines before their URL. TiviMate, OTT Navigator, VLC and Kodi send these on the play request and keep them through the redirect. The Xtream API has no way to pass them, so those channels may not play with a username/password login.
-- The header carries the TV guide address (`x-tvg-url`), and `tvg-id` is the matched guide id ([epg.md](epg.md)).
+- The header carries the TV guide address (`x-tvg-url`), and `tvg-id` is the matched guide id ([epg.md](epg.md)), else the playlist's, else the one found in the iptv-org database. `tvg-logo` is the source's logo, else the found one. `tvg-chno` is the fixed channel number; the name may carry the quality label; catch-up attributes only for channels whose provider has an archive ([playlist-options.md](playlist-options.md)).
+- The `/epg/{token}.xml` and `/xmltv.php` guides are gzip-compressed the same way.
 - Channels whose stream is down but have a working backup redirect to the backup's stream (`Channel::playbackChannel()`).
 - Satellite receiver channels redirect to a signed, expiring relay link instead of their stored URL (`ReceiverService::playUrl`, [receiver.md](receiver.md)).
 - A failure half way through (e.g. the database goes away) can't change the already-sent `200`, so the app gets a short playlist; the error is reported (log / Sentry).
@@ -44,10 +46,12 @@ Then, for both:
    - user `isActive()` (status active and not expired)
    - channel `is_active`
    - channel belongs to at least one of the user's bouquets
-   - **connection limit:** one slot per **device** (client IP + user agent). Count the user's `active_sessions` with `last_activity_at` within the last `StreamService::SESSION_TIMEOUT_MINUTES` (**5**), leaving out the requesting device's own session. If that count is ≥ `max_connections`, deny. So a device can always switch channels, but with a limit of 1 a second device (another TV in the same home, or another app on the same TV) is refused, even on the same channel.
+   - **connection limit:** one slot per **device**: the device key in the play link (M3U playlists), else client IP + user agent (Xtream apps, older links). Count the user's `active_sessions` with `last_activity_at` within the last `StreamService::SESSION_TIMEOUT_MINUTES` (**5**), leaving out the requesting device's own session. If that count is ≥ `max_connections`, deny. So a device can always switch channels, but with a limit of 1 a second device (another TV in the same home, or another app on the same TV) is refused, even on the same channel. Two identical TVs behind one router have different keys, so they count as two.
+   - **playlist loaded again:** an app that loads its playlist again gets a new key. Its sessions from the same IP + user agent whose last play was before the new key was made (and sessions without a key) are its own old ones: they don't count against it, and its next play takes over that row (`StreamService::whereReplaced`). A second identical TV keeps playing with its own key after that time, so it keeps its own slot.
 4. `StreamService::getStreamUrl`:
    - inserts a `stream_logs` row (IP, user agent, time)
-   - upserts the device's `active_sessions` row (user + IP + user agent): `channel_id` = this channel, `last_activity_at` = now; `started_at` is reset for a new device, a channel change, or when the session had gone stale
+   - upserts the device's `active_sessions` row (device key, or user + IP + user agent): `channel_id` = this channel, `last_activity_at` = now; `started_at` is reset for a new device, a channel change, or when the session had gone stale
+   - counts the request (`ChannelHealthService::recordPlay`): from the third request for the channel within a minute the device is retrying, so it is sent to the next working copy of the channel for 10 minutes and the trouble is counted ([channel-health.md](channel-health.md))
 5. `302` redirect to `channel.stream_url`, or, for a source with **Hide provider address** on, the stream itself (see [Hide provider address](#hide-provider-address-stream-proxy)).
 
 ### Hide provider address (stream proxy)
@@ -74,13 +78,14 @@ It works only when `STREAM_PROXY` in `.env` is not `off`:
 
 ## 3. Xtream Codes API (login with server + username + password)
 
-Lets apps like IPTV Smarters, TiviMate and XCIPTV log in with **server URL** (`scheme://host:port`, no path), **username** and **password** (the user's panel password). The user page shows these under **Log in with username and password**, with host and port separately for apps that ask for them. Live TV only.
+Lets apps like IPTV Smarters, TiviMate and XCIPTV log in with **server URL** (`scheme://host:port`, no path), **username** and **password** (the user's panel password). The user page shows these under **Log in with username and password**, with host and port separately for apps that ask for them. Live TV, with catch-up where the provider has an archive.
 
 | Endpoint | Behaviour |
 |---|---|
 | `GET\|POST /player_api.php?username=&password=` (`xtream.api`) | Wrong or missing credentials → `{"user_info":{"auth":0}}` (HTTP 200, as the apps expect). Otherwise `user_info` (`auth` 1, `status` `Active`/`Disabled`/`Expired`, `exp_date` unix or null, `max_connections`, `active_cons`, `allowed_output_formats` `["m3u8","ts"]`) and `server_info` (`url` = request host, `port` = the port the request came in on and `https_port` (443 unless the request was https on another port), `server_protocol` = the request's, so https is never paired with port 80, `timezone`, `timestamp_now`, `time_now`) |
 | `…&action=get_live_categories` | Categories with at least one channel the user can watch, by name. Uncategorized channels → `category_id` `"0"`, "General" |
-| `…&action=get_live_streams[&category_id=]` | The user's channels (`Channel::availableTo()`, playlist order), streamed as JSON: `num`, `name`, `stream_type` `live`, `stream_id` = channel id, `stream_icon`, `epg_channel_id` = `tvg_id`, `category_id`, … |
+| `…&action=get_live_streams[&category_id=]` | The user's channels (`Channel::listedFor()`, playlist order; favourites first as category `-1`), streamed as JSON (gzip when accepted): `num` = fixed channel number, `name` (with the quality label when on), `stream_type` `live`, `stream_id` = channel id, `stream_icon` = logo, `epg_channel_id` = guide id, `category_id`, `tv_archive` / `tv_archive_duration` (catch-up), … Without `category_id` the list comes from a ready list file (`ListCacheService`) |
+| `GET /timeshift/{username}/{password}/{minutes}/{Y-m-d:H-i}/{id}.ts`, `GET /streaming/timeshift.php` | Catch-up ([playlist-options.md](playlist-options.md#catch-up-catchupservice)) |
 | `…&action=get_vod_*`, `get_series*`, anything else | `[]` |
 | `…&action=get_short_epg` / `get_simple_data_table` | The channel's programmes ([epg.md](epg.md)) |
 | `GET /live/{username}/{password}/{id}.{ts\|m3u8}` (`xtream.live`) | Same as `/play`: `401` wrong credentials, `404` unknown channel, `403` no access / disabled / expired / connection limit, otherwise logs, updates the session and `302` to the upstream |
@@ -90,12 +95,12 @@ Disabled and expired accounts can still log in, so the app shows the status, but
 
 **Web server:** these are Laravel routes, not files. The Docker nginx config sends every `*.php` URL to `public/index.php` (`docker/nginx/default.conf`). Apache (shared hosting) needs nothing extra: `public/.htaccess` already rewrites missing files to `index.php`.
 
-The password is checked with `Hash::check` on every API call and every `/live` request. **Login limit:** after `XtreamService::MAX_FAILED_ATTEMPTS` (20) wrong username/password attempts from one IP, every login from that IP fails for `LOCKOUT_SECONDS` (10 minutes), even with the right password. This applies to `/m3u`, `/get.php`, `/player_api.php` and `/live`. Successful logins don't count. Stream URLs contain the password in plain text, as in every Xtream Codes server.
+The password is checked with `Hash::check`; a right one is remembered for `XtreamService::REMEMBER_SECONDS` (10 minutes), keyed by an HMAC of the password with the stored hash and `APP_KEY`, so a changed password needs a fresh check and apps that send the password with every request don't pay for bcrypt each time. **Login limit:** after `XtreamService::MAX_FAILED_ATTEMPTS` (20) wrong username/password attempts from one IP, every login from that IP fails for `LOCKOUT_SECONDS` (10 minutes), even with the right password. This applies to `/m3u`, `/get.php`, `/player_api.php` and `/live`. Successful logins don't count. Stream URLs contain the password in plain text, as in every Xtream Codes server.
 
 ### Session cleanup
 `ActiveSession` uses Laravel's `Prunable`. Rows idle longer than the timeout are deleted by `model:prune`, scheduled every 15 minutes in `routes/console.php` (the `scheduler` container, or `php artisan schedule:work`).
 
 ### Notes
-- A "device" is client IP + user agent. Two identical TVs running the same app version behind one router look like one device.
+- For Xtream apps a "device" is client IP + user agent (they build their own links, so there is no device key). Two identical TVs with the same app behind one router look like one device there.
 - Activity is only recorded when a play URL is requested. There's no heartbeat, so a long-running stream "expires" from the connection count after 5 minutes.
 - There is no proxying: after the redirect the player talks to the upstream directly, so the upstream URL (including any provider credentials in it) is visible to the client. `getStreamUrl` is the place to add proxy/signed-URL logic.

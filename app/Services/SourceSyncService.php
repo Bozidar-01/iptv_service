@@ -138,6 +138,9 @@ class SourceSyncService
                 'tvg_id' => $entry['tvg_id'] ? mb_substr($entry['tvg_id'], 0, 255) : null,
                 'http_user_agent' => $entry['user_agent'] ? mb_substr($entry['user_agent'], 0, 512) : null,
                 'http_referrer' => $entry['referrer'] ? mb_substr($entry['referrer'], 0, 1024) : null,
+                'catchup' => $entry['catchup'],
+                'catchup_days' => $entry['catchup_days'],
+                'catchup_source' => $entry['catchup_source'],
                 'category_id' => $this->categoryId($rules->channelCategory($name, $group) ?? $group),
                 'sort_order' => ++$order,
                 'is_active' => true,
@@ -166,6 +169,10 @@ class SourceSyncService
             $this->attachToBouquet($source);
         }
 
+        // New channels get the next channel numbers, and logos and guide ids from the iptv-org database when they have none
+        app(ChannelNumberService::class)->fillMissing();
+        app(ChannelCatalogService::class)->fill($source->id);
+
         // New and renamed channels get their TV guide right away
         app(EpgService::class)->matchChannels($source->id);
         app(EpgService::class)->refreshGuidesMissingProgrammes();
@@ -188,7 +195,7 @@ class SourceSyncService
         Channel::upsert(
             $rows,
             ['source_id', 'external_key'],
-            ['name', 'stream_url', 'logo_url', 'tvg_id', 'http_user_agent', 'http_referrer', 'category_id', 'sort_order', 'updated_at']
+            ['name', 'stream_url', 'logo_url', 'tvg_id', 'http_user_agent', 'http_referrer', 'catchup', 'catchup_days', 'catchup_source', 'category_id', 'sort_order', 'updated_at']
         );
     }
 

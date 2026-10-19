@@ -13,7 +13,7 @@ class M3uParser
     private const VOD_EXTENSIONS = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v'];
 
     /**
-     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string}>
+     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string, catchup: ?string, catchup_days: ?int, catchup_source: ?string}>
      */
     public function parseFile(string $path): Generator
     {
@@ -35,7 +35,7 @@ class M3uParser
 
     /**
      * @param  iterable<string>  $lines
-     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string}>
+     * @return Generator<int, array{name: string, url: string, logo: ?string, group: ?string, tvg_id: ?string, user_agent: ?string, referrer: ?string, catchup: ?string, catchup_days: ?int, catchup_source: ?string}>
      */
     public function parseLines(iterable $lines): Generator
     {
@@ -82,9 +82,12 @@ class M3uParser
             }
 
             // A URL line: belongs to the preceding #EXTINF, or is a bare URL entry
-            $entry = $current ?? ['name' => null, 'logo' => null, 'group' => null, 'tvg_id' => null, 'user_agent' => null, 'referrer' => null];
+            $entry = $current ?? ['name' => null, 'logo' => null, 'group' => null, 'tvg_id' => null, 'user_agent' => null, 'referrer' => null, 'catchup_attributes' => []];
             $entry['url'] = $line;
             $entry['name'] = $entry['name'] ?: $this->nameFromUrl($line);
+            // Catch-up the provider offers for this channel (CatchupService)
+            [$entry['catchup'], $entry['catchup_days'], $entry['catchup_source']] = CatchupService::fromAttributes($entry['catchup_attributes'], $line);
+            unset($entry['catchup_attributes']);
             $current = null;
 
             yield $entry;
@@ -125,6 +128,7 @@ class M3uParser
             'tvg_id' => ($attributes['tvg-id'] ?? '') ?: null,
             'user_agent' => ($attributes['http-user-agent'] ?? '') ?: null,
             'referrer' => ($attributes['http-referrer'] ?? $attributes['http-referer'] ?? '') ?: null,
+            'catchup_attributes' => array_intersect_key($attributes, array_flip(['catchup', 'catchup-type', 'catchup-days', 'catchup-source', 'tvg-rec', 'timeshift'])),
         ];
     }
 

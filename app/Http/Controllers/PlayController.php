@@ -26,11 +26,13 @@ class PlayController extends Controller
 
     public function play(Request $request, $channel_id, $token)
     {
-        // 1. Validate Token (play URLs may carry a stream extension, e.g. "abc123.m3u8")
-        $accessToken = $this->tokenService->validateToken(Str::before($token, '.'));
+        // 1. Validate Token (play URLs may carry a device key and a stream extension, e.g. "abc123_s1x2y3z4k.m3u8")
+        [$tokenValue, $deviceKey] = TokenService::parsePlayToken($token);
+        $accessToken = $this->tokenService->validateToken($tokenValue);
         if (!$accessToken) {
             return response('Invalid or expired token', 401);
         }
+        $request->attributes->set('device_key', $deviceKey);
 
         $user = $accessToken->user;
         $channel = Channel::find($channel_id);
@@ -47,8 +49,8 @@ class PlayController extends Controller
         // 3. Get Stream URL (Log attempt inside service)
         $streamUrl = $this->streamService->getStreamUrl($user, $channel);
 
-        // 4. Redirect to the stream URL, or pass the stream on for sources that hide the provider address
-        return $this->proxyService->respond($request, $user, $channel, $accessToken->token, $streamUrl);
+        // 4. Redirect to the stream URL, or pass the stream on for sources that hide the provider address (its parts keep the device key)
+        return $this->proxyService->respond($request, $user, $channel, Str::before($token, '.'), $streamUrl);
     }
 
     /**
@@ -56,10 +58,12 @@ class PlayController extends Controller
      */
     public function stream(Request $request, $channel_id, $token)
     {
-        $accessToken = $this->tokenService->validateToken($token);
+        [$tokenValue, $deviceKey] = TokenService::parsePlayToken($token);
+        $accessToken = $this->tokenService->validateToken($tokenValue);
         if (!$accessToken) {
             return response('Invalid or expired token', 401);
         }
+        $request->attributes->set('device_key', $deviceKey);
 
         $channel = Channel::find($channel_id);
         if (!$channel) {
@@ -75,7 +79,8 @@ class PlayController extends Controller
         if (!$this->streamService->isAllowed($user, $channel)) {
             return response('Access denied or connection limit reached', 403);
         }
+        $this->streamService->applyDeviceChoice($user, $channel);
 
-        return $this->proxyService->respondPart($request, $user, $channel, $accessToken->token, $target);
+        return $this->proxyService->respondPart($request, $user, $channel, $token, $target);
     }
 }

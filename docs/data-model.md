@@ -93,25 +93,39 @@ Helpers: `isBusy()` (queued/syncing), `isDueForSync()`, `isReceiver()`, `playlis
 | name | string | |
 | stream_url | string(2048) | upstream URL the player is redirected to |
 | logo_url | string(2048), nullable | used as `tvg-logo` |
+| auto_logo_url | string(2048), nullable | logo found in the iptv-org database when `logo_url` is empty ([playlist-options.md](features/playlist-options.md)); imports don't overwrite it |
 | tvg_id | string, nullable | from the playlist; used as `tvg-id` in output (EPG matching) |
+| auto_tvg_id | string, nullable | iptv-org id found by name when `tvg_id` is empty; used for the guide match and output |
 | epg_source_id | FK → epg_sources, nullable, `ON DELETE SET NULL` | guide this channel is matched to ([epg.md](features/epg.md)) |
 | epg_id | string, nullable | the guide's channel id |
 | epg_manual | bool, default false | `epg_id` was set by the admin; matching leaves it |
 | http_user_agent | string(512), nullable | player identity the stream needs (`#EXTVLCOPT:http-user-agent`) |
 | http_referrer | string(1024), nullable | referring page the stream needs (`#EXTVLCOPT:http-referrer`) |
 | sort_order | uint, default 0 | position in the source playlist |
+| number | uint, nullable, index | fixed channel number (`tvg-chno`, Xtream `num`); `ChannelNumberService` |
 | category_id | FK → categories, nullable, `ON DELETE SET NULL` | |
 | is_active | bool, default true | inactive channels are hidden from M3U and refused on play; never changed by re-syncs |
 | stream_status | string(10), nullable | `online` / `offline` from the last stream check; null = never checked |
 | quality_height, quality_kbps | smallint / int, nullable | best picture height and bitrate the stream check read from an HLS master playlist; null = not known |
+| reliability | tinyint, nullable | % of working checks over the last 7 days (`channel_check_days`) |
+| stream_speed | smallint, nullable | how fast video arrives compared to how long it plays, % (under 100 = slow; 0 = did not arrive); [channel-health.md](features/channel-health.md) |
+| hls_sequence | bigint, nullable | `EXT-X-MEDIA-SEQUENCE` at the last check, to find a frozen picture |
 | stream_checked_at | timestamp, nullable | |
-| stream_error | string(20), nullable | why the last check failed: `http:{code}`, `timeout`, `connect`, `html`, `empty` |
+| stream_error | string(20), nullable | why the last check failed: `http:{code}`, `timeout`, `connect`, `html`, `empty`, `no-video`, `frozen` |
 | auto_disabled | bool, default false | the stream check switched it off (and will switch it back on); cleared when an admin enables/disables it |
 | alert_on_down | bool, default false | alert when it stops or starts working |
 | backup_channel_id | FK → channels, nullable, `ON DELETE SET NULL` | admin's chosen backup |
-| using_backup_id | FK → channels, nullable, `ON DELETE SET NULL` | backup playing now (set by the stream check) |
+| using_backup_id | FK → channels, nullable, `ON DELETE SET NULL` | backup playing now (set by the stream check, when down or slow) |
+| better_copy_id | FK → channels, nullable, `ON DELETE SET NULL` | a better copy is listed instead (only with *List only the better copy*) |
+| catchup, catchup_days, catchup_source | string(20) / smallint / string(2048), nullable | the provider's catch-up: style (`xc`, `shift`, `append`, `default`, `flussonic`), days, address template |
 
-Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isWatched()`.
+Scope `watched()` = `alert_on_down` or its source's `alert_on_down`. Helper `isWatched()`. Scope `listedFor($user)` = `availableTo` without channels that have a better copy (when that option is on). `logo()` / `guideId()` fall back to the found logo / id.
+
+### channel_check_days
+`channel_id` FK cascade, `day` (date), `ok`, `failed`, `slow`, `viewer_trouble` (uint, default 0). Primary key `(channel_id, day)`, index on `day`. One row per channel and day: stream check results and viewers whose device kept retrying. Kept 30 days.
+
+### app_settings
+`key` (string 100, primary), `value` (JSON text), timestamps. Panel-wide options set on a page (`AppSetting::get` / `put`, cached): `playlist_options`, `channel_catalog` (status of the iptv-org download).
 
 ### stream_alerts
 | Column | Type | Notes |
@@ -150,7 +164,7 @@ Helpers: `unread()` scope, `message()` (translated text), `reason()`, `isProblem
 `id`, `user_id` FK cascade, `token` (unique, 32 random chars), `expires_at`, timestamps. Created on first `/m3u` call, valid 1 month.
 
 ### active_sessions
-`id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent` (nullable; together they identify the device), `started_at`, `last_activity_at`. No Laravel timestamps. One row per user + device, upserted on each play; `channel_id` is what that device watched last. Counted as "active" if `last_activity_at` is within `StreamService::SESSION_TIMEOUT_MINUTES` (5). Stale rows are pruned by `model:prune` (model is `MassPrunable`). Index on `(user_id, last_activity_at)` for the connection-limit check.
+`id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent` (nullable), `device_key` (string 32, nullable, index: the key in the play links of one playlist download), `started_at`, `last_activity_at`. A device is its `device_key`, or IP + user agent for Xtream apps. No Laravel timestamps. One row per user + device, upserted on each play; `channel_id` is what that device watched last. Counted as "active" if `last_activity_at` is within `StreamService::SESSION_TIMEOUT_MINUTES` (5). Stale rows are pruned by `model:prune` (model is `MassPrunable`). Index on `(user_id, last_activity_at)` for the connection-limit check.
 
 ### stream_logs
 `id`, `user_id` FK, `channel_id` FK, `ip`, `user_agent`, `started_at`. One row per successful play request. Index on `started_at`. Rows older than `LOG_RETENTION_DAYS` (90) are deleted by `model:prune` (`MassPrunable`, one DELETE per chunk).

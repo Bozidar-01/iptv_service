@@ -22,6 +22,9 @@ it('parses extended M3U entries with attributes', function () {
         'user_agent' => null,
         'referrer' => null,
         'url' => 'http://provider.test/live/u/p/101.ts',
+        'catchup' => null,
+        'catchup_days' => null,
+        'catchup_source' => null,
     ]]);
 });
 

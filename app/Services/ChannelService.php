@@ -15,7 +15,8 @@ class ChannelService
      * Channels matching the admin list filters.
      *
      * Filters: search, category (id or "none"), source (id or "manual"), bouquet (id),
-     * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on|"backup" = playing a backup).
+     * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on|"backup" = playing a backup|
+     * "slow" = arrives slower than it plays|"unreliable" = worked in under 90% of last week's checks|"trouble" = several viewers had trouble).
      */
     public function filteredQuery(array $filters): Builder
     {
@@ -32,6 +33,9 @@ class ChannelService
                 'offline' => $q->where('auto_disabled', true),
                 'watched' => $q->watched(),
                 'backup' => $q->whereNotNull('using_backup_id'),
+                'slow' => $q->where('stream_speed', '<', ChannelFailoverService::SLOW_BELOW),
+                'unreliable' => $q->where('reliability', '<', 90),
+                'trouble' => $q->whereIn('channels.id', app(ChannelHealthService::class)->troubledIds()),
                 default => $q->where('is_active', $status === 'active'),
             });
     }

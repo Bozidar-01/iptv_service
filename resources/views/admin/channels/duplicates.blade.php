@@ -33,7 +33,7 @@
         @endif
     </form>
     <div class="card-body">
-        <p class="help" style="margin: 0">{{ __('Suggested copy: the one that works (run Check streams first for an up-to-date answer), then the best quality (4K, Full HD, HD), then not a satellite receiver (it can only serve a few streams), then the one in most bouquets. Channels without a quality tag count as between HD and SD. The Quality column shows the picture size the stream check measured (HLS channels), or a guess from the name. The kept copy is added to the bouquets of the ones switched off.') }}</p>
+        <p class="help" style="margin: 0">{{ __('Suggested copy: the one that works (run Check streams first for an up-to-date answer), then not slow, then the most reliable over the last week, then the best quality (4K, Full HD, HD), then not a satellite receiver (it can only serve a few streams), then the one in most bouquets. Channels without a quality tag count as between HD and SD. The Quality column shows the picture size the stream check measured (HLS channels), or a guess from the name. The kept copy is added to the bouquets of the ones switched off.') }}</p>
     </div>
 </div>
 
@@ -80,7 +80,8 @@
                                             <span class="badge badge-dot">{{ __('Not checked') }}</span>
                                         @endif
                                     </td>
-                                    <td class="hide-sm">@if($channel['measured'])<span class="badge badge-success" title="{{ __('Measured by the stream check') }}">{{ $channel['measured']['height'] ? $channel['measured']['height'].'p' : '–' }}@if($channel['measured']['kbps']) · {{ number_format($channel['measured']['kbps'] / 1000, 1) }} Mbps @endif</span>@else<span class="muted" title="{{ __('Guessed from the name') }}">{{ [5 => '4K', 4 => 'Full HD', 3 => 'HD', 2 => '–', 1 => 'SD'][$channel['quality']] }}</span>@endif</td>
+                                    <td class="hide-sm">@if($channel['measured'])<span class="badge badge-success" title="{{ __('Measured by the stream check') }}">{{ $channel['measured']['height'] ? $channel['measured']['height'].'p' : '–' }}@if($channel['measured']['kbps']) · {{ number_format($channel['measured']['kbps'] / 1000, 1) }} Mbps @endif</span>@else<span class="muted" title="{{ __('Guessed from the name') }}">{{ [5 => '4K', 4 => 'Full HD', 3 => 'HD', 2 => '–', 1 => 'SD'][$channel['quality']] }}</span>@endif
+                                        @if($channel['reliability'] !== null)<div class="cell-sub">{{ __(':percent% working', ['percent' => $channel['reliability']]) }}{{ $channel['slow'] ? ' · '.__('Slow') : '' }}</div>@endif</td>
                                     <td class="hide-sm right">{{ $channel['bouquets'] }}</td>
                                 </tr>
                             @endforeach

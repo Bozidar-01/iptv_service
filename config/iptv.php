@@ -69,6 +69,9 @@ return [
     'proxy_streams_per_device' => (int) env('PROXY_STREAMS_PER_DEVICE', 3),
     'proxy_allow_private' => (bool) env('PROXY_ALLOW_PRIVATE', false),
 
+    // Where ready channel lists for apps are kept (ListCacheService); empty = storage/framework/cache/lists
+    'list_cache_dir' => env('LIST_CACHE_DIR'),
+
     /*
     | Database backups (iptv:backup, BackupService): where they go (any filesystem disk, e.g. an
     | s3 disk for off-site copies), how long they are kept, and the mysqldump program.

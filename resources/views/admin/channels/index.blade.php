@@ -17,6 +17,7 @@
             <button class="btn btn-secondary"><x-icon name="signal" /> {{ __('Check streams') }}</button>
         </form>
         <a href="{{ route('admin.channels.duplicates') }}" class="btn btn-secondary"><x-icon name="copy" /> {{ __('Find duplicates') }}</a>
+        <a href="{{ route('admin.playlist-options.index') }}" class="btn btn-secondary"><x-icon name="signal" /> {{ __('Playlist options') }}</a>
         <a href="{{ route('admin.sources.index') }}" class="btn btn-secondary"><x-icon name="source" /> {{ __('Import from source') }}</a>
         <a href="{{ route('admin.channels.create') }}" class="btn btn-primary"><x-icon name="plus" /> {{ __('Add channel') }}</a>
     </div>
@@ -55,6 +56,9 @@
             <option value="offline" @selected(($filters['status'] ?? '') === 'offline')>{{ __('Not working') }}</option>
             <option value="watched" @selected(($filters['status'] ?? '') === 'watched')>{{ __('Alerts on') }}</option>
             <option value="backup" @selected(($filters['status'] ?? '') === 'backup')>{{ __('Playing a backup') }}</option>
+            <option value="slow" @selected(($filters['status'] ?? '') === 'slow')>{{ __('Slow') }}</option>
+            <option value="unreliable" @selected(($filters['status'] ?? '') === 'unreliable')>{{ __('Often not working') }}</option>
+            <option value="trouble" @selected(($filters['status'] ?? '') === 'trouble')>{{ __('Viewers had trouble') }}</option>
         </select>
         @if(array_filter($filters))
             <a href="{{ route('admin.channels.index') }}" class="btn btn-ghost btn-sm"><x-icon name="x" /> {{ __('Clear') }}</a>
@@ -140,7 +144,7 @@
                         <td class="hide-sm right">{{ $channel->bouquets_count }}</td>
                         <td>
                             @if($channel->is_active && $channel->usingBackup)
-                                <span class="badge badge-warning badge-dot" title="{{ \App\Services\StreamCheckService::describeError($channel->stream_error) }} · {{ __('Playing :name instead until this stream works again.', ['name' => $channel->usingBackup->name]) }}">{{ __('Playing a backup') }}</span>
+                                <span class="badge badge-warning badge-dot" title="{{ $channel->stream_error ? \App\Services\StreamCheckService::describeError($channel->stream_error) : __('Too slow') }} · {{ __('Playing :name instead until this stream works again.', ['name' => $channel->usingBackup->name]) }}">{{ __('Playing a backup') }}</span>
                             @elseif($channel->is_active)
                                 <span class="badge badge-success badge-dot">{{ __('Enabled') }}</span>
                             @elseif($channel->auto_disabled)
@@ -148,6 +152,15 @@
                             @else
                                 <span class="badge badge-dot">{{ __('Disabled') }}</span>
                             @endif
+                            <div class="cell-sub">
+                                @php($label = \App\Services\PlaylistOptionsService::label($channel))
+                                {{ implode(' · ', array_filter([
+                                    $label,
+                                    $channel->reliability !== null ? __(':percent% working', ['percent' => $channel->reliability]) : null,
+                                    \App\Services\ChannelFailoverService::isSlow($channel->stream_speed) ? __('Slow') : null,
+                                    ($trouble[$channel->id] ?? 0) >= \App\Services\ChannelHealthService::TROUBLE_VIEWERS ? __('Viewers had trouble') : null,
+                                ])) }}
+                            </div>
                         </td>
                         <td class="shrink">
                             <div class="actions">

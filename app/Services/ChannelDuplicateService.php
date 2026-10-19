@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * quality tags (HD, FHD, 4K…) and punctuation are ignored, or when they share a guide (tvg) id. Groups that have
  * no channel in any bouquet are left out (nobody gets them), and so are groups too big to be one channel.
  *
- * The suggested copy is the one that works, then the best quality (the picture size the stream check measured in an HLS playlist, else the tag in the name, then the bitrate), then not a satellite receiver (one tuner
+ * The suggested copy is the one that works, then not slow, then the most reliable over the last week (in steps of 10%), then the best quality (the picture size the stream check measured in an HLS playlist, else the tag in the name, then the bitrate), then not a satellite receiver (one tuner
  * serves only a few streams), then the one in most bouquets, then the most recently checked.
  */
 class ChannelDuplicateService
@@ -85,7 +85,7 @@ class ChannelDuplicateService
         // Details only for channels that are in a group
         $details = [];
         foreach (array_chunk(array_merge(...$components), 1000) as $ids) {
-            foreach (Channel::whereIn('id', $ids)->get(['id', 'name', 'source_id', 'stream_status', 'stream_checked_at', 'quality_height', 'quality_kbps']) as $c) {
+            foreach (Channel::whereIn('id', $ids)->get(['id', 'name', 'source_id', 'stream_status', 'stream_checked_at', 'quality_height', 'quality_kbps', 'reliability', 'stream_speed']) as $c) {
                 $details[$c->id] = $c;
             }
         }
@@ -110,8 +110,10 @@ class ChannelDuplicateService
                     'bouquets' => (int) ($bouquets[$id] ?? 0),
                     'quality' => self::qualityOf($c->name, $c->quality_height),
                     'measured' => $c->quality_height ? ['height' => (int) $c->quality_height, 'kbps' => (int) $c->quality_kbps] : null,
-                    // Higher is better, compared left to right
-                    'score' => [$status, self::qualityOf($c->name, $c->quality_height), intdiv((int) $c->quality_kbps, 500), ($sources[$c->source_id] ?? null) === 'receiver' ? 0 : 1, (int) ($bouquets[$id] ?? 0), $c->stream_checked_at->timestamp ?? 0, -$id],
+                    'reliability' => $c->reliability,
+                    'slow' => ChannelFailoverService::isSlow($c->stream_speed),
+                    // Higher is better, compared left to right; reliability in steps of 10%, so 92% and 99% count the same
+                    'score' => [$status, ChannelFailoverService::isSlow($c->stream_speed) ? 0 : 1, intdiv($c->reliability ?? 50, 10), self::qualityOf($c->name, $c->quality_height), intdiv((int) $c->quality_kbps, 500), ($sources[$c->source_id] ?? null) === 'receiver' ? 0 : 1, (int) ($bouquets[$id] ?? 0), $c->stream_checked_at->timestamp ?? 0, -$id],
                 ];
             }
 

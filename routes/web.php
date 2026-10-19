@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\HiddenChannelController;
 use App\Http\Controllers\Admin\LaunchChecklistController;
 use App\Http\Controllers\Admin\LiveController;
 use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\PlaylistOptionsController;
 use App\Http\Controllers\Admin\ReceiverController;
 use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\SecurityController;
@@ -99,6 +100,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('cleanup/pack/{pack}', [CleanupRuleController::class, 'pack'])->name('cleanup.pack');
     Route::post('cleanup/{rule}/toggle', [CleanupRuleController::class, 'toggle'])->name('cleanup.toggle');
     Route::delete('cleanup/{rule}', [CleanupRuleController::class, 'destroy'])->name('cleanup.destroy');
+    Route::get('playlist-options', [PlaylistOptionsController::class, 'index'])->name('playlist-options.index');
+    Route::post('playlist-options', [PlaylistOptionsController::class, 'update'])->name('playlist-options.update');
+    Route::post('playlist-options/renumber', [PlaylistOptionsController::class, 'renumber'])->name('playlist-options.renumber');
+    Route::post('playlist-options/fill-info', [PlaylistOptionsController::class, 'fillInfo'])->name('playlist-options.fill-info');
     Route::get('channels/duplicates', [ChannelController::class, 'duplicates'])->name('channels.duplicates');
     Route::post('channels/duplicates', [ChannelController::class, 'applyDuplicates'])->name('channels.duplicates.apply');
     Route::post('channels/bulk', [ChannelController::class, 'bulk'])->name('channels.bulk');
