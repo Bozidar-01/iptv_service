@@ -49,7 +49,7 @@ import urllib.request
 import zlib
 from xml.sax.saxutils import escape, quoteattr
 
-VERSION = '1.5'
+VERSION = '1.6'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -202,6 +202,30 @@ def selected_bouquets(settings):
     return [[ref, name] for ref, name in bouquets if not wanted or clean_name(name).lower() in wanted_clean or name.lower() in wanted]
 
 
+BOUQUET_TIMEOUT = 60
+BOUQUET_TRIES = 2
+# Last good channel list of each bouquet: a bouquet that doesn't answer in time gets these, so its channels don't vanish
+# from the panel (an import deletes channels missing from the playlist). Kept until the relay restarts.
+_bouquet_cache = {}
+
+
+def bouquet_services(settings, ref):
+    """The services of one bouquet (with picons). A slow box gets BOUQUET_TRIES tries of BOUQUET_TIMEOUT seconds; then the
+    last good answer is used, and only a bouquet never read before fails the request."""
+    error = None
+    for _ in range(BOUQUET_TRIES):
+        try:
+            services = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': ref, 'picon': 1}), timeout=BOUQUET_TIMEOUT))['services']
+            _bouquet_cache[ref] = services
+            return services
+        except Exception as found:
+            error = found
+    if ref in _bouquet_cache:
+        log.warning('Bouquet %s did not answer (%s): using its last channel list', ref, error)
+        return _bouquet_cache[ref]
+    raise error
+
+
 def build_playlist(settings, base_url):
     encrypted = encrypted_services(settings.lamedb) if settings.fta_only else set()
     if encrypted is None:
@@ -212,8 +236,7 @@ def build_playlist(settings, base_url):
     count = 0
     for ref, name in selected_bouquets(settings):
         group = clean_name(name)
-        query = urllib.parse.urlencode({'sRef': ref, 'picon': 1})
-        services = json.loads(webif_get(settings, '/api/getservices?' + query))['services']
+        services = bouquet_services(settings, ref)
         for service in services:
             sref = service.get('servicereference', '')
             title = (service.get('servicename') or '').strip()
@@ -265,7 +288,7 @@ def guide_services(settings):
     services = {}
     for ref, _ in selected_bouquets(settings):
         try:
-            found = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': ref})))['services']
+            found = bouquet_services(settings, ref)
         except Exception as error:
             log.info('Guide: skipping a bouquet (%s)', error)
             continue

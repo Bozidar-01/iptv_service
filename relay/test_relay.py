@@ -298,6 +298,8 @@ class FakeWebif(http.server.BaseHTTPRequestHandler):
 
     paths = []
 
+    broken = False  # the box stops answering getservices
+
     def do_GET(self):
         FakeWebif.paths.append(self.path)
         url = urllib.parse.urlsplit(self.path)
@@ -307,6 +309,10 @@ class FakeWebif(http.server.BaseHTTPRequestHandler):
             {'sref': RAI1, 'sname': 'Rai 1 HD', 'title': 'Tg1 & Meteo', 'longdesc': 'News <live>', 'begin_timestamp': 1792400000, 'duration_sec': 1800},
             {'sref': RAI1, 'sname': 'Rai 1 HD', 'title': 'Old one', 'begin_timestamp': 1, 'duration_sec': 60},
         ]
+        if FakeWebif.broken and url.path == '/api/getservices':
+            self.send_response(500)
+            self.end_headers()
+            return
         body = {
             '/api/bouquets': {'bouquets': [['1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.it.tv"', 'Italia'], ['1:7:1:x', 'Other']]},
             '/api/epgmulti': ({'events': events if 'it.tv' in query.get('bRef', '') else []} if FakeWebif.multi else None),
@@ -334,6 +340,8 @@ class EpgTest(unittest.TestCase):
         self.server.shutdown()
         FakeWebif.multi = True
         FakeWebif.paths = []
+        FakeWebif.broken = False
+        relay._bouquet_cache.clear()
         relay.EPG_PAUSE = self.pause
         relay.free_memory_mb = self.memory
 
@@ -353,6 +361,18 @@ class EpgTest(unittest.TestCase):
         # Never the whole bouquet at once: on a big bouquet that can use more memory than the receiver has
         self.assertFalse(any('/api/epgmulti' in p for p in FakeWebif.paths))
         self.assertEqual(sum('/api/epgservice' in p for p in FakeWebif.paths), 2)
+
+    def test_a_bouquet_that_stops_answering_keeps_its_last_channel_list(self):
+        before = relay.build_playlist(self.settings, 'http://relay.test')
+        self.assertIn('Rai 1 HD', before)
+
+        FakeWebif.broken = True
+        self.assertEqual(relay.build_playlist(self.settings, 'http://relay.test'), before)
+
+        # Never read before: fail (the panel keeps its channels) rather than send a list without them
+        relay._bouquet_cache.clear()
+        with self.assertRaises(Exception):
+            relay.build_playlist(self.settings, 'http://relay.test')
 
     def test_stops_when_the_receiver_runs_low_on_memory(self):
         relay.free_memory_mb = lambda: 50
