@@ -28,7 +28,7 @@
                 <tbody>
                 @foreach($bouquets as $bouquet)
                     <tr>
-                        <td class="cell-main">{{ $bouquet->name }}</td>
+                        <td><div class="cell-flex"><span class="item-icon tone-blue"><x-icon name="package" /></span><a href="{{ route('admin.bouquets.edit', $bouquet) }}" class="cell-main">{{ $bouquet->name }}</a></div></td>
                         <td class="right">
                             <a href="{{ route('admin.channels.index', ['bouquet' => $bouquet->id]) }}">{{ number_format($bouquet->channels_count) }}</a>
                             @if($bouquet->channels_count !== $bouquet->active_channels_count)

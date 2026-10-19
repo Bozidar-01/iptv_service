@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('title', __('Import users'))
+@section('container', 'container-narrow')
 
 @section('content')
 <div class="page-header">

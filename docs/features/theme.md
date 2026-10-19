@@ -1,6 +1,6 @@
 # Light / dark mode
 
-Admins pick **Light**, **Dark** or **System** (follow the OS setting, the default) with the three icon buttons (sun / moon / monitor) next to the language menu, at the bottom of the sidebar and under the sign-in card.
+Admins pick **Light**, **Dark** or **System** (follow the OS setting, the default) with the three icon buttons (sun / moon / monitor) next to the language menu, in the top-right of the header (on every admin page) and under the sign-in card.
 
 **Files:** `app/Support/Theme.php`, `app/Http/Controllers/ThemeController.php`, `resources/views/partials/preferences.blade.php`, `public/css/admin.css` (theme tokens at the top), `bootstrap/app.php`, `tests/Feature/ThemeTest.php`
 
@@ -20,7 +20,7 @@ Light values are on `:root`. The dark values are defined twice in `admin.css` an
 :root[data-theme="dark"] { /* same dark tokens */ }
 ```
 
-So `system` follows the OS, `light` blocks the OS dark mode, and `dark` forces it. Components only use the CSS variables, so a new token needs a light value and the same dark value in both blocks. The sidebar is dark in both themes.
+So `system` follows the OS, `light` blocks the OS dark mode, and `dark` forces it. Components only use the CSS variables, so a new token needs a light value and the same dark value in both blocks. The sidebar follows the theme too (light translucent grey, or dark), with its own `--sidebar-*` tokens.
 
 ## Checking UI changes
 

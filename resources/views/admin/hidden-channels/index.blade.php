@@ -16,7 +16,7 @@
     </div>
 </div>
 
-<details class="card" style="margin-bottom: 20px">
+<details class="card" style="margin-bottom: 16px">
     <summary class="card-header" style="cursor: pointer">
         <div>
             <h2>{{ __('By category') }}</h2>

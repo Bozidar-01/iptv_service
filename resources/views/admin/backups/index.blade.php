@@ -19,7 +19,7 @@
 <div class="stats">
     <div class="card stat">
         <div class="stat-label"><x-icon name="clock" /> {{ __('Last backup') }}</div>
-        <div class="stat-value" style="font-size: 22px">{{ $lastBackup ? $lastBackup->diffForHumans() : __('None yet') }}</div>
+        <div class="stat-value stat-value-text">{{ $lastBackup ? $lastBackup->diffForHumans() : __('None yet') }}</div>
         <div class="stat-meta">
             @if($lastBackup && $lastBackup->diffInHours(now()) >= $staleHours)
                 <span class="badge badge-warning">{{ __('older than :hours hours', ['hours' => $staleHours]) }}</span>
@@ -30,7 +30,7 @@
     </div>
     <div class="card stat">
         <div class="stat-label"><x-icon name="shield" /> {{ __('Last check') }}</div>
-        <div class="stat-value" style="font-size: 22px">{{ $lastVerified ? $lastVerified->diffForHumans() : __('Never') }}</div>
+        <div class="stat-value stat-value-text">{{ $lastVerified ? $lastVerified->diffForHumans() : __('Never') }}</div>
         <div class="stat-meta">{{ __('a passed check of the newest backup') }}</div>
     </div>
 </div>
@@ -73,7 +73,7 @@
             @if($disk['error'])
                 <div class="alert alert-danger" style="margin: 16px 20px"><x-icon name="alert" /><div class="alert-body">{{ $disk['error'] }}</div></div>
             @elseif($disk['files'] === [])
-                <div class="empty" style="padding: 28px 20px"><p>{{ __('No backups here yet.') }}</p></div>
+                <div class="empty compact"><p>{{ __('No backups here yet.') }}</p></div>
             @else
                 <div class="table-wrap">
                     <table class="table">

@@ -4,6 +4,16 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-20 — New look (Apple-style), icon-strip menu, error pages
+- **Design overhaul** of every page: system font, grey canvas with white rounded cards, pill buttons, segmented tabs, iOS-style switches, frosted header, Apple system colours in light and dark mode, a light sidebar that follows the theme, softer tables, badges, dialogs and empty states. The page title shows small in the header once it scrolls away.
+- **Dashboard:** today's date, an "Everything is running" pill, stat cards that open their page, channel logos in recent activity, icons and avatars in the side lists, at most 6 sources (with a link to the rest). The reseller dashboard got the same.
+- **Pages:** the user page's right column was not grouped (Subscription and the cards under it fell into new rows); now Subscription comes first in its own column. Channel form grouped into Channel / In apps / TV guide and backup / Settings; channel and user pages show the logo or avatar next to the title; icons on bouquet, category and source rows; alert rows with coloured icons and an unread dot; Watching now with avatars and logos; sticky bulk bar on long lists; duplicate groups closer together with a floating Apply bar; empty state on Sales without resellers; trial and import forms narrower; tighter gaps between cards everywhere; sources table and filter bars no longer too wide; no page scrolls sideways on a phone.
+- **Header:** language and light/dark mode moved from the sidebar to the top right, next to the bell. One header for phone and desktop.
+- **Menu:** the sidebar button shrinks the menu to a strip of grey icons, with the page name on hover; remembered per browser.
+- **Error pages** for 401, 403, 404, 419, 429, 500 and 503 in the NeboTV look (English and Macedonian). Browser bar colour and the web manifest follow the new colours.
+- Tests: `ErrorPagesTest` (7); e2e `layout.spec.js` checks the header controls and the icon strip.
+- Files: `public/css/admin.css`, `resources/views/layouts/admin.blade.php`, `resources/views/errors/*`, `resources/views/components/icon.blade.php`, dashboards, `admin/{alerts,live,bouquets,categories,sources,channels,users,sales}/…`, `admin/partials/{alert-item,favicons}`, `public/site.webmanifest`, `lang/mk.json`, `e2e/layout.spec.js`, `tests/Feature/ErrorPagesTest.php`, docs.
+
 ### 2026-10-21 — Message to viewers, QR codes
 - **Message to viewers** (Playlist options): one message, optionally until a date, shown by Xtream apps after the login (`user_info.message`) and as a banner on every viewer's own page. Stored in `app_settings` (`announcement`).
 - **QR codes**: the user page shows the user's own page and the playlist link as QR codes, the viewer's page shows the playlist link as one (`App\Support\QrCode`, server-made SVG; the two-factor setup uses the same helper).

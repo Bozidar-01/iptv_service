@@ -60,7 +60,7 @@ The link is built from the address you used to open the panel. If you're on `htt
 
 ## Language
 
-The panel defaults to `APP_LOCALE` (`en`). Each admin can switch to Macedonian with the language menu (flags) in the sidebar or on the sign-in page; the choice is kept in a browser cookie. Set `APP_LOCALE=mk` in `.env` to make Macedonian the default. Details: [features/localization.md](features/localization.md). Next to it, the sun / moon / monitor buttons choose light, dark or system mode ([features/theme.md](features/theme.md)).
+The panel defaults to `APP_LOCALE` (`en`). Each admin can switch to Macedonian with the language menu (flags) in the top-right of the header or on the sign-in page; the choice is kept in a browser cookie. Set `APP_LOCALE=mk` in `.env` to make Macedonian the default. Details: [features/localization.md](features/localization.md). Next to it, the sun / moon / monitor buttons choose light, dark or system mode ([features/theme.md](features/theme.md)).
 
 ## Default sources
 

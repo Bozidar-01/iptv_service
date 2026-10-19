@@ -50,7 +50,7 @@
         <div class="card">
             <div class="card-header"><div><h2>{{ __('Credits') }}</h2><p>{{ __('How the balance moved this month.') }}</p></div></div>
             @if($statement['reseller']['unlimited'])
-                <div class="empty" style="padding: 28px 20px"><p>{{ __('Not limited by credits') }}</p></div>
+                <div class="empty compact"><p>{{ __('Not limited by credits') }}</p></div>
             @else
                 @php($c = $statement['credits'])
                 @php($num = fn ($n) => $n === null ? '–' : number_format($n))
@@ -81,7 +81,7 @@
         <div class="card">
             <div class="card-header"><h2>{{ __('Credit history of the month') }}</h2></div>
             @if($statement['lines'] === [])
-                <div class="empty" style="padding: 28px 20px"><p>{{ __('No credits were given or used this month.') }}</p></div>
+                <div class="empty compact"><p>{{ __('No credits were given or used this month.') }}</p></div>
             @else
                 <div class="table-wrap">
                     <table class="table">

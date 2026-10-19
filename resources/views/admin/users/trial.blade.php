@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('title', __('New trial'))
+@section('container', 'container-narrow')
 
 @section('content')
 <div class="page-header">
@@ -43,8 +44,8 @@
         </div>
     </div>
     <div class="card-footer">
-        <button class="btn btn-primary"><x-icon name="plus" /> {{ __('Create trial') }}</button>
         <a href="{{ route('admin.users.index') }}" class="btn btn-ghost">{{ __('Cancel') }}</a>
+        <button class="btn btn-primary"><x-icon name="plus" /> {{ __('Create trial') }}</button>
     </div>
 </form>
 @endsection

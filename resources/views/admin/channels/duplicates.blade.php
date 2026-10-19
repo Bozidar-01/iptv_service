@@ -23,7 +23,7 @@
     @endif
 </div>
 
-<div class="card" style="margin-bottom: 20px">
+<div class="card" style="margin-bottom: 16px">
     <form method="GET" action="{{ route('admin.channels.duplicates') }}" class="toolbar">
         <div class="input-group">
             <x-icon name="search" />
@@ -56,7 +56,7 @@
         <input type="hidden" name="scope" value="page">
         <input type="hidden" name="search" value="{{ $search }}">
 
-        <div class="stack">
+        <div class="stack tight">
             @foreach($groups as $group)
                 <div class="card">
                     <div class="card-header">
@@ -101,14 +101,12 @@
             @endforeach
         </div>
 
-        <div class="card" style="margin-top: 20px">
-            <div class="card-footer">
-                <select class="select" name="others" aria-label="{{ __('What happens to the other copies') }}">
-                    <option value="backup">{{ __('Keep the others as hidden backups') }}</option>
-                    <option value="off">{{ __('Switch the others off') }}</option>
-                </select>
-                <button class="btn btn-primary"><x-icon name="check" /> {{ __('Apply to this page') }}</button>
-            </div>
+        <div class="action-bar">
+            <select class="select" name="others" aria-label="{{ __('What happens to the other copies') }}">
+                <option value="backup">{{ __('Keep the others as hidden backups') }}</option>
+                <option value="off">{{ __('Switch the others off') }}</option>
+            </select>
+            <button class="btn btn-primary"><x-icon name="check" /> {{ __('Apply to this page') }}</button>
         </div>
     </form>
 
