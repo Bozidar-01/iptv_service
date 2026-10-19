@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Relay start script: stop and status match only the relay
+- `status` said "running" while only the restart loop was left, and `stop` matched by a pattern that also fits the loop's own command line. Both now match only the relay's process (command line ending in the program). Docs warn against stopping it with `pkill -f nebotv-relay.py`, which also kills the loop and the shell running it. Update the start script on the box.
+- Files: `relay/nebotv-relay.init`, `docs/features/receiver.md`.
+
 ### 2026-10-21 — Receiver standby: the relay restarts itself, provider copies stand in
 - The relay stopped twice without a word on the Octagon and stayed down until noticed. The start script now runs it in a loop: it logs how it stopped (exit code; 137 = killed, usually out of memory) and starts it again after 10 s, keeps the in-memory log under 1 MB, and has `status`. Update the start script on the box.
 - **Find duplicates → Only with a receiver channel:** the receiver channels a provider also has, to keep one and make the other its hidden backup in one go.
