@@ -60,6 +60,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | POST | `/admin/sources/{source}/receiver/guide` | `admin.receiver.guide` | `ReceiverController@guide`: adds the receiver's own guide (relay 1.3 `/epg.xml`) once and imports it |
 | GET | `/admin/playlist-options` | `admin.playlist-options.index` | `PlaylistOptionsController@index`: names, numbers, logos and guide IDs, catch-up (admins only) |
 | POST | `/admin/playlist-options` | `admin.playlist-options.update` | `update`: `quality_in_names`, `hide_worse_copies` |
+| POST | `/admin/playlist-options/announcement` | `admin.playlist-options.announcement` | `announcement`: `text` (≤ 300, empty = none), `until` (date) |
 | POST | `/admin/playlist-options/renumber` | `admin.playlist-options.renumber` | `renumber`: numbers every channel again in playlist order |
 | POST | `/admin/playlist-options/fill-info` | `admin.playlist-options.fill-info` | `fillInfo`: queues `FillChannelInfo` (downloads the iptv-org database again) |
 | GET | `/admin/channels/duplicates` | `admin.channels.duplicates` | `ChannelController@duplicates`: groups of copies with the suggested one (`?search=&page=`) |

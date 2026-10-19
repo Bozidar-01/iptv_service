@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Jobs\FillChannelInfo;
 use App\Models\Channel;
+use App\Services\AnnouncementService;
 use App\Services\ChannelCatalogService;
 use App\Services\ChannelNumberService;
 use App\Services\PlaylistOptionsService;
@@ -22,10 +23,12 @@ class PlaylistOptionsController extends Controller
         $this->options = $options;
     }
 
-    public function index(ChannelCatalogService $catalog)
+    public function index(ChannelCatalogService $catalog, AnnouncementService $announcement)
     {
         return view('admin.playlist-options.index', [
             'settings' => $this->options->settings(),
+            'announcement' => $announcement->settings(),
+            'announcementShown' => $announcement->current() !== null,
             'catalog' => $catalog->status(),
             'counts' => [
                 'channels' => Channel::count(),
@@ -48,6 +51,21 @@ class PlaylistOptionsController extends Controller
         ]);
 
         return back()->with('success', __('Playlist options saved. Apps show the change when they load the list again.'));
+    }
+
+    /** POST playlist-options/announcement: `text` (empty = no message), `until` (last day, optional). */
+    public function announcement(Request $request, AnnouncementService $announcement)
+    {
+        $data = $request->validate([
+            'text' => ['nullable', 'string', 'max:'.AnnouncementService::MAX_LENGTH],
+            'until' => ['nullable', 'date', 'after_or_equal:today'],
+        ]);
+
+        $announcement->save($data['text'] ?? null, $data['until'] ?? null);
+
+        return back()->with('success', filled($data['text'] ?? null)
+            ? __('Message saved. Apps show it at the next login; viewers see it on their page.')
+            : __('Message removed.'));
     }
 
     public function renumber(ChannelNumberService $numbers)

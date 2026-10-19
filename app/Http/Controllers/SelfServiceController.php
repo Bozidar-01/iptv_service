@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\StreamAlert;
 use App\Models\User;
+use App\Services\AnnouncementService;
 use App\Services\FavoriteService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
@@ -50,6 +51,7 @@ class SelfServiceController extends Controller
             'search' => is_string($request->query('q')) ? trim($request->query('q')) : '',
             'found' => is_string($request->query('q')) ? $this->favorites->search($user, $request->query('q')) : collect(),
             'lang' => App::getLocale(),
+            'announcement' => app(AnnouncementService::class)->current(),
         ]);
     }
 

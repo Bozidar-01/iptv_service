@@ -25,6 +25,10 @@
             </div>
         </div>
 
+        @if($announcement)
+            <div class="alert alert-info" role="status"><x-icon name="bell" /><div class="alert-body">{{ $announcement }}</div></div>
+        @endif
+
         @if($sent === 'yes')
             <div class="alert alert-success" role="status"><x-icon name="check-circle" /><div class="alert-body">{{ __('Your request was sent. You will be contacted.') }}</div></div>
         @elseif($sent === 'again')
@@ -77,6 +81,11 @@
                     <button type="button" class="btn btn-primary" data-copy="#playlist-url"><x-icon name="copy" /> <span data-copy-label>{{ __('Copy') }}</span></button>
                 </div>
                 <p class="help" style="margin: 0">{{ __('Paste it into your IPTV app as an M3U link. Do not share it: it is your personal link.') }}</p>
+                <details>
+                    <summary class="label" style="cursor: pointer">{{ __('Show as QR code') }}</summary>
+                    <div class="qr" style="margin-top: 10px" role="img" aria-label="{{ __('QR code of your playlist link') }}">{!! \App\Support\QrCode::svg($playlistUrl) !!}</div>
+                    <p class="help" style="margin: 6px 0 0">{{ __('Scan it with the phone or tablet app, or with the camera to copy the link.') }}</p>
+                </details>
 
                 <div>
                     <div class="label" style="margin-bottom: 6px">{{ __('Set up on a TV') }}</div>

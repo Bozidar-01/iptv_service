@@ -570,6 +570,10 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 .segmented input:checked + span { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .segmented input:focus-visible + span { box-shadow: var(--focus); }
 
+/* ---------- Two QR codes side by side (user page); .qr itself is with the two-factor styles ---------- */
+.qr-pair { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 10px; }
+.qr-pair figure { margin: 0; max-width: 200px; }
+
 /* ---------- Tabs: pages of one section (App\Support\AdminNav::tabs) ---------- */
 .tabs {
     display: flex;
