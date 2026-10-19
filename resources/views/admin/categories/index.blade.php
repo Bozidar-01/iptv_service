@@ -27,7 +27,7 @@
                 <tbody>
                 @foreach($categories as $category)
                     <tr>
-                        <td class="cell-main">{{ $category->name }}</td>
+                        <td><div class="cell-flex"><span class="item-icon tone-orange"><x-icon name="folder" /></span><span class="cell-main">{{ $category->name }}</span></div></td>
                         <td class="right"><a href="{{ route('admin.channels.index', ['category' => $category->id]) }}">{{ number_format($category->channels_count) }}</a></td>
                         <td class="right hide-sm muted">{{ number_format($category->active_channels_count) }}</td>
                         <td class="shrink">

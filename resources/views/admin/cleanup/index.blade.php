@@ -136,7 +136,7 @@
     <div class="card">
         <div class="card-header"><div><h2>{{ __('Your rules') }}</h2><p>{{ __('They run in this order. Disabled rules are skipped.') }}</p></div></div>
         @if($rules->isEmpty())
-            <div class="empty" style="padding: 28px 20px"><p>{{ __('No rules yet. Add a ready-made set above or your own below.') }}</p></div>
+            <div class="empty compact"><p>{{ __('No rules yet. Add a ready-made set above or your own below.') }}</p></div>
         @else
             <div class="table-wrap">
                 <table class="table">

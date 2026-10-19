@@ -1,7 +1,7 @@
 {{-- One StreamAlert row, used by the header menu, the alerts page and the dashboard --}}
 <li class="alert-item {{ $alert->read_at ? '' : 'unread' }}">
-    <span class="alert-dot {{ $alert->isProblem() ? 'is-problem' : 'is-ok' }}"></span>
-    <div style="min-width: 0; flex: 1">
+    <span class="alert-dot {{ $alert->isProblem() ? 'is-problem' : 'is-ok' }}"><x-icon :name="$alert->isProblem() ? 'alert' : 'check'" /></span>
+    <div class="item-body">
         <div class="cell-main truncate">
             @if($alert->channel_id)
                 <a href="{{ route('admin.channels.edit', $alert->channel_id) }}">{{ $alert->message() }}</a>

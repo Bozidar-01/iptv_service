@@ -6,12 +6,17 @@
 <div class="page-header">
     <div>
         <a href="{{ route('admin.users.index') }}" class="breadcrumb"><x-icon name="arrow-left" /> {{ __('Users') }}</a>
-        <h1>{{ $user->username }}</h1>
-        <p>
-            @include('admin.partials.user-status', ['user' => $user])
-            @if($user->isAdmin()) <span class="badge badge-primary">{{ __('Admin') }}</span> @endif
-            @if($user->isReseller()) <span class="badge badge-info">{{ __('Reseller') }}</span> @endif
-        </p>
+        <div class="title-row">
+            <span class="avatar">{{ mb_strtoupper(mb_substr($user->username, 0, 1)) }}</span>
+            <div>
+                <h1>{{ $user->username }}</h1>
+                <p class="badges">
+                    @include('admin.partials.user-status', ['user' => $user])
+                    @if($user->isAdmin()) <span class="badge badge-primary">{{ __('Admin') }}</span> @endif
+                    @if($user->isReseller()) <span class="badge badge-info">{{ __('Reseller') }}</span> @endif
+                </p>
+            </div>
+        </div>
     </div>
     <div class="page-actions">
         <form method="POST" action="{{ route('admin.users.toggle', $user) }}" class="inline-form">
@@ -185,7 +190,7 @@
                 <a href="{{ route('admin.logs.index', ['user' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('View all') }}</a>
             </div>
             @if($recentLogs->isEmpty())
-                <div class="empty" style="padding: 28px 20px"><p>{{ __('Nothing watched yet.') }}</p></div>
+                <div class="empty compact"><p>{{ __('Nothing watched yet.') }}</p></div>
             @else
                 <div class="table-wrap">
                     <table class="table">
@@ -205,178 +210,179 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <div>
-                <h2>{{ __('Devices watching now') }}</h2>
-                <p>{{ __('A player that plays straight from the provider keeps its current stream until it reconnects. Streams played through this server stop within seconds.') }}</p>
+    <div class="stack">
+        <div class="card">
+            <div class="card-header"><h2>{{ __('Subscription') }}</h2></div>
+            <div class="card-body">
+                <dl class="dl">
+                    <dt>{{ __('Expires') }}</dt>
+                    <dd>{{ $user->expiration_date ? $user->expiration_date->translatedFormat('M j, Y') . ' (' . $user->expiration_date->diffForHumans() . ')' : __('Never') }}</dd>
+                    @if($user->role === 'user' && $user->expiration_date)
+                        <dt>{{ __('Renew') }}</dt>
+                        <dd>
+                            @include('admin.partials.renew-form', ['user' => $user])
+                        </dd>
+                    @endif
+                    <dt>{{ __('Streams') }}</dt>
+                    <dd>{{ __(':count active now · max :max', ['count' => $user->active_sessions_count, 'max' => $user->max_connections]) }}</dd>
+                    <dt>{{ __('Channels') }}</dt>
+                    <dd>{{ number_format($channelCount) }}@if($user->role === 'user') · <a href="{{ route('admin.users.channels', $user) }}">{{ __('Hide some') }}</a>@endif</dd>
+                    <dt>{{ __('Bouquets') }}</dt>
+                    <dd>
+                        @forelse($user->bouquets as $bouquet)
+                            <span class="badge badge-primary">{{ $bouquet->name }}</span>
+                        @empty
+                            <span class="faint">{{ __('None') }}</span>
+                        @endforelse
+                    </dd>
+                    @if($user->owner && Auth::user()->isAdmin())
+                        <dt>{{ __('Reseller') }}</dt>
+                        <dd><a href="{{ route('admin.users.show', $user->owner) }}">{{ $user->owner->username }}</a></dd>
+                    @endif
+                    @if($user->isReseller())
+                        <dt>{{ __('Users') }}</dt>
+                        <dd>
+                            {{ $user->max_customers !== null ? __(':count of :max', ['count' => $user->customers_count, 'max' => $user->max_customers]) : $user->customers_count }}
+                            @if($user->customers_count)
+                                · <a href="{{ route('admin.users.index', ['reseller' => $user->id]) }}">{{ __('View all') }}</a>
+                            @endif
+                        </dd>
+                        <dt>{{ __('Most streams per user') }}</dt>
+                        <dd>{{ $user->max_customer_connections ?? __('No limit') }}</dd>
+                    @endif
+                    <dt>{{ __('Email') }}</dt>
+                    <dd>{{ $user->email ?: '–' }}</dd>
+                    <dt>{{ __('Created') }}</dt>
+                    <dd>{{ $user->created_at?->translatedFormat('M j, Y') }}</dd>
+                </dl>
             </div>
-            @if($devices->count() > 1)
-                <form method="POST" action="{{ route('admin.users.sessions.disconnect-all', $user) }}" data-confirm="{{ __('Disconnect all devices of this user? They can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
-                    @csrf
-                    <button type="submit" class="btn btn-danger-ghost btn-sm"><x-icon name="power" /> {{ __('Disconnect all') }}</button>
-                </form>
-            @endif
         </div>
-        @if($devices->isEmpty())
-            <div class="empty" style="padding: 28px 20px"><p>{{ __('Nobody is watching right now.') }}</p></div>
-        @else
-            <div class="table-wrap">
-                <table class="table">
-                    <thead><tr><th>{{ __('Channel') }}</th><th class="hide-sm">{{ __('IP address') }}</th><th class="hide-sm">{{ __('Player') }}</th><th class="right">{{ __('Since') }}</th><th class="shrink"></th></tr></thead>
-                    <tbody>
-                    @foreach($devices as $device)
-                        <tr>
-                            <td class="cell-main truncate">{{ $device->channel->name ?? __('Deleted channel') }}</td>
-                            <td class="hide-sm mono muted">{{ $device->ip }}</td>
-                            <td class="hide-sm muted truncate" style="max-width: 200px" title="{{ $device->user_agent }}">{{ $device->user_agent }}</td>
-                            <td class="right muted" title="{{ $device->started_at }}">{{ $device->started_at->diffForHumans() }}</td>
-                            <td>
-                                <form method="POST" action="{{ route('admin.users.sessions.disconnect', [$user, $device]) }}" data-confirm="{{ __('Disconnect this device? It can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
-                                    @csrf
-                                    <button type="submit" class="btn btn-danger-ghost btn-sm">{{ __('Disconnect') }}</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </div>
-
-    @if($refused->isNotEmpty())
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h2>{{ __('Refused plays') }}</h2>
-                    <p>{{ __('Why this user\'s latest plays were refused.') }}</p>
+                    <h2>{{ __('Devices watching now') }}</h2>
+                    <p>{{ __('A player that plays straight from the provider keeps its current stream until it reconnects. Streams played through this server stop within seconds.') }}</p>
                 </div>
-                <a href="{{ route('admin.logs.refused', ['user' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('View all') }}</a>
-            </div>
-            <ul class="list">
-                @foreach($refused as $row)
-                    <li>
-                        <div>
-                            <strong>{{ $row->channel->name ?? __('Deleted channel') }}</strong> <span class="badge badge-warning">{{ $row->label() }}</span>
-                            <div class="muted">{{ $row->hint() }}</div>
-                        </div>
-                        <span class="muted" title="{{ $row->created_at }}">{{ $row->created_at->diffForHumans() }}</span>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    @if($addresses)
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <h2>{{ __('Where this user watches from') }}</h2>
-                    <p>{{ __('Addresses used in the last 7 days. Many different ones in a day can mean the login is shared.') }}</p>
-                </div>
-                @if(config('iptv.sharing_ips') >= 2 && $recentAddressCount >= config('iptv.sharing_ips'))
-                    <span class="badge badge-warning badge-dot">{{ __(':count addresses in :hours hours', ['count' => $recentAddressCount, 'hours' => config('iptv.sharing_hours')]) }}</span>
-                @endif
-            </div>
-            <div class="table-wrap">
-                <table class="table">
-                    <thead><tr><th>{{ __('IP address') }}</th><th class="right">{{ __('Plays') }}</th><th class="right">{{ __('Last used') }}</th></tr></thead>
-                    <tbody>
-                    @foreach($addresses as $address)
-                        <tr>
-                            <td class="mono">{{ $address['ip'] }}</td>
-                            <td class="right">{{ number_format($address['plays']) }}</td>
-                            <td class="right muted" title="{{ $address['last'] }}">{{ \Illuminate\Support\Carbon::parse($address['last'])->diffForHumans() }}</td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @endif
-
-    @if($user->isReseller() && Auth::user()->isAdmin())
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <h2>{{ __('Credits') }}</h2>
-                    <p>{{ __('1 credit = 1 month of subscription for one user. Giving credits switches the limit on.') }}</p>
-                </div>
-                <a href="{{ route('admin.credits.index', ['reseller' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('History') }}</a>
-            </div>
-            <div class="card-body stack" style="gap: 16px">
-                <div class="stat-value" style="margin: 0">{{ $user->usesCredits() ? number_format($user->credits) : __('Unlimited') }}</div>
-
-                <form method="POST" action="{{ route('admin.users.credits.store', $user) }}" class="form-grid">
-                    @csrf
-                    <div class="field">
-                        <label class="label" for="credit-amount">{{ __('Give or take back') }}</label>
-                        <input class="input" id="credit-amount" name="amount" type="number" step="1" min="-1000000" max="1000000" placeholder="10" required>
-                        <span class="help">{{ __('A positive number gives credits, a negative one takes them back.') }}</span>
-                    </div>
-                    <div class="field">
-                        <label class="label" for="credit-note">{{ __('Note') }} <span class="optional">{{ __('(optional)') }}</span></label>
-                        <input class="input" id="credit-note" name="note" maxlength="255">
-                    </div>
-                    <div class="field full"><div><button class="btn btn-primary" type="submit"><x-icon name="package" /> {{ __('Save') }}</button></div></div>
-                </form>
-
-                @if($user->usesCredits())
-                    <form method="POST" action="{{ route('admin.users.credits.unlimited', $user) }}" data-confirm="{{ __('Remove the credit limit of this reseller? They can then give any number of subscriptions.') }}">
+                @if($devices->count() > 1)
+                    <form method="POST" action="{{ route('admin.users.sessions.disconnect-all', $user) }}" data-confirm="{{ __('Disconnect all devices of this user? They can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
                         @csrf
-                        <button class="btn btn-danger-ghost btn-sm" type="submit">{{ __('Make unlimited') }}</button>
+                        <button type="submit" class="btn btn-danger-ghost btn-sm"><x-icon name="power" /> {{ __('Disconnect all') }}</button>
                     </form>
                 @endif
             </div>
+            @if($devices->isEmpty())
+                <div class="empty compact"><p>{{ __('Nobody is watching right now.') }}</p></div>
+            @else
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>{{ __('Channel') }}</th><th class="hide-sm">{{ __('IP address') }}</th><th class="hide-sm">{{ __('Player') }}</th><th class="right">{{ __('Since') }}</th><th class="shrink"></th></tr></thead>
+                        <tbody>
+                        @foreach($devices as $device)
+                            <tr>
+                                <td class="cell-main truncate">{{ $device->channel->name ?? __('Deleted channel') }}</td>
+                                <td class="hide-sm mono muted">{{ $device->ip }}</td>
+                                <td class="hide-sm muted truncate" style="max-width: 200px" title="{{ $device->user_agent }}">{{ $device->user_agent }}</td>
+                                <td class="right muted" title="{{ $device->started_at }}">{{ $device->started_at->diffForHumans() }}</td>
+                                <td>
+                                    <form method="POST" action="{{ route('admin.users.sessions.disconnect', [$user, $device]) }}" data-confirm="{{ __('Disconnect this device? It can not start a stream for :minutes minutes.', ['minutes' => \App\Services\StreamService::DEVICE_BLOCK_MINUTES]) }}">
+                                        @csrf
+                                        <button type="submit" class="btn btn-danger-ghost btn-sm">{{ __('Disconnect') }}</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
-    @endif
 
-    <div class="card">
-        <div class="card-header"><h2>{{ __('Subscription') }}</h2></div>
-        <div class="card-body">
-            <dl class="dl">
-                <dt>{{ __('Expires') }}</dt>
-                <dd>{{ $user->expiration_date ? $user->expiration_date->translatedFormat('M j, Y') . ' (' . $user->expiration_date->diffForHumans() . ')' : __('Never') }}</dd>
-                @if($user->role === 'user' && $user->expiration_date)
-                    <dt>{{ __('Renew') }}</dt>
-                    <dd>
-                        @include('admin.partials.renew-form', ['user' => $user])
-                    </dd>
-                @endif
-                <dt>{{ __('Streams') }}</dt>
-                <dd>{{ __(':count active now · max :max', ['count' => $user->active_sessions_count, 'max' => $user->max_connections]) }}</dd>
-                <dt>{{ __('Channels') }}</dt>
-                <dd>{{ number_format($channelCount) }}@if($user->role === 'user') · <a href="{{ route('admin.users.channels', $user) }}">{{ __('Hide some') }}</a>@endif</dd>
-                <dt>{{ __('Bouquets') }}</dt>
-                <dd>
-                    @forelse($user->bouquets as $bouquet)
-                        <span class="badge badge-primary">{{ $bouquet->name }}</span>
-                    @empty
-                        <span class="faint">{{ __('None') }}</span>
-                    @endforelse
-                </dd>
-                @if($user->owner && Auth::user()->isAdmin())
-                    <dt>{{ __('Reseller') }}</dt>
-                    <dd><a href="{{ route('admin.users.show', $user->owner) }}">{{ $user->owner->username }}</a></dd>
-                @endif
-                @if($user->isReseller())
-                    <dt>{{ __('Users') }}</dt>
-                    <dd>
-                        {{ $user->max_customers !== null ? __(':count of :max', ['count' => $user->customers_count, 'max' => $user->max_customers]) : $user->customers_count }}
-                        @if($user->customers_count)
-                            · <a href="{{ route('admin.users.index', ['reseller' => $user->id]) }}">{{ __('View all') }}</a>
-                        @endif
-                    </dd>
-                    <dt>{{ __('Most streams per user') }}</dt>
-                    <dd>{{ $user->max_customer_connections ?? __('No limit') }}</dd>
-                @endif
-                <dt>{{ __('Email') }}</dt>
-                <dd>{{ $user->email ?: '–' }}</dd>
-                <dt>{{ __('Created') }}</dt>
-                <dd>{{ $user->created_at?->translatedFormat('M j, Y') }}</dd>
-            </dl>
-        </div>
+        @if($refused->isNotEmpty())
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2>{{ __('Refused plays') }}</h2>
+                        <p>{{ __('Why this user\'s latest plays were refused.') }}</p>
+                    </div>
+                    <a href="{{ route('admin.logs.refused', ['user' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('View all') }}</a>
+                </div>
+                <ul class="list">
+                    @foreach($refused as $row)
+                        <li>
+                            <div>
+                                <strong>{{ $row->channel->name ?? __('Deleted channel') }}</strong> <span class="badge badge-warning">{{ $row->label() }}</span>
+                                <div class="muted">{{ $row->hint() }}</div>
+                            </div>
+                            <span class="muted" title="{{ $row->created_at }}">{{ $row->created_at->diffForHumans() }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if($addresses)
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2>{{ __('Where this user watches from') }}</h2>
+                        <p>{{ __('Addresses used in the last 7 days. Many different ones in a day can mean the login is shared.') }}</p>
+                    </div>
+                    @if(config('iptv.sharing_ips') >= 2 && $recentAddressCount >= config('iptv.sharing_ips'))
+                        <span class="badge badge-warning badge-dot">{{ __(':count addresses in :hours hours', ['count' => $recentAddressCount, 'hours' => config('iptv.sharing_hours')]) }}</span>
+                    @endif
+                </div>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>{{ __('IP address') }}</th><th class="right">{{ __('Plays') }}</th><th class="right">{{ __('Last used') }}</th></tr></thead>
+                        <tbody>
+                        @foreach($addresses as $address)
+                            <tr>
+                                <td class="mono">{{ $address['ip'] }}</td>
+                                <td class="right">{{ number_format($address['plays']) }}</td>
+                                <td class="right muted" title="{{ $address['last'] }}">{{ \Illuminate\Support\Carbon::parse($address['last'])->diffForHumans() }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
+
+        @if($user->isReseller() && Auth::user()->isAdmin())
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2>{{ __('Credits') }}</h2>
+                        <p>{{ __('1 credit = 1 month of subscription for one user. Giving credits switches the limit on.') }}</p>
+                    </div>
+                    <a href="{{ route('admin.credits.index', ['reseller' => $user->id]) }}" class="btn btn-ghost btn-sm">{{ __('History') }}</a>
+                </div>
+                <div class="card-body stack" style="gap: 16px">
+                    <div class="stat-value" style="margin: 0">{{ $user->usesCredits() ? number_format($user->credits) : __('Unlimited') }}</div>
+
+                    <form method="POST" action="{{ route('admin.users.credits.store', $user) }}" class="form-grid">
+                        @csrf
+                        <div class="field">
+                            <label class="label" for="credit-amount">{{ __('Give or take back') }}</label>
+                            <input class="input" id="credit-amount" name="amount" type="number" step="1" min="-1000000" max="1000000" placeholder="10" required>
+                            <span class="help">{{ __('A positive number gives credits, a negative one takes them back.') }}</span>
+                        </div>
+                        <div class="field">
+                            <label class="label" for="credit-note">{{ __('Note') }} <span class="optional">{{ __('(optional)') }}</span></label>
+                            <input class="input" id="credit-note" name="note" maxlength="255">
+                        </div>
+                        <div class="field full"><div><button class="btn btn-primary" type="submit"><x-icon name="package" /> {{ __('Save') }}</button></div></div>
+                    </form>
+
+                    @if($user->usesCredits())
+                        <form method="POST" action="{{ route('admin.users.credits.unlimited', $user) }}" data-confirm="{{ __('Remove the credit limit of this reseller? They can then give any number of subscriptions.') }}">
+                            @csrf
+                            <button class="btn btn-danger-ghost btn-sm" type="submit">{{ __('Make unlimited') }}</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 @endsection

@@ -61,7 +61,7 @@
             @endif
         </form>
         @if($sales->isEmpty())
-            <div class="empty" style="padding: 28px 20px"><p>{{ $filters['status'] === 'unpaid' ? __('Everybody has paid.') : __('No sales yet.') }}</p></div>
+            <div class="empty compact"><p>{{ $filters['status'] === 'unpaid' ? __('Everybody has paid.') : __('No sales yet.') }}</p></div>
         @else
             <div class="table-wrap">
                 <table class="table">

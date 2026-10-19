@@ -61,6 +61,12 @@
 
     <div class="card">
         <div class="card-header"><div><h2>{{ __('By reseller') }}</h2><p>{{ __('For the last :days days, except the balance and the users.', ['days' => $report['days']]) }}</p></div></div>
+        @if(empty($report['rows']))
+            <div class="empty compact">
+                <div class="empty-icon"><x-icon name="users" /></div>
+                <p>{{ __('No resellers yet') }}</p>
+            </div>
+        @else
         <div class="table-wrap">
             <table class="table">
                 <thead>
@@ -110,6 +116,7 @@
                 </tbody>
             </table>
         </div>
+        @endif
     </div>
 </div>
 @endsection

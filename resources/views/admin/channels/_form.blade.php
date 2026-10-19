@@ -8,6 +8,7 @@
 @endif
 
 <div class="card">
+    <div class="card-header"><h2>{{ __('Channel') }}</h2></div>
     <div class="card-body form-grid">
         <div class="field full">
             <label class="label" for="name">{{ __('Name') }}</label>
@@ -19,6 +20,12 @@
             <input class="input mono" id="stream_url" name="stream_url" type="url" value="{{ old('stream_url', $channel->stream_url ?? '') }}" required placeholder="http://server.example/live/stream.m3u8">
             <span class="help">{{ __('The upstream address. Users never see it in their playlist; they get a link through this server.') }}</span>
         </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h2>{{ __('In apps') }}</h2></div>
+    <div class="card-body form-grid">
 
         <div class="field">
             <label class="label" for="category_id">{{ __('Category') }} <span class="optional">{{ __('(optional)') }}</span></label>
@@ -41,6 +48,13 @@
             <span class="help">{{ __('The number apps show, for the number keys on the remote.') }}</span>
         </div>
 
+    </div>
+</div>
+
+@isset($backupSuggestions)
+<div class="card">
+    <div class="card-header"><h2>{{ __('TV guide and backup') }}</h2></div>
+    <div class="card-body form-grid">
         @isset($backupSuggestions)
             <div class="field full">
                 <label class="label" for="epg_id">{{ __('Guide ID') }} <span class="optional">{{ __('(optional)') }}</span></label>
@@ -69,15 +83,21 @@
                 <span class="help">{{ __('When this stream stops working or is too slow, viewers get the backup instead, until it works well again. The chosen backup comes first; other working copies with the same guide ID follow, best first. Listed: channels with the same name or guide ID.') }}</span>
             </div>
         @endisset
+    </div>
+</div>
+@endisset
 
-        <div class="field full">
+<div class="card">
+    <div class="card-header"><h2>{{ __('Settings') }}</h2></div>
+    <div class="card-body form-grid">
+        <div class="field full switch-list">
             <input type="hidden" name="is_active" value="0">
             <label class="check">
                 <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $channel->is_active ?? true))>
                 <div><strong>{{ __('Enabled') }}</strong><span>{{ __("Disabled channels are hidden from playlists and can't be played.") }}</span></div>
             </label>
             <input type="hidden" name="alert_on_down" value="0">
-            <label class="check" style="margin-top: 12px">
+            <label class="check">
                 <input type="checkbox" name="alert_on_down" value="1" @checked(old('alert_on_down', $channel->alert_on_down ?? false))>
                 <div><strong>{{ __('Send me alerts') }}</strong><span>{{ __('Checked every 15 minutes. You get an alert in the panel and by email when it stops or starts working.') }}</span></div>
             </label>

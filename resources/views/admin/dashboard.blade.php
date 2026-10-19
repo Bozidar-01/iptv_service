@@ -5,8 +5,12 @@
 @section('content')
 <div class="page-header">
     <div>
+        <span class="eyebrow">{{ now()->translatedFormat('l, j F') }}</span>
         <h1>{{ __('Dashboard') }}</h1>
         <p>{{ __("What's happening on your IPTV service right now.") }}</p>
+        @if($health['scheduler']['ok'] && $health['queue']['ok'])
+            <span class="status-pill" style="margin-top: 12px">{{ __('Everything is running') }}</span>
+        @endif
     </div>
     <div class="page-actions">
         <a href="{{ route('admin.sources.create') }}" class="btn btn-secondary"><x-icon name="source" /> {{ __('Add source') }}</a>
@@ -44,14 +48,15 @@
     </div>
 @endif
 
+{{-- Each card opens its page: the label link covers the whole card (.stat-link) --}}
 <div class="stats">
-    <div class="card stat">
-        <div class="stat-label"><x-icon name="users" /> {{ __('Subscribers') }}</div>
+    <div class="card stat stat-link">
+        <a href="{{ route('admin.users.index') }}" class="stat-label"><x-icon name="users" /> {{ __('Subscribers') }} <x-icon name="chevron-right" class="stat-chevron" /></a>
         <div class="stat-value">{{ number_format($stats['active_subscribers']) }}</div>
         <div class="stat-meta">{{ __('active of :total total', ['total' => number_format($stats['subscribers'])]) }}</div>
     </div>
-    <div class="card stat">
-        <div class="stat-label"><x-icon name="tv" /> {{ __('Channels') }}</div>
+    <div class="card stat stat-link">
+        <a href="{{ route('admin.channels.index') }}" class="stat-label"><x-icon name="tv" /> {{ __('Channels') }} <x-icon name="chevron-right" class="stat-chevron" /></a>
         <div class="stat-value">{{ number_format($stats['active_channels']) }}</div>
         <div class="stat-meta">
             {{ __('enabled of :total total', ['total' => number_format($stats['channels'])]) }}
@@ -60,13 +65,13 @@
             @endif
         </div>
     </div>
-    <div class="card stat">
-        <div class="stat-label"><x-icon name="signal" /> {{ __('Watching now') }}</div>
+    <div class="card stat stat-link">
+        <a href="{{ route('admin.live.index') }}" class="stat-label"><x-icon name="signal" /> {{ __('Watching now') }} <x-icon name="chevron-right" class="stat-chevron" /></a>
         <div class="stat-value">{{ number_format($stats['watching_now']) }}</div>
         <div class="stat-meta">{{ __('streams in the last 5 minutes') }}</div>
     </div>
-    <div class="card stat">
-        <div class="stat-label"><x-icon name="play" /> {{ __('Plays') }}</div>
+    <div class="card stat stat-link">
+        <a href="{{ route('admin.logs.index') }}" class="stat-label"><x-icon name="play" /> {{ __('Plays') }} <x-icon name="chevron-right" class="stat-chevron" /></a>
         <div class="stat-value">{{ number_format($stats['plays_today']) }}</div>
         <div class="stat-meta">{{ __('in the last 24 hours') }}</div>
     </div>
@@ -88,26 +93,28 @@
                 <p>{{ __('Plays show up here once users start watching.') }}</p>
             </div>
         @else
-            <div class="table-wrap">
-                <table class="table">
-                    <thead><tr><th>{{ __('User') }}</th><th>{{ __('Channel') }}</th><th class="right">{{ __('When') }}</th></tr></thead>
-                    <tbody>
-                    @foreach($recentLogs as $log)
-                        <tr>
-                            <td>
+            <ul class="list">
+                @foreach($recentLogs as $log)
+                    <li class="item">
+                        @if($log->channel?->logo_url)
+                            <img src="{{ $log->channel->logo_url }}" alt="" class="logo-thumb" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+                        @else
+                            <span class="logo-fallback">{{ mb_strtoupper(mb_substr($log->channel->name ?? '?', 0, 2)) }}</span>
+                        @endif
+                        <div class="item-body">
+                            <div class="cell-main truncate">{{ $log->channel->name ?? __('Deleted channel') }}</div>
+                            <div class="cell-sub">
                                 @if($log->user)
-                                    <a href="{{ route('admin.users.show', $log->user) }}" class="cell-main">{{ $log->user->username }}</a>
+                                    <a href="{{ route('admin.users.show', $log->user) }}">{{ $log->user->username }}</a>
                                 @else
-                                    <span class="faint">{{ __('Deleted user') }}</span>
+                                    {{ __('Deleted user') }}
                                 @endif
-                            </td>
-                            <td class="truncate">{{ $log->channel->name ?? __('Deleted channel') }}</td>
-                            <td class="right muted" title="{{ $log->started_at }}">{{ $log->started_at->diffForHumans() }}</td>
-                        </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
+                            </div>
+                        </div>
+                        <span class="item-end faint" title="{{ $log->started_at }}">{{ $log->started_at->diffForHumans() }}</span>
+                    </li>
+                @endforeach
+            </ul>
         @endif
     </div>
 
@@ -123,7 +130,8 @@
                 @endif
             </div>
             @if($downWatched['count'] === 0 && $downWatched['failed_sources']->isEmpty())
-                <div class="empty" style="padding: 28px 20px">
+                <div class="empty compact">
+                    <div class="empty-icon is-ok"><x-icon name="check" /></div>
                     <p>{{ __('Everything you watch is working.') }}</p>
                     <a href="{{ route('admin.channels.index', ['status' => 'watched']) }}" class="btn btn-ghost btn-sm">{{ __('See watched channels') }}</a>
                 </div>
@@ -137,7 +145,7 @@
                     @endforeach
                     @foreach($downWatched['channels'] as $channel)
                         <li>
-                            <div style="min-width: 0">
+                            <div class="item-body">
                                 <a href="{{ route('admin.channels.edit', $channel) }}" class="cell-main truncate">{{ $channel->name }}</a>
                                 <div class="cell-sub">{{ $channel->source->name ?? __('Manual') }} · {{ \App\Services\StreamCheckService::describeError($channel->stream_error) ?? __('Not working') }} · {{ __('checked :time', ['time' => $channel->stream_checked_at?->diffForHumans()]) }}</div>
                             </div>
@@ -157,16 +165,18 @@
                 <a href="{{ route('admin.sources.index') }}" class="btn btn-ghost btn-sm">{{ __('Manage') }}</a>
             </div>
             @if($sources->isEmpty())
-                <div class="empty" style="padding: 28px 20px">
+                <div class="empty compact">
+                    <div class="empty-icon"><x-icon name="source" /></div>
                     <p>{{ __('No sources yet.') }}</p>
                     <a href="{{ route('admin.sources.create') }}" class="btn btn-secondary btn-sm"><x-icon name="plus" /> {{ __('Add source') }}</a>
                 </div>
             @else
                 <ul class="list">
-                    @foreach($sources as $source)
-                        <li>
-                            <div style="min-width: 0">
-                                <div class="cell-main truncate">{{ $source->name }}</div>
+                    @foreach($sources->take(6) as $source)
+                        <li class="item">
+                            <span class="item-icon"><x-icon name="source" /></span>
+                            <div class="item-body">
+                                <a href="{{ route('admin.sources.edit', $source) }}" class="cell-main truncate">{{ $source->name }}</a>
                                 <div class="cell-sub">
                                     {{ trans_choice(':count channel|:count channels', $source->channel_count, ['count' => number_format($source->channel_count)]) }}
                                     @if($source->last_synced_at) · {{ __('synced :time', ['time' => $source->last_synced_at->diffForHumans()]) }} @endif
@@ -175,6 +185,9 @@
                             @include('admin.partials.source-status', ['source' => $source])
                         </li>
                     @endforeach
+                    @if($sources->count() > 6)
+                        <li><a href="{{ route('admin.sources.index') }}">{{ __('and :count more', ['count' => number_format($sources->count() - 6)]) }}</a></li>
+                    @endif
                 </ul>
             @endif
         </div>
@@ -184,12 +197,16 @@
                 <h2>{{ __('Expiring within 7 days') }}</h2>
             </div>
             @if($expiringSoon->isEmpty())
-                <div class="empty" style="padding: 28px 20px"><p>{{ __('No subscriptions expiring soon.') }}</p></div>
+                <div class="empty compact">
+                    <div class="empty-icon"><x-icon name="clock" /></div>
+                    <p>{{ __('No subscriptions expiring soon.') }}</p>
+                </div>
             @else
                 <ul class="list">
                     @foreach($expiringSoon as $user)
-                        <li>
-                            <a href="{{ route('admin.users.show', $user) }}" class="cell-main">{{ $user->username }}</a>
+                        <li class="item">
+                            <span class="avatar avatar-sm">{{ mb_strtoupper(mb_substr($user->username, 0, 1)) }}</span>
+                            <a href="{{ route('admin.users.show', $user) }}" class="item-body cell-main truncate">{{ $user->username }}</a>
                             <span class="badge badge-warning">{{ $user->expiration_date->diffForHumans() }}</span>
                         </li>
                     @endforeach

@@ -25,7 +25,7 @@
     <div class="stats">
         <div class="card stat">
             <div class="stat-label"><x-icon name="signal" /> {{ __('Receiver') }}</div>
-            <div class="stat-value" style="font-size: 22px">{{ $status['online'] ? __('Online') : __('Offline') }}</div>
+            <div class="stat-value stat-value-text">{{ $status['online'] ? __('Online') : __('Offline') }}</div>
             <div class="stat-meta">{{ $status['version'] ? __('Relay version :version', ['version' => $status['version']]) : '–' }}</div>
         </div>
         <div class="card stat">
@@ -35,7 +35,7 @@
         </div>
         <div class="card stat">
             <div class="stat-label"><x-icon name="globe" /> {{ __('Satellite now') }}</div>
-            <div class="stat-value" style="font-size: 22px">{{ $status['satellites'] ? implode(', ', $status['satellites']) : '–' }}</div>
+            <div class="stat-value stat-value-text">{{ $status['satellites'] ? implode(', ', $status['satellites']) : '–' }}</div>
             <div class="stat-meta">
                 @if($status['single_cable'] === true){{ __('one cable: one satellite at a time') }}@elseif($status['single_cable'] === false){{ __('each tuner has its own cable') }}@else–@endif
             </div>
@@ -45,9 +45,9 @@
     <div class="card">
         <div class="card-header"><div><h2>{{ __('Latest problems') }}</h2><p>{{ __('Streams the relay refused, and streams where the receiver sent no video.') }}</p></div></div>
         @if(!$status['has_events'] && $status['online'])
-            <div class="empty" style="padding: 28px 20px"><p>{{ __('This relay is too old to report problems. Copy the new relay program to the receiver, see the documentation.') }}</p></div>
+            <div class="empty compact"><p>{{ __('This relay is too old to report problems. Copy the new relay program to the receiver, see the documentation.') }}</p></div>
         @elseif($status['events'] === [])
-            <div class="empty" style="padding: 28px 20px"><p>{{ __('No problems since the relay started.') }}</p></div>
+            <div class="empty compact"><p>{{ __('No problems since the relay started.') }}</p></div>
         @else
             <ul class="list">
                 @foreach($status['events'] as $event)

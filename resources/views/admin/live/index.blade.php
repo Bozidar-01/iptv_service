@@ -24,7 +24,7 @@
     </div>
     <div class="card stat">
         <div class="stat-label"><x-icon name="tv" /> {{ __('Most watched now') }}</div>
-        <div class="stat-value" style="font-size: 20px">{{ $topChannel ?? '–' }}</div>
+        <div class="stat-value stat-value-text truncate">{{ $topChannel ?? '–' }}</div>
         <div class="stat-meta">{{ $topChannel ? trans_choice(':count device|:count devices', $topChannelDevices, ['count' => $topChannelDevices]) : __('nobody yet') }}</div>
     </div>
 </div>
@@ -44,13 +44,25 @@
                 @foreach($sessions as $session)
                     <tr>
                         <td>
-                            @if($session->user)
-                                <a href="{{ route('admin.users.show', $session->user) }}" class="cell-main">{{ $session->user->username }}</a>
-                            @else
-                                <span class="faint">{{ __('Deleted user') }}</span>
-                            @endif
+                            <div class="cell-flex">
+                                <span class="avatar avatar-sm live-avatar">{{ mb_strtoupper(mb_substr($session->user->username ?? '?', 0, 1)) }}</span>
+                                @if($session->user)
+                                    <a href="{{ route('admin.users.show', $session->user) }}" class="cell-main">{{ $session->user->username }}</a>
+                                @else
+                                    <span class="faint">{{ __('Deleted user') }}</span>
+                                @endif
+                            </div>
                         </td>
-                        <td class="truncate">{{ $session->channel->name ?? __('Deleted channel') }}</td>
+                        <td>
+                            <div class="cell-flex">
+                                @if($session->channel?->logo_url)
+                                    <img src="{{ $session->channel->logo_url }}" alt="" class="logo-thumb" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+                                @else
+                                    <span class="logo-fallback">{{ mb_strtoupper(mb_substr($session->channel->name ?? '?', 0, 2)) }}</span>
+                                @endif
+                                <span class="truncate">{{ $session->channel->name ?? __('Deleted channel') }}</span>
+                            </div>
+                        </td>
                         <td class="hide-sm mono muted">{{ $session->ip }}</td>
                         <td class="hide-sm muted truncate" style="max-width: 200px" title="{{ $session->user_agent }}">{{ $session->user_agent }}</td>
                         <td class="right muted" title="{{ $session->started_at }}">{{ $session->started_at->diffForHumans() }}</td>

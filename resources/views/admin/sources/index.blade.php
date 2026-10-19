@@ -48,10 +48,10 @@
                     <tr>
                         <td>
                             <div class="cell-flex">
-                                <span class="logo-fallback"><x-icon :name="['url' => 'globe', 'file' => 'upload', 'receiver' => 'tv'][$source->type] ?? 'globe'" style="width:15px;height:15px" /></span>
+                                <span class="item-icon {{ ['url' => 'tone-blue', 'file' => 'tone-purple', 'receiver' => 'tone-teal'][$source->type] ?? 'tone-blue' }}"><x-icon :name="['url' => 'globe', 'file' => 'upload', 'receiver' => 'tv'][$source->type] ?? 'globe'" /></span>
                                 <div style="min-width: 0">
-                                    <div class="cell-main">{{ $source->name }}</div>
-                                    <div class="cell-sub truncate">
+                                    <a href="{{ route('admin.sources.edit', $source) }}" class="cell-main">{{ $source->name }}</a>
+                                    <div class="cell-sub truncate" style="max-width: 220px">
                                         {{ $source->type === 'file' ? __('Uploaded file') : parse_url($source->url, PHP_URL_HOST) }}
                                         @if($source->isReceiver())
                                             · @if($source->receiver_online === false)<span style="color: var(--danger)">{{ __('receiver offline') }}</span>@elseif($source->receiver_online)<span style="color: var(--success)">{{ __('receiver online') }}</span>@else{{ __('receiver not checked yet') }}@endif
@@ -65,10 +65,10 @@
                         <td>
                             @include('admin.partials.source-status', ['source' => $source])
                             @if($source->status === 'failed' && $source->last_error)
-                                <div class="cell-sub truncate" style="max-width: 220px; color: var(--danger)" title="{{ $source->last_error }}">{{ $source->last_error }}</div>
+                                <div class="cell-sub truncate" style="max-width: 160px; color: var(--danger)" title="{{ $source->last_error }}">{{ $source->last_error }}</div>
                             @endif
                         </td>
-                        <td class="right">
+                        <td class="right nowrap">
                             <a href="{{ route('admin.channels.index', ['source' => $source->id]) }}" class="cell-main">{{ number_format($source->channel_count) }}</a>
                             <div class="cell-sub">{{ __(':count enabled', ['count' => number_format($source->active_channels_count)]) }}</div>
                         </td>
@@ -79,7 +79,7 @@
                                 <span class="faint">{{ __('None') }}</span>
                             @endif
                         </td>
-                        <td class="hide-sm muted">{{ $source->last_synced_at?->diffForHumans() ?? __('Never') }}</td>
+                        <td class="hide-sm muted nowrap">{{ $source->last_synced_at?->diffForHumans() ?? __('Never') }}</td>
                         <td class="shrink">
                             <div class="actions">
                                 <form method="POST" action="{{ route('admin.sources.sync', $source) }}" class="inline-form">
@@ -87,7 +87,7 @@
                                     <button class="btn btn-secondary btn-sm" @disabled($source->isBusy())><x-icon name="refresh" /> {{ __('Sync') }}</button>
                                 </form>
                                 @if($source->isReceiver())
-                                    <a href="{{ route('admin.receiver.show', $source) }}" class="btn btn-secondary btn-sm"><x-icon name="signal" /> {{ __('Receiver') }}</a>
+                                    <a href="{{ route('admin.receiver.show', $source) }}" class="btn btn-secondary btn-icon btn-sm" title="{{ __('Receiver') }}" aria-label="{{ __('Receiver') }}"><x-icon name="signal" /></a>
                                 @endif
                                 <a href="{{ route('admin.sources.edit', $source) }}" class="btn btn-ghost btn-icon" title="{{ __('Edit') }}" aria-label="{{ __('Edit :name', ['name' => $source->name]) }}"><x-icon name="edit" /></a>
                                 <form method="POST" action="{{ route('admin.sources.destroy', $source) }}" class="inline-form"

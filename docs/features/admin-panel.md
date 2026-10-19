@@ -11,7 +11,10 @@
 - *Money*: one link to Payments.
 - *Reports*: Statistics.
 - *Maintenance*: Backups, Audit log, Launch checklist.
-- **Security** (your two-step sign-in) is the shield button next to *Sign out* under your name; language and theme are above it.
+- **Security** (your two-step sign-in) is the shield button next to *Sign out* under your name. Language, light/dark mode and the alerts bell are in the top-right of the header.
+- **Hiding the menu:** the sidebar button at the top left of the header shrinks the menu to a strip of icons (pointing at or tabbing to an icon shows the page name, `.nav-tip`) and back. The choice is remembered in this browser (`localStorage` key `nav`). On a phone (≤ 860 px) the menu button opens the full menu over the page instead.
+- **Header:** one frosted bar on every page (`.header-bar`). Once the page's large title scrolls under it, the title appears small in the middle of the bar.
+- **Error pages** (`resources/views/errors/`: 401, 403, 404, 419, 429, 500, 503, sharing `errors/layout`): the NeboTV mark, the code, a short message and *Go back*; a signed-in admin also gets *Go to the dashboard*. The layout asks nothing of the database or session (wrapped in `rescue()`), so the 500 page works when the app is broken.
 
 Pages that belong together share a tab bar above the page (`.tabs`, the current one `aria-current="page"`, scrolled into view on a narrow screen) instead of each having a menu link:
 - *Channels*: All channels · Duplicates · Cleanup rules · Playlist options.

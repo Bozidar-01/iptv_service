@@ -7,8 +7,17 @@
 <div class="page-header">
     <div>
         <a href="{{ route('admin.channels.index') }}" class="breadcrumb"><x-icon name="arrow-left" /> {{ __('Channels') }}</a>
-        <h1>{{ $channel->name }}</h1>
-        <p>{{ trans_choice('{0} In no bouquets.|{1} In 1 bouquet.|[2,*] In :count bouquets.', $channel->bouquets()->count()) }}</p>
+        <div class="title-row">
+            @if($channel->logo_url)
+                <img src="{{ $channel->logo_url }}" alt="" class="logo-thumb" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">
+            @else
+                <span class="logo-fallback">{{ mb_strtoupper(mb_substr($channel->name, 0, 2)) }}</span>
+            @endif
+            <div>
+                <h1>{{ $channel->name }}</h1>
+                <p>{{ trans_choice('{0} In no bouquets.|{1} In 1 bouquet.|[2,*] In :count bouquets.', $channel->bouquets()->count()) }}</p>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -100,7 +100,7 @@
             </div>
         </div>
         @if($events->isEmpty())
-            <div class="empty" style="padding: 28px 20px"><p>{{ __('No sign-ins recorded yet.') }}</p></div>
+            <div class="empty compact"><p>{{ __('No sign-ins recorded yet.') }}</p></div>
         @else
             <div class="table-wrap">
                 <table class="table">

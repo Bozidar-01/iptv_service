@@ -30,7 +30,7 @@
 </div>
 
 @if($suggestions)
-    <div class="card" style="margin-bottom: 20px">
+    <div class="card" style="margin-bottom: 16px">
         <div class="card-header">
             <div>
                 <h2>{{ __('Guides your channels could use') }}</h2>
@@ -68,7 +68,7 @@
         </div>
     </div>
     @if($sources->isEmpty())
-        <div class="empty" style="padding: 28px 20px"><p>{{ __('No guides yet. Add one below.') }}</p></div>
+        <div class="empty compact"><p>{{ __('No guides yet. Add one below.') }}</p></div>
     @else
         <div class="table-wrap">
             <table class="table">
