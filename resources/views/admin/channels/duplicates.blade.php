@@ -16,6 +16,7 @@
                 <input type="hidden" name="scope" value="all">
                 <input type="hidden" name="others" value="backup">
                 <input type="hidden" name="search" value="{{ $search }}">
+                <input type="hidden" name="receiver" value="{{ $receiver ? 1 : 0 }}">
                 <button class="btn btn-primary"><x-icon name="check" /> {{ __('Keep the suggested copy in all :count groups', ['count' => number_format($groups->total())]) }}</button>
             </form>
         </div>
@@ -28,7 +29,11 @@
             <x-icon name="search" />
             <input class="input" type="search" name="search" value="{{ $search }}" placeholder="{{ __('Search channels…') }}">
         </div>
-        @if($search)
+        <label class="check" style="align-items: center">
+            <input type="checkbox" name="receiver" value="1" @checked($receiver) onchange="this.form.submit()">
+            <div><strong>{{ __('Only with a receiver channel') }}</strong></div>
+        </label>
+        @if($search || $receiver)
             <a href="{{ route('admin.channels.duplicates') }}" class="btn btn-ghost btn-sm"><x-icon name="x" /> {{ __('Clear') }}</a>
         @endif
     </form>

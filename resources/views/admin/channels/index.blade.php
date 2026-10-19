@@ -59,6 +59,7 @@
             <option value="trouble" @selected(($filters['status'] ?? '') === 'trouble')>{{ __('Viewers had trouble') }}</option>
             <option value="backup_copy" @selected(($filters['status'] ?? '') === 'backup_copy')>{{ __('Backup copies') }}</option>
             <option value="unwatched" @selected(($filters['status'] ?? '') === 'unwatched')>{{ __('Not watched in 30 days') }}</option>
+            <option value="no_guide" @selected(($filters['status'] ?? '') === 'no_guide')>{{ __('No TV guide') }}</option>
         </select>
         @if(array_filter($filters))
             <a href="{{ route('admin.channels.index') }}" class="btn btn-ghost btn-sm"><x-icon name="x" /> {{ __('Clear') }}</a>

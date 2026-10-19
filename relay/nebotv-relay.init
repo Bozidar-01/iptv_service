@@ -7,27 +7,45 @@
 # Short-Description: NeboTV relay for the IPTV panel
 ### END INIT INFO
 
+# The relay runs inside a small loop: if it stops for any reason (out of memory, a crash), the loop writes how it
+# stopped to the log and starts it again after RESTART_DELAY seconds. The log lives in memory (/tmp), so it is cut
+# back to its last lines when it grows past 1 MB.
+
 DAEMON=/usr/bin/nebotv-relay.py
 PIDFILE=/var/run/nebotv-relay.pid
 LOG=/tmp/nebotv-relay.log
+RESTART_DELAY=10
+
+LOOP="while :; do
+  python3 $DAEMON >> $LOG 2>&1
+  code=\$?
+  echo \"\$(date '+%Y-%m-%d %H:%M:%S') WARNING Relay stopped (exit code \$code, 137 = killed, usually out of memory); starting it again in $RESTART_DELAY s\" >> $LOG
+  if [ \$(wc -c < $LOG) -gt 1000000 ]; then tail -n 500 $LOG > $LOG.tmp && mv $LOG.tmp $LOG; fi
+  sleep $RESTART_DELAY
+done"
 
 case "$1" in
   start)
     echo "Starting NeboTV relay"
-    start-stop-daemon -S -b -m -p $PIDFILE -x /bin/sh -- -c "exec python3 $DAEMON >> $LOG 2>&1"
+    start-stop-daemon -S -b -m -p $PIDFILE -x /bin/sh -- -c "$LOOP"
     ;;
   stop)
     echo "Stopping NeboTV relay"
+    # The loop first (so it doesn't start the relay again), then the relay itself
     start-stop-daemon -K -p $PIDFILE
     rm -f $PIDFILE
+    pkill -f "python3 $DAEMON" 2>/dev/null || true
     ;;
   restart)
     $0 stop
     sleep 1
     $0 start
     ;;
+  status)
+    if pgrep -f "python3 $DAEMON" >/dev/null; then echo "running"; else echo "NOT running"; exit 1; fi
+    ;;
   *)
-    echo "Usage: $0 {start|stop|restart}"
+    echo "Usage: $0 {start|stop|restart|status}"
     exit 1
     ;;
 esac

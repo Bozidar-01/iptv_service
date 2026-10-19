@@ -4,6 +4,15 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Receiver standby: the relay restarts itself, provider copies stand in
+- The relay stopped twice without a word on the Octagon and stayed down until noticed. The start script now runs it in a loop: it logs how it stopped (exit code; 137 = killed, usually out of memory) and starts it again after 10 s, keeps the in-memory log under 1 MB, and has `status`. Update the start script on the box.
+- **Find duplicates → Only with a receiver channel:** the receiver channels a provider also has, to keep one and make the other its hidden backup in one go.
+- **Receiver page:** how many of its channels have a TV guide, with a link to the new Channels status *No TV guide*; with `guide = no` on the relay it says so and offers no import (relay `/status` `guide` is read).
+- Known issues: the receiver's own guide overloads the Octagon (it runs with `guide = no`); Rytec was checked and not built (+6 points, one mirror, `.xz`, personal use); the relay settings once committed to git.
+- `relay/__pycache__` is no longer tracked.
+- Tests: `DuplicateChannelTest` (+1), `ReceiverGuideTest` (+1).
+- Files: `relay/nebotv-relay.init`, `app/Services/{ReceiverStatusService,ChannelDuplicateService,ChannelService}.php`, `app/Http/Controllers/Admin/{ReceiverController,ChannelController}.php`, `resources/views/admin/{receiver/show,channels/duplicates,channels/index}.blade.php`, `.gitignore`, `lang/mk.json`, docs.
+
 ### 2026-10-21 — Relay 1.5: the receiver's guide one channel at a time
 - Relay 1.4 still crashed on the Octagon: OpenWebif ignores the end time of a bouquet guide request (`/api/epgmulti`) and answers with everything it has (13 MB for one bouquet of 110 channels), which a box with about 240 MB free can't parse; once it also made Enigma2 restart. Relay **1.5** reads each channel's guide (`/api/epgservice`, at most about 0.5 MB) once, 0.1 s apart, compresses programmes as it reads them (the guide is gzipped XMLTV), stops when the box has less than 100 MB free, starts 5 minutes after the relay and repeats every 6 hours, and can be switched off with `guide = no`. `/status` reports the guide's size. Tried against the real box: 3,521 channels, about 12 minutes in the background.
 - The panel imports the gzipped guide as before (test added). The Receiver page asks for 1.5.

@@ -40,6 +40,11 @@ class ReceiverController extends Controller
             'status' => $this->status->status($source),
             'counts' => $this->tidy->counts($source),
             'guide' => EpgSource::where('receiver_source_id', $source->id)->first(),
+            // How many of its channels have a TV guide (from any guide), for the link to the ones that don't
+            'guideCoverage' => [
+                'with' => $source->channels()->where('is_active', true)->whereNull('backup_for_id')->whereNotNull('epg_source_id')->count(),
+                'total' => $source->channels()->where('is_active', true)->whereNull('backup_for_id')->count(),
+            ],
         ]);
     }
 

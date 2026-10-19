@@ -247,6 +247,25 @@ describe('applying', function () {
     });
 });
 
+describe('receiver standby', function () {
+    it('shows only groups with a receiver channel and keeps the receiver as the backup of a provider copy', function () {
+        $iptv = dup('Rai 1 HD', $this->iptv, ['stream_status' => 'online']);
+        $sat = dup('Rai 1', $this->sat, ['stream_status' => 'online']);
+        dup('Canale 5 HD', $this->iptv);
+        dup('Canale 5', $this->iptv2);
+
+        expect(collect(app(ChannelDuplicateService::class)->groups(null, true))->pluck('name')->all())->toBe(['Rai 1 HD']);
+        $this->actingAs($this->admin)->get(route('admin.channels.duplicates', ['receiver' => 1]))->assertOk()
+            ->assertSee('Only with a receiver channel')->assertSee('Rai 1 HD')->assertDontSee('Canale 5 HD');
+
+        $this->post(route('admin.channels.duplicates.apply'), ['scope' => 'all', 'receiver' => 1])->assertRedirect();
+
+        // The provider copy stays listed; the receiver channel stands in when it stops working, and Canale 5 is untouched
+        expect($sat->fresh()->backup_for_id)->toBe($iptv->id)
+            ->and(Channel::whereNotNull('backup_for_id')->count())->toBe(1);
+    });
+});
+
 describe('the page', function () {
     it('shows the groups with the suggested copy, and is for admins only', function () {
         dup('Rai 1 HD', $this->iptv, ['stream_status' => 'online']);
