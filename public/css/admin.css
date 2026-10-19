@@ -929,3 +929,11 @@ dialog.modal-wide { width: min(880px, calc(100vw - 32px)); }
     .main { padding: 0; }
     .card { box-shadow: none; break-inside: avoid; }
 }
+
+/* Statement: the month's credits as a ledger (label left, figure right, total last) */
+.ledger li { font-variant-numeric: tabular-nums; }
+.ledger strong { font-weight: 600; }
+.ledger .ledger-in { color: var(--success); }
+.ledger .ledger-out { color: var(--text); }
+.ledger .ledger-total { background: var(--surface-hover); border-top: 1px solid var(--border); }
+.ledger .ledger-total strong { font-size: 18px; }
