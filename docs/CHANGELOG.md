@@ -4,6 +4,10 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Relay 1.7: less memory per bouquet
+- Relay 1.6 was killed for using too much memory (exit code 137) while building the Octagon playlist from all 274 bouquets: its backup copy of each bouquet kept every field the box sends. Relay **1.7** keeps only the reference, name and picon of each channel. The real fix is listing only the offered bouquets in `bouquets` (docs/features/receiver.md#slow-bouquets).
+- Files: `relay/nebotv-relay.py`, `docs/features/receiver.md`.
+
 ### 2026-10-21 — Relay 1.6: a slow bouquet no longer fails the Octagon sync
 - The Octagon sync failed with HTTP 502: one of 274 bouquets took more than 10 s to list (`GET /playlist.m3u failed: timed out`) and the relay gave up on the whole playlist. Relay **1.6** waits up to 60 s and tries twice per bouquet, then uses the bouquet's last good channel list, so no channels disappear from the panel; a bouquet never read since the relay started still fails the request, which keeps the panel's channels as they are. The guide uses the same reading. Update the relay on the box.
 - Tests: relay 23 (+1).

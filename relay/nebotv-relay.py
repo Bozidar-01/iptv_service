@@ -49,7 +49,7 @@ import urllib.request
 import zlib
 from xml.sax.saxutils import escape, quoteattr
 
-VERSION = '1.6'
+VERSION = '1.7'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -215,7 +215,10 @@ def bouquet_services(settings, ref):
     error = None
     for _ in range(BOUQUET_TRIES):
         try:
-            services = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': ref, 'picon': 1}), timeout=BOUQUET_TIMEOUT))['services']
+            found = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': ref, 'picon': 1}), timeout=BOUQUET_TIMEOUT))['services']
+            # Only what the playlist and guide use: the box sends many more fields per channel, and memory is short
+            services = [{'servicereference': x.get('servicereference', ''), 'servicename': x.get('servicename', ''), 'picon': x.get('picon', '')} for x in found]
+            del found
             _bouquet_cache[ref] = services
             return services
         except Exception as found:

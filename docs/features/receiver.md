@@ -101,6 +101,8 @@ ssh root@192.168.100.40 'chmod +x /etc/init.d/nebotv-relay; /etc/init.d/nebotv-r
 The log line shows the version (`NeboTV relay 1.5`) and `(one cable: one satellite at a time)` when `single_cable = yes` is set. To use the new setting, add `single_cable = yes` under `[relay]` in `/etc/nebotv-relay.conf` first (see `relay/nebotv-relay.conf.example`).
 
 ### Slow bouquets
+**Set `bouquets` to the ones you offer.** With `bouquets =` empty the relay reads every bouquet on the box (274 on the Octagon, about 3,500 channels, many of them technical lists and radio) for each sync: slow, and on a box with about 200 MB free it was killed for using too much memory (exit code 137) while building the playlist. Print the names with `wget -qO- http://127.0.0.1/api/bouquets` on the box.
+
 With many bouquets (274 on the Octagon) the box sometimes takes more than 10 s to list one. Relay 1.6 waits up to 60 s and tries twice (`bouquet_services`). A bouquet that still doesn't answer gets its channel list from the last time it was read, so its channels don't disappear from the panel (an import deletes channels missing from the playlist); only a bouquet never read since the relay started makes the playlist fail (`502`, the panel keeps its channels). The log says `Bouquet … did not answer (…): using its last channel list`.
 
 ### Standby: when the relay or the receiver stops
