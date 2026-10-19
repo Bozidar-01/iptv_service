@@ -1,5 +1,6 @@
 """Tests for nebotv-relay.py. Run: python3 relay/test_relay.py"""
 import asyncio
+import gzip
 import http.server
 import json
 import threading
@@ -286,8 +287,8 @@ class StreamTest(unittest.IsolatedAsyncioTestCase):
     async def test_says_the_guide_is_not_ready_until_it_was_read(self):
         url = 'http://127.0.0.1:%d/epg.xml?key=test-secret-1234567890' % self.port
         self.assertEqual((await self.get(url))[0], 503)
-        self.relay.epg = '<tv></tv>'
-        self.assertEqual(await self.get(url), (200, b'<tv></tv>'))
+        self.relay.epg = gzip.compress(b'<tv></tv>')
+        self.assertEqual(await self.get(url), (200, self.relay.epg))
         self.assertEqual((await self.get('http://127.0.0.1:%d/playlist.m3u?key=wrong' % self.port))[0], 403)
 
 
@@ -324,36 +325,48 @@ class EpgTest(unittest.TestCase):
     def setUp(self):
         self.server = http.server.HTTPServer(('127.0.0.1', 0), FakeWebif)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
-        conf = write('[relay]\nsecret = test-secret-1234567890\nbox_host = 127.0.0.1\nwebif_port = %d\nbouquets = Italia\n' % self.server.server_address[1])
+        conf = write('[relay]\nsecret = test-secret-1234567890\nbox_host = 127.0.0.1\nwebif_port = %d\nbouquets = Italia\nfta_only = no\n' % self.server.server_address[1])
         self.settings = relay.Settings(conf)
+        self.pause, relay.EPG_PAUSE = relay.EPG_PAUSE, 0
+        self.memory = relay.free_memory_mb
 
     def tearDown(self):
         self.server.shutdown()
         FakeWebif.multi = True
         FakeWebif.paths = []
+        relay.EPG_PAUSE = self.pause
+        relay.free_memory_mb = self.memory
 
-    def test_writes_the_guide_of_the_chosen_bouquets_as_xmltv(self):
-        xml = relay.build_epg(self.settings, now=1792399000)
-        root = ElementTree.fromstring(xml)
+    def test_reads_each_channel_once_and_writes_xmltv(self):
+        body, summary = relay.build_epg(self.settings, now=1792399000)
+        self.assertEqual(body[:2], b'\x1f\x8b')  # gzip
+        root = ElementTree.fromstring(gzip.decompress(body))
+        self.assertEqual((summary['channels'], summary['programmes'], summary['looked_at'], summary['complete']), (1, 1, 2, True))
         self.assertEqual([c.get('id') for c in root.findall('channel')], [RAI1])
+        self.assertEqual([c.findtext('display-name') for c in root.findall('channel')], ['Rai 1 HD'])
         programmes = root.findall('programme')
         self.assertEqual(len(programmes), 1)  # the one that already ended is left out
         self.assertEqual(programmes[0].get('start'), relay.xmltv_time(1792400000))
         self.assertEqual(programmes[0].get('stop'), relay.xmltv_time(1792401800))
         self.assertEqual(programmes[0].findtext('title'), 'Tg1 & Meteo')
         self.assertEqual(programmes[0].findtext('desc'), 'News <live>')
+        # Never the whole bouquet at once: on a big bouquet that can use more memory than the receiver has
+        self.assertFalse(any('/api/epgmulti' in p for p in FakeWebif.paths))
+        self.assertEqual(sum('/api/epgservice' in p for p in FakeWebif.paths), 2)
 
-    def test_does_not_read_each_channel_of_a_bouquet_without_guide(self):
-        self.settings.bouquets = ['Other']
-        root = ElementTree.fromstring(relay.build_epg(self.settings, now=1792399000))
-        self.assertEqual(root.findall('channel'), [])
+    def test_stops_when_the_receiver_runs_low_on_memory(self):
+        relay.free_memory_mb = lambda: 50
+        body, summary = relay.build_epg(self.settings, now=1792399000)
+        self.assertEqual(ElementTree.fromstring(gzip.decompress(body)).findall('programme'), [])
+        self.assertFalse(summary['complete'])
         self.assertFalse(any('/api/epgservice' in p for p in FakeWebif.paths))
 
-    def test_reads_each_channel_when_the_receiver_has_no_multi_epg(self):
-        FakeWebif.multi = False
-        root = ElementTree.fromstring(relay.build_epg(self.settings, now=1792399000))
-        self.assertEqual([c.findtext('display-name') for c in root.findall('channel')], ['Rai 1 HD'])
-        self.assertEqual(len(root.findall('programme')), 1)
+    def test_can_be_switched_off(self):
+        conf = write('[relay]\nsecret = test-secret-1234567890\nguide = no\n')
+        settings = relay.Settings(conf)
+        self.assertFalse(settings.guide)
+        asyncio.run(relay.Relay(settings).refresh_epg(first_delay=0))  # returns at once instead of reading
+        self.assertEqual(FakeWebif.paths, [])
 
 
 if __name__ == '__main__':

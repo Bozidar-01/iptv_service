@@ -4,6 +4,12 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Relay 1.5: the receiver's guide one channel at a time
+- Relay 1.4 still crashed on the Octagon: OpenWebif ignores the end time of a bouquet guide request (`/api/epgmulti`) and answers with everything it has (13 MB for one bouquet of 110 channels), which a box with about 240 MB free can't parse; once it also made Enigma2 restart. Relay **1.5** reads each channel's guide (`/api/epgservice`, at most about 0.5 MB) once, 0.1 s apart, compresses programmes as it reads them (the guide is gzipped XMLTV), stops when the box has less than 100 MB free, starts 5 minutes after the relay and repeats every 6 hours, and can be switched off with `guide = no`. `/status` reports the guide's size. Tried against the real box: 3,521 channels, about 12 minutes in the background.
+- The panel imports the gzipped guide as before (test added). The Receiver page asks for 1.5.
+- Tests: relay 22, `ReceiverGuideTest` 5.
+- Files: `relay/nebotv-relay.py`, `relay/test_relay.py`, `relay/nebotv-relay.conf.example`, `resources/views/admin/receiver/show.blade.php`, `tests/Feature/ReceiverGuideTest.php`, `lang/mk.json`, `docs/features/receiver.md`.
+
 ### 2026-10-21 — Clearer menu: grouped by task, tabs for pages that belong together
 - The sidebar had 25 links in four groups (money pages under Subscribers, your own security next to system pages, some pages only reachable by buttons). It now has 15, grouped by what you are doing: Overview (Dashboard, Alerts, Watching now), Channels (Channels, Bouquets, Categories, Sources, TV guide), Users (Users, Hide channels, Activity), Money, Reports (Statistics) and Maintenance (Backups, Audit log, Launch checklist). Security moved to the shield button under your name.
 - Pages that belong together share tabs above the page: Channels (All channels, Duplicates, Cleanup rules, Playlist options), Activity (Plays, Refused) and Money (Payments, Sales, Statements, Credit history). The section's menu link stays highlighted on its tabs; on a phone the tab bar scrolls to the current tab. The Find duplicates and Playlist options buttons on the Channels page and the Plays / Refused buttons are replaced by the tabs. "Live" is now "Watching now". Edit user has a one-line description like every page. All page addresses are unchanged.
