@@ -8,6 +8,7 @@ use App\Models\Channel;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -112,6 +113,7 @@ class XtreamService
     public function liveCategories(User $user): array
     {
         $ids = Channel::availableTo($user)->distinct()->pluck('category_id');
+        $favourites = app(FavoriteService::class)->count($user) > 0;
 
         $categories = Category::whereIn('id', $ids->filter())->orderBy('name')->get()
             ->map(fn (Category $category) => [
@@ -124,7 +126,22 @@ class XtreamService
             $categories->push(['category_id' => '0', 'category_name' => 'General', 'parent_id' => 0]);
         }
 
+        // The viewer's favourites are the first category
+        if ($favourites) {
+            $categories->prepend(['category_id' => FavoriteService::XTREAM_CATEGORY, 'category_name' => FavoriteService::CATEGORY, 'parent_id' => 0]);
+        }
+
         return $categories->values()->all();
+    }
+
+    /**
+     * The channels of the "Favourites" category in the viewer's order (they are also listed in their own categories).
+     *
+     * @return Collection<int, Channel>
+     */
+    public function favouriteStreams(User $user): Collection
+    {
+        return app(FavoriteService::class)->channels($user);
     }
 
     public function liveStreamsQuery(User $user, mixed $categoryId = null): Builder
@@ -136,9 +153,9 @@ class XtreamService
             ->playlistOrder();
     }
 
-    public function liveStream(Channel $channel, int $num): array
+    public function liveStream(Channel $channel, int $num, ?string $category = null): array
     {
-        $categoryId = $channel->category_id ?? 0;
+        $categoryId = $category ?? $channel->category_id ?? 0;
 
         return [
             'num' => $num,

@@ -88,6 +88,53 @@
             </div>
         </div>
 
+        @unless($disabled || $expired)
+        <div class="card" id="favourites">
+            <div class="card-header"><div><h2>{{ __('My favourites') }}</h2><p>{{ __('Your favourite channels come first in your list, in a category called Favourites. Reload the playlist in your app to see changes.') }}</p></div></div>
+            <div class="card-body stack" style="gap: 14px">
+                @forelse($favourites as $channel)
+                    <div class="cell-flex" style="justify-content: space-between; gap: 8px">
+                        <span class="cell-main truncate">{{ $channel->name }}</span>
+                        <span class="page-actions" style="flex-wrap: nowrap">
+                            @foreach(['up' => '↑', 'down' => '↓', 'remove' => '✕'] as $do => $symbol)
+                                <form method="POST" action="{{ route('me.favourite', array_filter(['token' => $token, 'lang' => request('lang')])) }}" class="inline-form">
+                                    <input type="hidden" name="do" value="{{ $do }}"><input type="hidden" name="channel" value="{{ $channel->id }}">
+                                    <button class="btn btn-ghost btn-sm" aria-label="{{ ['up' => __('Move up'), 'down' => __('Move down'), 'remove' => __('Remove')][$do] }}: {{ $channel->name }}">{{ $symbol }}</button>
+                                </form>
+                            @endforeach
+                        </span>
+                    </div>
+                @empty
+                    <p class="muted">{{ __('No favourites yet. Search a channel below and add it.') }}</p>
+                @endforelse
+
+                @if($favourites->count() < $favouritesMax)
+                    <form method="GET" action="{{ route('me', ['token' => $token]) }}#favourites" class="copy-field">
+                        <input type="hidden" name="lang" value="{{ $lang }}">
+                        <input class="input" type="search" name="q" value="{{ $search }}" placeholder="{{ __('Find a channel…') }}" aria-label="{{ __('Find a channel…') }}">
+                        <button class="btn btn-secondary"><x-icon name="search" /> {{ __('Search') }}</button>
+                    </form>
+                    @if($search !== '' && mb_strlen($search) < 2)
+                        <p class="help" style="margin: 0">{{ __('Type at least 2 letters.') }}</p>
+                    @elseif($search !== '' && $found->isEmpty())
+                        <p class="help" style="margin: 0">{{ __('No channel found.') }}</p>
+                    @endif
+                    @foreach($found as $channel)
+                        <div class="cell-flex" style="justify-content: space-between; gap: 8px">
+                            <span class="truncate">{{ $channel->name }}</span>
+                            <form method="POST" action="{{ route('me.favourite', array_filter(['token' => $token, 'lang' => request('lang'), 'q' => $search])) }}" class="inline-form">
+                                <input type="hidden" name="do" value="add"><input type="hidden" name="channel" value="{{ $channel->id }}">
+                                <button class="btn btn-primary btn-sm"><x-icon name="plus" /> {{ __('Add') }}</button>
+                            </form>
+                        </div>
+                    @endforeach
+                @else
+                    <p class="help" style="margin: 0">{{ __('You have reached the limit of :count favourites.', ['count' => $favouritesMax]) }}</p>
+                @endif
+            </div>
+        </div>
+        @endunless
+
         <div class="card">
             <div class="card-header"><h2>{{ __('Or log in with a username and password') }}</h2></div>
             <div class="card-body">

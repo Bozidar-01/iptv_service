@@ -12,7 +12,7 @@ Both rules join groups (a name match and a guide-id match together make one grou
 
 ## The suggested copy
 
-In this order: it **works** (stream check says online, then never checked, then not working), the best **quality** (4K, Full HD, HD, no tag, SD; only read from the name, nothing is probed), **not a satellite receiver** (one tuner serves only a few streams), in the most **bouquets**, checked most recently, then the oldest. Run *Check streams* first so "works" is current.
+In this order: it **works** (stream check says online, then never checked, then not working), the best **quality**: the picture size the **stream check measured** (it reads the highest `RESOLUTION` and `BANDWIDTH` from an HLS master playlist while it checks channels: 2000+ px = 4K, 1000+ = Full HD, 700+ = HD, less = SD, saved in `channels.quality_height` / `quality_kbps`), else the tag in the name (4K, Full HD, HD, no tag, SD); then a higher measured bitrate (in 0.5 Mbps steps). Only HLS channels with a master playlist are measured (not raw TS streams or receiver channels), so run *Check streams* to get real numbers. The page shows a *Quality* column: a green badge such as `1080p · 4.5 Mbps` when measured, grey text when guessed, **not a satellite receiver** (one tuner serves only a few streams), in the most **bouquets**, checked most recently, then the oldest. Run *Check streams* first so "works" is current.
 
 ## Switching off
 

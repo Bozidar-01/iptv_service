@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Services\EpgService;
+use App\Services\FavoriteService;
 use App\Services\StreamProxyService;
 use App\Services\StreamService;
 use App\Services\TokenService;
@@ -118,12 +119,18 @@ class XtreamController extends Controller
      */
     private function streamLiveStreams($user, $categoryId)
     {
-        $query = $this->xtreamService->liveStreamsQuery($user, $categoryId);
+        $favouritesOnly = (string) $categoryId === FavoriteService::XTREAM_CATEGORY;
+        $query = $favouritesOnly ? null : $this->xtreamService->liveStreamsQuery($user, $categoryId);
+        // Favourites are listed first as their own category, and with no category chosen also among the rest
+        $favourites = $favouritesOnly || !is_numeric($categoryId) ? $this->xtreamService->favouriteStreams($user) : collect();
 
-        return response()->stream(function () use ($query) {
+        return response()->stream(function () use ($query, $favourites) {
             echo '[';
             $num = 0;
-            foreach ($query->lazy(1000) as $channel) {
+            foreach ($favourites as $channel) {
+                echo ($num ? ',' : '').json_encode($this->xtreamService->liveStream($channel, ++$num, FavoriteService::XTREAM_CATEGORY), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+            foreach ($query ? $query->lazy(1000) : [] as $channel) {
                 echo ($num ? ',' : '').json_encode($this->xtreamService->liveStream($channel, ++$num), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             }
             echo ']';

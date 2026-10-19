@@ -24,6 +24,7 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/m3u` | `m3u` | `M3uController@generate` | query: `username`, `password` |
 | GET | `/playlist/{token}.m3u` | `playlist` | `M3uController@playlist` | per-user playlist link |
 | GET | `/me/{token}` | `me` | `SelfServiceController@show`: the subscriber's own page; `?lang=en\|mk`; `?sent=yes\|again` after a renewal request; 404 for unknown / admin links |
+| POST | `/me/{token}/favourite` | `me.favourite` | `SelfServiceController@favourite`: `do` add\|remove\|up\|down, `channel`; no session (422 when invalid) |
 | POST | `/me/{token}/renew` | `me.renew` | `SelfServiceController@renew`: creates a `renewal_requested` alert (once per 24 h), redirects back to the page |
 | GET | `/epg/{token}.xml` | `epg` | `M3uController@epg` | XMLTV guide for the playlist link |
 | GET | `/play/{channel_id}/{token}` | `play` | `PlayController@play` | 302 to stream, or the stream itself for sources with *Hide provider address*; token may end in `.m3u8`/`.ts`/… |
@@ -91,6 +92,8 @@ Defined in `routes/web.php`, plus `routes/player.php` for the endpoints TV apps 
 | GET | `/admin/backups` | `admin.backups.index` | `BackupController@index`: backups per disk, last backup and check (admins only) |
 | POST | `/admin/backups/verify` | `admin.backups.verify` | checks the newest backup on every disk |
 | GET | `/admin/live` | `admin.live.index` | `LiveController@index`: devices watching now (staff; a reseller sees their own users) |
+| GET | `/admin/statement` | `admin.statements.index` | `StatementController@index`: monthly statement of a reseller (`?reseller=&month=YYYY-MM`; a reseller always gets their own) |
+| GET | `/admin/statement/csv` | `admin.statements.csv` | the same as CSV |
 | GET | `/admin/sales` | `admin.sales.index` | `SalesReportController@index`: sales per reseller (`?days=30\|90\|365`); admins only |
 | GET | `/admin/audit-log` | `admin.audit.index` | `AuditLogController@index`: who changed what (`?actor=&action=&search=`); admins only |
 | GET | `/admin/launch-checklist` | `admin.launch-checklist.index` | `LaunchChecklistController@index`: what to have in place before launch (admins only) |
