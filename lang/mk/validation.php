@@ -163,6 +163,13 @@ return [
 
     // Field names as shown in messages ("Полето корисничко име е задолжително.")
     'attributes' => [
+        'amount' => 'износ',
+        'note' => 'белешка',
+        'paid_on' => 'датум на плаќање',
+        'currency' => 'валута',
+        'price_per_month' => 'цена за месец',
+        'credit_price' => 'цена по кредит',
+        'others' => 'другите копии',
         'action' => 'дејство',
         'alert_on_down' => 'известувања',
         'auto_sync' => 'автоматско освежување',

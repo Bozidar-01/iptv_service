@@ -33,7 +33,12 @@
     <div class="card stat">
         <div class="stat-label"><x-icon name="tv" /> {{ __('Channels watched') }}</div>
         <div class="stat-value">{{ number_format($report['channels']) }}</div>
-        <div class="stat-meta">{{ __('different channels played') }}</div>
+        <div class="stat-meta"><a href="{{ route('admin.channels.index', ['status' => 'unwatched']) }}">{{ trans_choice(':count listed channel nobody played|:count listed channels nobody played', $report['unwatched'], ['count' => number_format($report['unwatched'])]) }}</a></div>
+    </div>
+    <div class="card stat">
+        <div class="stat-label"><x-icon name="signal" /> {{ __('Most at once') }}</div>
+        <div class="stat-value">{{ number_format($report['peak']) }}</div>
+        <div class="stat-meta">{{ $report['peak_at'] ? \Illuminate\Support\Carbon::parse($report['peak_at'])->translatedFormat('j M, H:i') : __('counted every 5 minutes') }}</div>
     </div>
 </div>
 
@@ -74,6 +79,48 @@
                 <div class="chart-axis"><span>00:00</span><span>12:00</span><span>23:00</span></div>
             </div>
         </div>
+
+        @if($report['peak'] > 0)
+            <div class="card">
+                <div class="card-header"><div><h2>{{ __('Most streams at once per day') }}</h2><p>{{ __('Counted every 5 minutes: how many devices were playing. Compare with your providers\' connection limits and the receiver\'s tuners.') }}</p></div></div>
+                <div class="card-body">
+                    <div class="chart" role="img" aria-label="{{ __('Most streams at once per day') }}">
+                        @foreach($report['peak_per_day'] as $day => $peak)
+                            <div style="height: {{ max(1, round($peak / max(1, $report['peak']) * 100)) }}%" title="{{ \Illuminate\Support\Carbon::parse($day)->translatedFormat('M j') }}: {{ trans_choice(':count stream|:count streams', $peak, ['count' => $peak]) }}"></div>
+                        @endforeach
+                    </div>
+                    <div class="chart-axis">
+                        <span>{{ \Illuminate\Support\Carbon::parse($report['from'])->translatedFormat('M j') }}</span>
+                        <span>{{ __('Most: :count', ['count' => number_format($report['peak'])]) }}</span>
+                        <span>{{ now()->translatedFormat('M j') }}</span>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        @if($report['sources'] !== [])
+            <div class="card">
+                <div class="card-header"><div><h2>{{ __('Per source') }}</h2><p>{{ __('Which providers people use: worth paying for, or not.') }}</p></div></div>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>{{ __('Source') }}</th><th class="right">{{ __('Plays') }}</th><th class="right hide-sm">{{ __('Viewers') }}</th><th class="right">{{ __('Most at once') }}</th></tr></thead>
+                        <tbody>
+                        @foreach($report['sources'] as $row)
+                            <tr>
+                                <td class="cell-main truncate">
+                                    {{ $row['name'] ?? __('Added manually') }}@if($row['receiver']) <span class="badge">{{ __('Receiver') }}</span>@endif
+                                    <div class="bar"><span style="width: {{ round($row['plays'] / max(1, $report['sources'][0]['plays']) * 100) }}%"></span></div>
+                                </td>
+                                <td class="right">{{ number_format($row['plays']) }}</td>
+                                <td class="right muted hide-sm">{{ number_format($row['viewers']) }}</td>
+                                <td class="right">{{ number_format($row['peak']) }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
 
         <div class="grid-2">
             <div class="card">

@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\ActiveSession;
 use App\Models\Channel;
+use App\Models\Source;
 use App\Models\StreamLog;
 use App\Models\User;
+use App\Models\ViewingSample;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
  * What people watch, from the play history (stream_logs): totals, plays per day and per hour of the
- * day, the most played channels and the most active users. A "play" is one stream start (zapping to
+ * day, the most played channels and the most active users, per source, and the channels nobody played. The most streams at once
+ * come from a count every 5 minutes (viewing_samples, sample()). A "play" is one stream start (zapping to
  * another channel counts again). History is kept LOG_RETENTION_DAYS (90), so that is the longest period.
  * Every number comes from grouped queries over the started_at index, never from loading rows, and
  * the result is cached for a few minutes.
@@ -32,7 +36,7 @@ class StatisticsService
         // Only plain values go into the cache: it refuses to rebuild objects (config `cache.serializable_classes`
         // is false), so a cached Carbon comes back as __PHP_Incomplete_Class and the page fails on the 2nd request.
         // The key carries a version: older entries from before this fix hold such an object and must not be read.
-        return Cache::remember("statistics:v2:$days", self::CACHE_SECONDS, fn () => $this->build($days));
+        return Cache::remember("statistics:v3:$days", self::CACHE_SECONDS, fn () => $this->build($days));
     }
 
     private function build(int $days): array
@@ -68,7 +72,85 @@ class StatisticsService
             'per_hour' => $perHour,
             'top_channels' => $topChannels->map(fn ($row) => ['name' => $names[$row->channel_id] ?? null, 'plays' => (int) $row->plays, 'viewers' => (int) $row->viewers])->all(),
             'top_users' => $topUsers->map(fn ($row) => ['username' => $usernames[$row->user_id] ?? null, 'plays' => (int) $row->plays, 'channels' => (int) $row->channels])->all(),
+            ...$this->atOnce($from, $days),
+            'sources' => $this->sources($from),
+            // Listed channels nobody played: candidates to drop
+            'unwatched' => Channel::where('is_active', true)->whereNull('backup_for_id')
+                ->whereNotIn('id', StreamLog::where('started_at', '>=', $from)->select('channel_id'))->count(),
         ];
+    }
+
+    /**
+     * Count the streams playing now per source and keep it (every 5 minutes). A stream is a device whose session is active.
+     *
+     * @return int streams playing now
+     */
+    public function sample(): int
+    {
+        $now = now()->startOfMinute();
+        $rows = ActiveSession::query()
+            ->where('active_sessions.last_activity_at', '>', now()->subMinutes(StreamService::SESSION_TIMEOUT_MINUTES))
+            ->join('channels', 'channels.id', '=', 'active_sessions.channel_id')
+            ->groupBy('channels.source_id')
+            ->selectRaw('channels.source_id as source_id, COUNT(*) as streams')
+            ->toBase()->get();
+
+        ViewingSample::insert($rows->map(fn ($row) => ['taken_at' => $now, 'source_id' => $row->source_id, 'streams' => (int) $row->streams])->all());
+
+        return (int) $rows->sum('streams');
+    }
+
+    /**
+     * The most streams at once in the period (and when), and per day.
+     *
+     * @return array{peak: int, peak_at: ?string, peak_per_day: array<string, int>}
+     */
+    private function atOnce(Carbon $from, int $days): array
+    {
+        $totals = DB::query()->fromSub(
+            ViewingSample::where('taken_at', '>=', $from)->groupBy('taken_at')->selectRaw('taken_at, SUM(streams) as total')->toBase(),
+            'moments'
+        );
+
+        $peak = (clone $totals)->orderByDesc('total')->orderBy('taken_at')->first();
+        $perDay = array_fill_keys(array_map(fn ($i) => $from->copy()->addDays($i)->toDateString(), range(0, $days - 1)), 0);
+        $day = DB::connection()->getDriverName() === 'sqlite' ? 'date(taken_at)' : 'DATE(taken_at)';
+        foreach ((clone $totals)->selectRaw("$day as day, MAX(total) as peak")->groupBy('day')->get() as $row) {
+            $perDay[(string) $row->day] = (int) $row->peak;
+        }
+
+        return [
+            'peak' => (int) ($peak->total ?? 0),
+            'peak_at' => $peak ? Carbon::parse($peak->taken_at)->toDateTimeString() : null,
+            'peak_per_day' => $perDay,
+        ];
+    }
+
+    /**
+     * Per source: plays, viewers and the most streams at once, busiest first.
+     *
+     * @return list<array{name: ?string, receiver: bool, plays: int, viewers: int, peak: int}>
+     */
+    private function sources(Carbon $from): array
+    {
+        $plays = StreamLog::where('stream_logs.started_at', '>=', $from)
+            ->join('channels', 'channels.id', '=', 'stream_logs.channel_id')
+            ->groupBy('channels.source_id')
+            ->selectRaw('channels.source_id as source_id, COUNT(*) as plays, COUNT(DISTINCT stream_logs.user_id) as viewers')
+            ->toBase()->get()->keyBy(fn ($row) => (int) $row->source_id);
+        $peaks = ViewingSample::where('taken_at', '>=', $from)->groupBy('source_id')->selectRaw('source_id, MAX(streams) as peak')
+            ->toBase()->get()->keyBy(fn ($row) => (int) $row->source_id);
+        $sources = Source::whereIn('id', $plays->keys()->merge($peaks->keys())->filter()->unique())->get(['id', 'name', 'type'])->keyBy('id');
+
+        return $plays->keys()->merge($peaks->keys())->unique()
+            ->map(fn ($id) => [
+                'name' => $id ? ($sources[$id]->name ?? null) : null,
+                'receiver' => $id && ($sources[$id]->type ?? null) === 'receiver',
+                'plays' => (int) ($plays[$id]->plays ?? 0),
+                'viewers' => (int) ($plays[$id]->viewers ?? 0),
+                'peak' => (int) ($peaks[$id]->peak ?? 0),
+            ])
+            ->sortByDesc('plays')->values()->all();
     }
 
     private function dayExpression(): string

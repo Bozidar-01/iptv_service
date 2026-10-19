@@ -73,6 +73,7 @@
                     <th class="right hide-sm">{{ __('New') }}</th>
                     <th class="right">{{ __('Expiring') }}</th>
                     <th class="right hide-sm">{{ __('Expired') }}</th>
+                    <th class="right hide-sm">{{ __('Owes') }}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -103,6 +104,7 @@
                         <td class="right hide-sm">{{ number_format($row['new']) }}</td>
                         <td class="right">{{ number_format($row['expiring']) }}</td>
                         <td class="right hide-sm">{{ number_format($row['expired']) }}</td>
+                        <td class="right hide-sm">@if($row['owes'] !== null && $row['owes'] != 0)<a href="{{ route('admin.payments.index', ['seller' => $row['id'], 'status' => 'all']) }}">{{ \App\Support\Money::format($row['owes']) }}</a>@else<span class="faint">–</span>@endif</td>
                     </tr>
                 @endforeach
                 </tbody>

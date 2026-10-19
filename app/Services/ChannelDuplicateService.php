@@ -145,13 +145,16 @@ class ChannelDuplicateService
     }
 
     /**
-     * Switch off every copy except the chosen one in each group. The kept channel joins the bouquets of the ones switched
-     * off, so nobody loses the channel. Groups that changed since they were shown, or a kept channel that is not in its group, are skipped.
+     * Take every copy except the chosen one out of the lists in each group. The kept channel joins the bouquets of the others, so
+     * nobody loses the channel. With $asBackups (the default) the others stay on as hidden backup copies of the kept one
+     * (`backup_for_id`): viewers don't see them, the stream check keeps checking them, and they stand in when the kept one stops
+     * working (ChannelFailoverService). Without it they are switched off. Groups that changed since they were shown, or a kept
+     * channel that is not in its group, are skipped.
      *
      * @param  array<string, int>  $keep  group key => channel id to keep
      * @return array{groups: int, disabled: int, skipped: int}
      */
-    public function apply(array $keep, ?string $search = null): array
+    public function apply(array $keep, ?string $search = null, bool $asBackups = true): array
     {
         $groups = collect($this->groups($search))->keyBy('key');
         $result = ['groups' => 0, 'disabled' => 0, 'skipped' => 0];
@@ -168,13 +171,19 @@ class ChannelDuplicateService
 
             $losers = array_values(array_diff($ids, [(int) $keepId]));
 
-            DB::transaction(function () use ($keepId, $losers) {
-                // The kept channel goes into every bouquet a switched off copy was in
+            DB::transaction(function () use ($keepId, $losers, $asBackups) {
+                // The kept channel goes into every bouquet another copy was in
                 DB::table('bouquet_channel')->insertOrIgnore(
                     DB::table('bouquet_channel')->whereIn('channel_id', $losers)->distinct()->pluck('bouquet_id')
                         ->map(fn ($bouquetId) => ['bouquet_id' => $bouquetId, 'channel_id' => (int) $keepId])->all()
                 );
-                Channel::whereIn('id', $losers)->update(['is_active' => false, 'auto_disabled' => false]);
+                if ($asBackups) {
+                    // Backup copies of the others now belong to the kept channel too
+                    Channel::whereIn('backup_for_id', $losers)->update(['backup_for_id' => (int) $keepId]);
+                    Channel::whereIn('id', $losers)->update(['backup_for_id' => (int) $keepId]);
+                } else {
+                    Channel::whereIn('id', $losers)->update(['is_active' => false, 'auto_disabled' => false]);
+                }
             });
 
             $result['groups']++;
@@ -203,7 +212,7 @@ class ChannelDuplicateService
         };
         $first = [];
 
-        Channel::where('is_active', true)->select('id', 'name', 'tvg_id')->chunkById(5000, function ($chunk) use (&$parent, &$first, $find) {
+        Channel::where('is_active', true)->whereNull('backup_for_id')->select('id', 'name', 'tvg_id')->chunkById(5000, function ($chunk) use (&$parent, &$first, $find) {
             foreach ($chunk as $c) {
                 $parent[$c->id] = $c->id;
                 $keys = [];

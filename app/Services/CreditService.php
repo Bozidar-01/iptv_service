@@ -53,7 +53,8 @@ class CreditService
 
             $locked->forceFill(['credits' => $balance])->save();
 
-            return $this->record($locked, $admin, $amount, $amount >= 0 ? CreditTransaction::GIVEN : CreditTransaction::TAKEN, null, $note);
+            // Credits given are charged (taken back: refunded) at the reseller's price per credit now (SaleService)
+            return $this->record($locked, $admin, $amount, $amount >= 0 ? CreditTransaction::GIVEN : CreditTransaction::TAKEN, null, $note, app(SaleService::class)->creditPrice($locked));
         });
     }
 
@@ -73,9 +74,10 @@ class CreditService
         return User::whereKey($reseller->id)->lockForUpdate()->firstOrFail();
     }
 
-    private function record(User $locked, User $actor, int $amount, string $reason, ?User $customer = null, ?string $note = null): CreditTransaction
+    private function record(User $locked, User $actor, int $amount, string $reason, ?User $customer = null, ?string $note = null, ?float $price = null): CreditTransaction
     {
         return CreditTransaction::create([
+            'price' => $price,
             'user_id' => $locked->id,
             'actor_id' => $actor->id,
             'customer_id' => $customer?->id,

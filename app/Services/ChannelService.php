@@ -9,14 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 class ChannelService
 {
-    public const BULK_ACTIONS = ['enable', 'disable', 'add_to_bouquet', 'remove_from_bouquet', 'alerts_on', 'alerts_off', 'delete'];
+    public const BULK_ACTIONS = ['enable', 'disable', 'add_to_bouquet', 'remove_from_bouquet', 'alerts_on', 'alerts_off', 'list_again', 'delete'];
 
     /**
      * Channels matching the admin list filters.
      *
      * Filters: search, category (id or "none"), source (id or "manual"), bouquet (id),
      * status ("active"|"inactive"|"offline" = switched off by the stream check|"watched" = alerts on|"backup" = playing a backup|
-     * "slow" = arrives slower than it plays|"unreliable" = worked in under 90% of last week's checks|"trouble" = several viewers had trouble).
+     * "slow" = arrives slower than it plays|"unreliable" = worked in under 90% of last week's checks|"trouble" = several viewers had trouble|
+     * "backup_copy" = kept hidden as a backup of another channel|"unwatched" = enabled and listed, but not played in 30 days).
      */
     public function filteredQuery(array $filters): Builder
     {
@@ -36,6 +37,9 @@ class ChannelService
                 'slow' => $q->where('stream_speed', '<', ChannelFailoverService::SLOW_BELOW),
                 'unreliable' => $q->where('reliability', '<', 90),
                 'trouble' => $q->whereIn('channels.id', app(ChannelHealthService::class)->troubledIds()),
+                'backup_copy' => $q->whereNotNull('backup_for_id'),
+                'unwatched' => $q->where('is_active', true)->whereNull('backup_for_id')
+                    ->whereNotIn('channels.id', DB::table('stream_logs')->select('channel_id')->where('started_at', '>=', now()->subDays(30))),
                 default => $q->where('is_active', $status === 'active'),
             });
     }
@@ -43,7 +47,7 @@ class ChannelService
     public function getAllChannels(array $filters = [])
     {
         return $this->filteredQuery($filters)
-            ->with(['category', 'source', 'usingBackup:id,name'])
+            ->with(['category', 'source', 'usingBackup:id,name', 'backupFor:id,name'])
             ->withCount('bouquets')
             ->orderBy('name')
             ->paginate(50)
@@ -66,6 +70,7 @@ class ChannelService
             'disable' => Channel::whereIn('id', $ids)->update(['is_active' => false, 'auto_disabled' => false]),
             'alerts_on' => Channel::whereIn('id', $ids)->update(['alert_on_down' => true]),
             'alerts_off' => Channel::whereIn('id', $ids)->update(['alert_on_down' => false]),
+            'list_again' => Channel::whereIn('id', $ids)->whereNotNull('backup_for_id')->update(['backup_for_id' => null]),
             'delete' => Channel::whereIn('id', $ids)->delete(),
             'add_to_bouquet' => self::attachToBouquet($bouquetId, Channel::whereIn('id', $ids)),
             'remove_from_bouquet' => DB::table('bouquet_channel')

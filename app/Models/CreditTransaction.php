@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * One change of a reseller's credit balance (CreditService). Rows are only ever added.
  */
-#[Fillable(['user_id', 'actor_id', 'customer_id', 'amount', 'balance_after', 'reason', 'note'])]
+#[Fillable(['user_id', 'actor_id', 'customer_id', 'amount', 'balance_after', 'price', 'reason', 'note'])]
 class CreditTransaction extends Model
 {
     public const UPDATED_AT = null;
@@ -56,6 +56,6 @@ class CreditTransaction extends Model
 
     protected function casts(): array
     {
-        return ['created_at' => 'datetime', 'amount' => 'integer', 'balance_after' => 'integer'];
+        return ['created_at' => 'datetime', 'amount' => 'integer', 'balance_after' => 'integer', 'price' => 'decimal:2'];
     }
 }

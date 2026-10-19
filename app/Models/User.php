@@ -49,6 +49,8 @@ class User extends Authenticatable
             'password_plain' => 'encrypted',
             'two_factor_confirmed_at' => 'datetime',
             'credits' => 'integer',
+            'price_per_month' => 'decimal:2',
+            'credit_price' => 'decimal:2',
             'is_trial' => 'boolean',
         ];
     }

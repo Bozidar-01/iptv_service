@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\HiddenChannelController;
 use App\Http\Controllers\Admin\LaunchChecklistController;
 use App\Http\Controllers\Admin\LiveController;
 use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PlaylistOptionsController;
 use App\Http\Controllers\Admin\ReceiverController;
 use App\Http\Controllers\Admin\SalesReportController;
@@ -70,6 +71,9 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
 
     Route::get('statement', [StatementController::class, 'index'])->name('statements.index');
     Route::get('statement/csv', [StatementController::class, 'csv'])->name('statements.csv');
+    Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::post('payments/prices', [PaymentController::class, 'prices'])->name('payments.prices');
+    Route::post('payments/sales/{sale}', [PaymentController::class, 'paid'])->name('payments.paid');
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');
@@ -88,6 +92,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('sources/{source}/receiver', [ReceiverController::class, 'show'])->name('receiver.show');
     Route::post('sources/{source}/receiver/refresh', [ReceiverController::class, 'refresh'])->name('receiver.refresh');
     Route::post('sources/{source}/receiver/tidy', [ReceiverController::class, 'tidy'])->name('receiver.tidy');
+    Route::post('sources/{source}/receiver/guide', [ReceiverController::class, 'guide'])->name('receiver.guide');
     Route::post('sources/{source}/sync', [SourceController::class, 'sync'])->name('sources.sync');
     Route::resource('sources', SourceController::class)->except(['show']);
 
@@ -128,6 +133,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Giving and taking back credits is for admins only
     Route::post('users/{user}/credits', [CreditController::class, 'store'])->name('users.credits.store');
+    Route::post('payments/resellers/{user}', [PaymentController::class, 'payment'])->name('payments.reseller');
     Route::post('users/{user}/credits/unlimited', [CreditController::class, 'unlimited'])->name('users.credits.unlimited');
 });
 

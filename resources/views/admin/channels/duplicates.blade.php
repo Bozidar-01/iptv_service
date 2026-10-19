@@ -7,14 +7,15 @@
     <div>
         <a href="{{ route('admin.channels.index') }}" class="breadcrumb"><x-icon name="arrow-left" /> {{ __('Channels') }}</a>
         <h1>{{ __('Duplicate channels') }}</h1>
-        <p>{{ __('The same channel listed more than once, for example by two sources. Keep the copy that works and looks best; the others are switched off (not deleted, so a sync does not bring them back).') }}</p>
+        <p>{{ __('The same channel listed more than once, for example by two sources. Keep the copy that works and looks best; the others leave the lists. By default they stay as hidden backup copies that take over when the kept one stops working (not deleted, so a sync does not bring them back).') }}</p>
     </div>
     @if($groups->total() > 0)
         <div class="page-actions">
             <form method="POST" action="{{ route('admin.channels.duplicates.apply') }}" class="inline-form"
-                  data-confirm="{{ trans_choice('Switch off :count extra channel and keep the suggested copy of each group?|Switch off :count extra channels and keep the suggested copy of each group?', $extra, ['count' => number_format($extra)]) }}">
+                  data-confirm="{{ trans_choice('Take :count extra channel out of the lists and keep the suggested copy of each group?|Take :count extra channels out of the lists and keep the suggested copy of each group?', $extra, ['count' => number_format($extra)]) }}">
                 @csrf
                 <input type="hidden" name="scope" value="all">
+                <input type="hidden" name="others" value="backup">
                 <input type="hidden" name="search" value="{{ $search }}">
                 <button class="btn btn-primary"><x-icon name="check" /> {{ __('Keep the suggested copy in all :count groups', ['count' => number_format($groups->total())]) }}</button>
             </form>
@@ -33,7 +34,7 @@
         @endif
     </form>
     <div class="card-body">
-        <p class="help" style="margin: 0">{{ __('Suggested copy: the one that works (run Check streams first for an up-to-date answer), then not slow, then the most reliable over the last week, then the best quality (4K, Full HD, HD), then not a satellite receiver (it can only serve a few streams), then the one in most bouquets. Channels without a quality tag count as between HD and SD. The Quality column shows the picture size the stream check measured (HLS channels), or a guess from the name. The kept copy is added to the bouquets of the ones switched off.') }}</p>
+        <p class="help" style="margin: 0">{{ __('Suggested copy: the one that works (run Check streams first for an up-to-date answer), then not slow, then the most reliable over the last week, then the best quality (4K, Full HD, HD), then not a satellite receiver (it can only serve a few streams), then the one in most bouquets. Channels without a quality tag count as between HD and SD. The Quality column shows the picture size the stream check measured (HLS channels), or a guess from the name. The kept copy is added to the bouquets of the others.') }}</p>
     </div>
 </div>
 
@@ -98,7 +99,11 @@
 
         <div class="card" style="margin-top: 20px">
             <div class="card-footer">
-                <button class="btn btn-primary"><x-icon name="check" /> {{ __('Switch off the others on this page') }}</button>
+                <select class="select" name="others" aria-label="{{ __('What happens to the other copies') }}">
+                    <option value="backup">{{ __('Keep the others as hidden backups') }}</option>
+                    <option value="off">{{ __('Switch the others off') }}</option>
+                </select>
+                <button class="btn btn-primary"><x-icon name="check" /> {{ __('Apply to this page') }}</button>
             </div>
         </div>
     </form>

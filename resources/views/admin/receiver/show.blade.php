@@ -69,6 +69,30 @@
         @endif
     </div>
 
+    <div class="card">
+        <div class="card-header"><div><h2>{{ __('TV guide from the receiver') }}</h2><p>{{ __('The programmes the receiver itself has collected, for its channels: often the only guide for satellite channels. It is imported every night with the other guides.') }}</p></div></div>
+        <div class="card-body stack" style="gap: 12px">
+            @if($status['version'] && version_compare($status['version'], '1.3', '<'))
+                <div class="alert alert-warning" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ __('This needs relay 1.3 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.', ['version' => $status['version']]) }}</div></div>
+            @endif
+            @if($guide)
+                <p>
+                    {{ __('Last import: :status', ['status' => $guide->last_synced_at ? $guide->last_synced_at->diffForHumans() : __('not yet')]) }} ·
+                    {{ trans_choice(':count channel|:count channels', $guide->channel_count ?? 0, ['count' => number_format($guide->channel_count ?? 0)]) }} ·
+                    {{ trans_choice(':count programme|:count programmes', $guide->programme_count ?? 0, ['count' => number_format($guide->programme_count ?? 0)]) }}
+                </p>
+                @if($guide->last_error)
+                    <div class="alert alert-danger" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ $guide->last_error }}</div></div>
+                @endif
+            @endif
+            <p class="help" style="margin: 0">{{ __('Enigma2 only keeps programmes of channels it has tuned. An EPG import plugin, or the nightly EPG refresh in the receiver\'s settings, fills it for all channels.') }}</p>
+            <form method="POST" action="{{ route('admin.receiver.guide', $source) }}" class="inline-form">
+                @csrf
+                <button class="btn btn-secondary"><x-icon name="clock" /> {{ $guide ? __('Import the guide now') : __('Use the receiver\'s TV guide') }}</button>
+            </form>
+        </div>
+    </div>
+
     <form method="POST" action="{{ route('admin.receiver.tidy', $source) }}" class="card" data-confirm="{{ __('Switch off the chosen channels? You can enable them again on the Channels page.') }}">
         @csrf
         <div class="card-header">

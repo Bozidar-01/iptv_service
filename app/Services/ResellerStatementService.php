@@ -59,6 +59,8 @@ class ResellerStatementService
                 'active_now' => (clone $owned)->where('status', 'active')->where(fn ($q) => $q->whereNull('expiration_date')->orWhere('expiration_date', '>', now()))->count(),
                 'total' => (clone $owned)->count(),
             ],
+            // Money (SaleService): sold to and received from their users, credits charged and paid for
+            'money' => app(SaleService::class)->month($reseller, $from, $to),
             'lines' => CreditTransaction::with('customer:id,username')->where('user_id', $reseller->id)->whereBetween('created_at', [$from, $to])->orderBy('id')->limit(1000)->get()
                 ->map(fn (CreditTransaction $t) => ['date' => $t->created_at->toDateTimeString(), 'type' => $t->label(), 'customer' => $t->customer?->username, 'credits' => $t->amount, 'balance' => $t->balance_after, 'note' => $t->note])->all(),
         ];

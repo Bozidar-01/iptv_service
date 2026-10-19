@@ -106,7 +106,7 @@ class StreamService
         if ($this->isBlocked($user)) {
             return DeniedPlay::BLOCKED;
         }
-        if (!$channel->is_active) {
+        if (!$channel->is_active || $channel->backup_for_id !== null) {
             return DeniedPlay::CHANNEL_OFF;
         }
 

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SyncEpgSource;
 use App\Models\AuditLog;
+use App\Models\EpgSource;
 use App\Models\Source;
 use App\Services\AuditService;
 use App\Services\ReceiverStatusService;
@@ -37,7 +39,28 @@ class ReceiverController extends Controller
             'source' => $source,
             'status' => $this->status->status($source),
             'counts' => $this->tidy->counts($source),
+            'guide' => EpgSource::where('receiver_source_id', $source->id)->first(),
         ]);
+    }
+
+    /**
+     * Use the receiver's own TV guide (relay 1.3+ /epg.xml): add it as a guide source once, and import it now.
+     */
+    public function guide(Source $source)
+    {
+        abort_unless($source->isReceiver(), 404);
+
+        $guide = EpgSource::firstOrCreate(
+            ['receiver_source_id' => $source->id],
+            ['name' => __(':name (receiver guide)', ['name' => $source->name]), 'url' => rtrim((string) $source->url, '/').'/epg.xml']
+        );
+        // Already waiting for an import: one is enough
+        if (!$guide->isBusy()) {
+            $guide->update(['status' => Source::STATUS_QUEUED]);
+            SyncEpgSource::dispatch($guide);
+        }
+
+        return back()->with('success', __('Importing the receiver\'s TV guide. It shows on the TV guide page in a minute.'));
     }
 
     public function refresh(Source $source)
