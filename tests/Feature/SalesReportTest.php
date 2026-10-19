@@ -95,9 +95,10 @@ describe('the page', function () {
     });
 
     it('is for admins only, and in their menu', function () {
-        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertSee(route('admin.sales.index'), false);
+        // A tab of the Money section, for admins only
+        $this->actingAs($this->admin)->get(route('admin.payments.index'))->assertSee(route('admin.sales.index'), false);
         $this->actingAs($this->a)->get(route('admin.sales.index'))->assertForbidden();
-        $this->actingAs($this->a)->get(route('admin.dashboard'))->assertDontSee(route('admin.sales.index'), false);
+        $this->actingAs($this->a)->get(route('admin.payments.index'))->assertDontSee(route('admin.sales.index'), false);
 
         auth()->logout();
         $this->get(route('admin.sales.index'))->assertRedirect(route('login'));

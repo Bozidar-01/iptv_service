@@ -8,6 +8,7 @@
     <div>
         <a href="{{ route('admin.users.show', $user) }}" class="breadcrumb"><x-icon name="arrow-left" /> {{ $user->username }}</a>
         <h1>{{ __('Edit user') }}</h1>
+        <p>{{ __('Login, subscription end date, bouquets and how many devices can watch at once.') }}</p>
     </div>
 </div>
 

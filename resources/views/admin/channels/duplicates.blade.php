@@ -5,7 +5,6 @@
 @section('content')
 <div class="page-header">
     <div>
-        <a href="{{ route('admin.channels.index') }}" class="breadcrumb"><x-icon name="arrow-left" /> {{ __('Channels') }}</a>
         <h1>{{ __('Duplicate channels') }}</h1>
         <p>{{ __('The same channel listed more than once, for example by two sources. Keep the copy that works and looks best; the others leave the lists. By default they stay as hidden backup copies that take over when the kept one stops working (not deleted, so a sync does not bring them back).') }}</p>
     </div>

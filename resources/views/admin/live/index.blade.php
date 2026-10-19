@@ -1,11 +1,11 @@
 @extends('layouts.admin')
 
-@section('title', __('Live'))
+@section('title', __('Watching now'))
 
 @section('content')
 <div class="page-header">
     <div>
-        <h1>{{ __('Live') }}</h1>
+        <h1>{{ __('Watching now') }}</h1>
         <p>{{ __('Who is watching right now: devices that played something in the last :minutes minutes.', ['minutes' => \App\Services\StreamService::SESSION_TIMEOUT_MINUTES]) }}</p>
     </div>
     <div class="page-actions">

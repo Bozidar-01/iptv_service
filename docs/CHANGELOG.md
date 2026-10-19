@@ -4,6 +4,13 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Clearer menu: grouped by task, tabs for pages that belong together
+- The sidebar had 25 links in four groups (money pages under Subscribers, your own security next to system pages, some pages only reachable by buttons). It now has 15, grouped by what you are doing: Overview (Dashboard, Alerts, Watching now), Channels (Channels, Bouquets, Categories, Sources, TV guide), Users (Users, Hide channels, Activity), Money, Reports (Statistics) and Maintenance (Backups, Audit log, Launch checklist). Security moved to the shield button under your name.
+- Pages that belong together share tabs above the page: Channels (All channels, Duplicates, Cleanup rules, Playlist options), Activity (Plays, Refused) and Money (Payments, Sales, Statements, Credit history). The section's menu link stays highlighted on its tabs; on a phone the tab bar scrolls to the current tab. The Find duplicates and Playlist options buttons on the Channels page and the Plays / Refused buttons are replaced by the tabs. "Live" is now "Watching now". Edit user has a one-line description like every page. All page addresses are unchanged.
+- Resellers see Overview, Users and Money (no Sales tab).
+- Tests: `NavigationTest` (5); menu tests of Cleanup rules, Sales and Statement now look at the tabs.
+- Files: `app/Support/AdminNav.php` (new), `resources/views/layouts/admin.blade.php`, `public/css/admin.css` (`.tabs`), `resources/views/admin/{channels/index,channels/duplicates,logs/index,logs/refused,live/index,users/edit}.blade.php`, `resources/views/admin/partials/activity-tabs.blade.php` (removed), `lang/mk.json`, docs.
+
 ### 2026-10-21 — Relay 1.4: the receiver's guide is read in the background
 - On the Octagon (274 bouquets) asking for the guide hung: bouquets without guide data made relay 1.3 ask every channel one by one, and the whole guide was built while the panel waited. Relay **1.4** reads it a minute after the start and every 6 hours in the background, answers `503` + `Retry-After` until the first read is done, and asks per channel only when the box can't answer the multi-channel guide request. The Receiver page asks for 1.4 and says an import right after a restart may have to wait. Update the relay on the box.
 - Tests: 22 relay tests (2 more).

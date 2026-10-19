@@ -94,8 +94,9 @@ describe('the page', function () {
     });
 
     it('is for staff only, with a menu entry for both, and works with no reseller', function () {
-        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertSee(route('admin.statements.index'), false);
-        $this->actingAs($this->a)->get(route('admin.dashboard'))->assertSee(route('admin.statements.index'), false);
+        // A tab of the Money section
+        $this->actingAs($this->admin)->get(route('admin.payments.index'))->assertSee(route('admin.statements.index'), false);
+        $this->actingAs($this->a)->get(route('admin.payments.index'))->assertSee(route('admin.statements.index'), false);
 
         User::where('role', 'reseller')->delete();
         $this->actingAs($this->admin)->get(route('admin.statements.index'))->assertOk()->assertSee('No resellers yet');

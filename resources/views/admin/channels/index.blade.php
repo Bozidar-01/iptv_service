@@ -16,8 +16,6 @@
             @endif
             <button class="btn btn-secondary"><x-icon name="signal" /> {{ __('Check streams') }}</button>
         </form>
-        <a href="{{ route('admin.channels.duplicates') }}" class="btn btn-secondary"><x-icon name="copy" /> {{ __('Find duplicates') }}</a>
-        <a href="{{ route('admin.playlist-options.index') }}" class="btn btn-secondary"><x-icon name="signal" /> {{ __('Playlist options') }}</a>
         <a href="{{ route('admin.sources.index') }}" class="btn btn-secondary"><x-icon name="source" /> {{ __('Import from source') }}</a>
         <a href="{{ route('admin.channels.create') }}" class="btn btn-primary"><x-icon name="plus" /> {{ __('Add channel') }}</a>
     </div>
