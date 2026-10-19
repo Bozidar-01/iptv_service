@@ -49,7 +49,7 @@ import urllib.request
 import zlib
 from xml.sax.saxutils import escape, quoteattr
 
-VERSION = '1.7'
+VERSION = '1.8'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -86,6 +86,9 @@ class Settings:
         self.webif_user = get('webif_user')
         self.webif_password = get('webif_password')
         self.bouquets = [b.strip() for b in re.split(r'[\n;]', get('bouquets')) if b.strip()]
+        # With all bouquets: leave out bouquets whose name contains one of these words (any case). Internet-stream
+        # bouquets ("IPTV …") are not satellite channels and only cost the box memory and the home connection.
+        self.skip_bouquets = [w.strip().lower() for w in re.split(r'[\n;,]', get('skip_bouquets', 'IPTV')) if w.strip()]
         self.fta_only = get('fta_only', 'yes').lower() in ('1', 'yes', 'true', 'on')
         # Read the receiver's TV guide for the panel (/epg.xml)
         self.guide = get('guide', 'yes').lower() in ('1', 'yes', 'true', 'on')
@@ -195,11 +198,19 @@ def clean_name(name):
 
 
 def selected_bouquets(settings):
-    """[ref, name] of the bouquets in the settings (all of them when none are set)."""
+    """[ref, name] of the bouquets in the settings, or all of them when none are set, without the ones skip_bouquets names."""
     bouquets = json.loads(webif_get(settings, '/api/bouquets'))['bouquets']
     wanted = [b.lower() for b in settings.bouquets]
-    wanted_clean = [clean_name(w).lower() for w in wanted]
-    return [[ref, name] for ref, name in bouquets if not wanted or clean_name(name).lower() in wanted_clean or name.lower() in wanted]
+    if wanted:
+        wanted_clean = [clean_name(w).lower() for w in wanted]
+        return [[ref, name] for ref, name in bouquets if clean_name(name).lower() in wanted_clean or name.lower() in wanted]
+    return [[ref, name] for ref, name in bouquets if not any(word in name.lower() for word in settings.skip_bouquets)]
+
+
+def is_satellite(ref):
+    """A broadcast channel (1:0:…), not an internet stream that a bouquet points at (its reference carries an address)."""
+    lower = ref.lower()
+    return ref.startswith('1:0:') and '%3a' not in lower and '://' not in lower
 
 
 BOUQUET_TIMEOUT = 60
@@ -246,7 +257,7 @@ def build_playlist(settings, base_url):
             if sref.startswith('1:64:'):  # marker: following channels belong to it
                 group = clean_name(title) or group
                 continue
-            if not sref.startswith('1:0:') or not title:
+            if not is_satellite(sref) or not title:
                 continue
             if service_key(sref) in encrypted:
                 continue
@@ -297,7 +308,7 @@ def guide_services(settings):
             continue
         for service in found:
             sref = service.get('servicereference', '')
-            if sref.startswith('1:0:') and service_key(sref) not in (encrypted or set()):
+            if is_satellite(sref) and service_key(sref) not in (encrypted or set()):
                 services.setdefault(sref, (service.get('servicename') or '').strip())
         time.sleep(EPG_PAUSE)
     return services

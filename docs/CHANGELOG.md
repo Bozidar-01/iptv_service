@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Relay 1.8: all satellite bouquets, no internet streams
+- `skip_bouquets` (default `IPTV`): with all bouquets, bouquets whose name contains one of the words are left out. Internet-stream entries in any bouquet are never relayed: the relay is for channels the receiver tunes. On the Octagon: 67 of 274 bouquets, 2,509 channels, playlist built in 3 s (the 207 IPTV / VOD bouquets had made it run out of memory).
+- Tests: relay 24 (+1).
+- Files: `relay/nebotv-relay.py`, `relay/test_relay.py`, `relay/nebotv-relay.conf.example`, `docs/features/receiver.md`.
+
 ### 2026-10-21 — Relay 1.7: less memory per bouquet
 - Relay 1.6 was killed for using too much memory (exit code 137) while building the Octagon playlist from all 274 bouquets: its backup copy of each bouquet kept every field the box sends. Relay **1.7** keeps only the reference, name and picon of each channel. The real fix is listing only the offered bouquets in `bouquets` (docs/features/receiver.md#slow-bouquets).
 - Files: `relay/nebotv-relay.py`, `docs/features/receiver.md`.
