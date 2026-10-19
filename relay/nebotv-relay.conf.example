@@ -33,6 +33,10 @@ bouquets =
 # Leave out channels that are encrypted (keeps free-to-air only).
 fta_only = yes
 
+# Read the receiver's TV guide for the panel (/epg.xml), one channel at a time in the background.
+# Set to no if the receiver is short of memory.
+guide = yes
+
 # Address viewers use, e.g. http://nebotv-home.duckdns.org:28080
 # (empty = taken from the request)
 public_url =

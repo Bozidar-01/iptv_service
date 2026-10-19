@@ -1,10 +1,12 @@
 <?php
 
 use App\Jobs\SyncEpgSource;
+use App\Models\Channel;
 use App\Models\EpgSource;
 use App\Models\Source;
 use App\Models\User;
 use App\Services\EpgImportService;
+use App\Services\EpgService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -15,7 +17,7 @@ beforeEach(function () {
 
 it('adds the receiver\'s guide once, without the relay key in its address, and imports it', function () {
     Queue::fake();
-    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.4'])]);
+    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.5'])]);
 
     $this->actingAs($this->admin)->post(route('admin.receiver.guide', $this->source))->assertSessionHas('success');
     $this->post(route('admin.receiver.guide', $this->source));
@@ -42,10 +44,27 @@ it('downloads the guide with the key and never stores the key in an error', func
     Http::assertSent(fn ($request) => str_contains($request->url(), 'key=secret-1234567890123'));
 });
 
-it('says when the relay is too old for it', function () {
-    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.3'])]);
+it('imports the relay\'s guide: gzipped, the channel list and the programmes as two parts of one file', function () {
+    $ref = '1:0:19:D49:1450:13E:820000:0:0:0:';
+    $channel = Channel::create(['name' => 'Rai 1 HD', 'stream_url' => 'http://relay.test/s/x.ts', 'tvg_id' => $ref, 'source_id' => $this->source->id]);
+    $start = now()->addHour()->utc()->format('YmdHis').' +0000';
+    $stop = now()->addHours(2)->utc()->format('YmdHis').' +0000';
+    $body = gzencode('<?xml version="1.0" encoding="UTF-8"?>'."\n<tv>\n<channel id=\"$ref\"><display-name>Rai 1 HD</display-name></channel>\n")
+        .gzencode("<programme start=\"$start\" stop=\"$stop\" channel=\"$ref\"><title>Tg1</title></programme>\n</tv>\n");
+    Http::fake(['relay.test:28080/epg.xml*' => fn () => Http::response($body, 200, ['Content-Type' => 'application/gzip'])]);
+    $guide = EpgSource::create(['name' => 'Box', 'url' => 'http://relay.test:28080/epg.xml', 'receiver_source_id' => $this->source->id]);
 
-    $this->actingAs($this->admin)->get(route('admin.receiver.show', $this->source))->assertSee('This needs relay 1.4 or newer');
+    app(EpgImportService::class)->sync($guide);
+    app(EpgService::class)->matchChannels();
+
+    expect($guide->fresh())->channel_count->toBe(1)->programme_count->toBe(1)
+        ->and($channel->fresh()->epg_source_id)->toBe($guide->id);
+});
+
+it('says when the relay is too old for it', function () {
+    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.4'])]);
+
+    $this->actingAs($this->admin)->get(route('admin.receiver.show', $this->source))->assertSee('This needs relay 1.5 or newer');
 });
 
 it('is only for receiver sources', function () {

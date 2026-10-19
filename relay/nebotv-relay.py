@@ -19,8 +19,9 @@ exposing the receiver itself:
   GET /epg.xml?key=<secret>
       The receiver's own TV guide for the configured bouquets, as XMLTV, for the panel to import (channel ids are the
       service references, like the playlist's tvg-id). Only channels the receiver has programmes for are listed. Read
-      in the background a minute after the start and every 6 hours (a box with hundreds of bouquets needs minutes);
-      503 + Retry-After until the first one is ready.
+      in the background 5 minutes after the start and every 6 hours, one channel at a time with a pause in between
+      (asking for a whole bouquet at once can use more memory than the box has, and crash the receiver), and stopped
+      early when the box runs low on memory. 503 + Retry-After until the first one is ready; 404 with guide = no.
   GET /picon/<file>.png
       Channel logos from the receiver.
 
@@ -33,6 +34,7 @@ Settings: /etc/nebotv-relay.conf (see nebotv-relay.conf.example).
 import asyncio
 import base64
 import collections
+import gzip
 import configparser
 import hashlib
 import hmac
@@ -44,9 +46,10 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import zlib
 from xml.sax.saxutils import escape, quoteattr
 
-VERSION = '1.4'
+VERSION = '1.5'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -84,6 +87,8 @@ class Settings:
         self.webif_password = get('webif_password')
         self.bouquets = [b.strip() for b in re.split(r'[\n;]', get('bouquets')) if b.strip()]
         self.fta_only = get('fta_only', 'yes').lower() in ('1', 'yes', 'true', 'on')
+        # Read the receiver's TV guide for the panel (/epg.xml)
+        self.guide = get('guide', 'yes').lower() in ('1', 'yes', 'true', 'on')
         self.lamedb = get('lamedb', '/etc/enigma2/lamedb')
         self.public_url = get('public_url').rstrip('/')
 
@@ -230,71 +235,100 @@ def build_playlist(settings, base_url):
 
 EPG_DAYS = 3
 EPG_REFRESH_SECONDS = 6 * 3600
-EPG_FIRST_DELAY = 60
+EPG_FIRST_DELAY = 300
+# Pause between two channels, so the receiver stays responsive
+EPG_PAUSE = 0.1
+# Stop reading the guide when the box has less free memory than this (MB)
+EPG_MIN_FREE_MB = 100
+EPG_MAX_DESCRIPTION = 400
 
 
 def xmltv_time(timestamp):
     return time.strftime('%Y%m%d%H%M%S +0000', time.gmtime(timestamp))
 
 
-def epg_events(settings, bouquet_ref, start, end):
-    """The guide of one bouquet: OpenWebif's multi-EPG in one request. Only when the receiver can't answer that (an old
-    OpenWebif) each channel's own guide is read; a bouquet the receiver simply has no guide for stays empty."""
+def free_memory_mb():
+    """MemAvailable from /proc/meminfo, or None when it can't be read (not Linux)."""
     try:
-        query = urllib.parse.urlencode({'bRef': bouquet_ref, 'time': start, 'endTime': end})
-        return json.loads(webif_get(settings, '/api/epgmulti?' + query, timeout=120)).get('events') or []
-    except Exception as error:
-        log.info('Multi-EPG not available (%s): reading each channel', error)
-    events = []
-    services = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': bouquet_ref})))['services']
-    for service in services:
-        sref = service.get('servicereference', '')
-        if not sref.startswith('1:0:'):
-            continue
+        with open('/proc/meminfo') as handle:
+            for line in handle:
+                if line.startswith('MemAvailable:'):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        pass
+    return None
+
+
+def guide_services(settings):
+    """{service ref: name} of every channel in the configured bouquets, each once, encrypted ones left out with fta_only."""
+    encrypted = encrypted_services(settings.lamedb) if settings.fta_only else set()
+    services = {}
+    for ref, _ in selected_bouquets(settings):
         try:
-            found = json.loads(webif_get(settings, '/api/epgservice?' + urllib.parse.urlencode({'sRef': sref}), timeout=15)).get('events') or []
-        except Exception:
+            found = json.loads(webif_get(settings, '/api/getservices?' + urllib.parse.urlencode({'sRef': ref})))['services']
+        except Exception as error:
+            log.info('Guide: skipping a bouquet (%s)', error)
             continue
-        for event in found:
-            event.setdefault('sref', sref)
-            event.setdefault('sname', service.get('servicename', ''))
-        events.extend(found)
-    return events
+        for service in found:
+            sref = service.get('servicereference', '')
+            if sref.startswith('1:0:') and service_key(sref) not in (encrypted or set()):
+                services.setdefault(sref, (service.get('servicename') or '').strip())
+        time.sleep(EPG_PAUSE)
+    return services
 
 
 def build_epg(settings, now=None):
-    """XMLTV of the next EPG_DAYS days for the configured bouquets."""
+    """Gzipped XMLTV of the next EPG_DAYS days for the channels of the configured bouquets, read one channel at a time.
+    Programmes are compressed as they are read, so the whole guide is never in memory uncompressed: the channel list and
+    the programmes are two gzip members of one file (readers take them as one). Returns (gzipped XMLTV, summary)."""
     now = int(now or time.time())
     end = now + EPG_DAYS * 86400
-    channels = {}
-    programmes = []
-    seen = set()
-    bouquets = selected_bouquets(settings)
     started = time.time()
-    for ref, _ in bouquets:
-        for event in epg_events(settings, ref, now, end):
-            sref = event.get('sref') or ''
+    services = guide_services(settings)
+    channels = {}
+    packed = zlib.compressobj(6, zlib.DEFLATED, 31)
+    chunks = []
+    count = 0
+    stopped = False
+
+    for done, (sref, name) in enumerate(services.items(), 1):
+        free = free_memory_mb()
+        if free is not None and free < EPG_MIN_FREE_MB:
+            log.warning('Guide: stopping after %d of %d channels, the receiver has only %d MB free', done - 1, len(services), free)
+            stopped = True
+            break
+        try:
+            events = json.loads(webif_get(settings, '/api/epgservice?' + urllib.parse.urlencode({'sRef': sref}), timeout=20)).get('events') or []
+        except Exception:
+            events = []
+        seen = set()
+        for event in events:
             begin = int(event.get('begin_timestamp') or event.get('begin') or 0)
             duration = int(event.get('duration_sec') or event.get('duration') or 0)
             title = (event.get('title') or '').strip()
-            if not sref.startswith('1:0:') or not title or duration <= 0 or begin + duration < now or begin > end:
+            if not title or duration <= 0 or begin + duration < now or begin > end or begin in seen:
                 continue
-            if (sref, begin) in seen:
-                continue
-            seen.add((sref, begin))
-            channels.setdefault(sref, (event.get('sname') or '').strip() or sref)
-            description = (event.get('longdesc') or event.get('shortdesc') or '').strip()
-            programmes.append((sref, begin, begin + duration, title, description))
+            seen.add(begin)
+            channels.setdefault(sref, name or (event.get('sname') or '').strip() or sref)
+            description = (event.get('longdesc') or event.get('shortdesc') or '').strip()[:EPG_MAX_DESCRIPTION]
+            line = '<programme start="%s" stop="%s" channel=%s><title>%s</title>%s</programme>\n' % (
+                xmltv_time(begin), xmltv_time(begin + duration), quoteattr(sref), escape(title), '<desc>%s</desc>' % escape(description) if description else '')
+            chunks.append(packed.compress(line.encode('utf-8')))
+            count += 1
+        del events
+        if done % 250 == 0:
+            log.info('Guide: %d of %d channels read', done, len(services))
+        time.sleep(EPG_PAUSE)
 
-    lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<tv generator-info-name="NeboTV relay %s">' % VERSION]
+    chunks.append(packed.compress(b'</tv>\n'))
+    chunks.append(packed.flush())
+    head = ['<?xml version="1.0" encoding="UTF-8"?>', '<tv generator-info-name="NeboTV relay %s">' % VERSION]
     for sref, name in channels.items():
-        lines.append('<channel id=%s><display-name>%s</display-name></channel>' % (quoteattr(sref), escape(name)))
-    for sref, start, stop, title, description in sorted(programmes, key=lambda p: (p[0], p[1])):
-        lines.append('<programme start="%s" stop="%s" channel=%s><title>%s</title>%s</programme>' % (
-            xmltv_time(start), xmltv_time(stop), quoteattr(sref), escape(title), '<desc>%s</desc>' % escape(description) if description else ''))
-    lines.append('</tv>')
-    log.info('Guide: %d channels, %d programmes from %d bouquets in %ds', len(channels), len(programmes), len(bouquets), time.time() - started)
-    return '\n'.join(lines) + '\n'
+        head.append('<channel id=%s><display-name>%s</display-name></channel>' % (quoteattr(sref), escape(name)))
+    body = gzip.compress(('\n'.join(head) + '\n').encode('utf-8')) + b''.join(chunks)
+    summary = {'channels': len(channels), 'programmes': count, 'looked_at': len(services), 'bytes': len(body), 'at': int(time.time()), 'complete': not stopped}
+    log.info('Guide: %d channels with programmes, %d programmes, %d channels looked at in %ds, %.1f MB compressed%s', len(channels), count, len(services), time.time() - started, len(body) / 1e6, ' (stopped early)' if stopped else '')
+    return body, summary
 
 
 # ---------------------------------------------------------------- HTTP server
@@ -304,7 +338,8 @@ class Relay:
         self.settings = settings
         self.active = {}  # service ref -> number of viewers
         self.events = collections.deque(maxlen=20)  # latest refusals and streams without video, for /status
-        self.epg = ''  # XMLTV, read in the background (refresh_epg): reading the whole guide takes minutes
+        self.epg = b''  # gzipped XMLTV, read in the background (refresh_epg): reading the whole guide takes minutes
+        self.epg_summary = None
 
     def note(self, kind, ref, reason):
         self.events.append({'t': int(time.time()), 'kind': kind, 'ref': ref, 'reason': reason})
@@ -366,9 +401,11 @@ class Relay:
             if url.path == '/epg.xml':
                 if not self.authorised(query):
                     return await self.reply(writer, 403, 'Forbidden')
+                if not self.settings.guide:
+                    return await self.reply(writer, 404, 'The guide is switched off on the receiver (guide = no)')
                 if not self.epg:
                     return await self.reply(writer, 503, 'The guide is still being read, try again in a few minutes', retry_after=300)
-                return await self.reply(writer, 200, self.epg, 'application/xml; charset=utf-8')
+                return await self.reply(writer, 200, self.epg, 'application/gzip')
             if url.path == '/status':
                 if not self.authorised(query):
                     return await self.reply(writer, 403, 'Forbidden')
@@ -382,11 +419,13 @@ class Relay:
         return await self.reply(writer, 404, 'Not found')
 
     async def refresh_epg(self, first_delay=EPG_FIRST_DELAY):
-        """Read the guide a minute after the start (streams come first), then every EPG_REFRESH_SECONDS."""
+        """Read the guide EPG_FIRST_DELAY after the start (streams come first), then every EPG_REFRESH_SECONDS."""
+        if not self.settings.guide:
+            return
         await asyncio.sleep(first_delay)
         while True:
             try:
-                self.epg = await asyncio.get_running_loop().run_in_executor(None, build_epg, self.settings)
+                self.epg, self.epg_summary = await asyncio.get_running_loop().run_in_executor(None, build_epg, self.settings)
             except Exception as error:
                 log.warning('Reading the guide failed: %s', error)
             await asyncio.sleep(EPG_REFRESH_SECONDS)
@@ -406,6 +445,7 @@ class Relay:
             'active_channels': len(self.active), 'active_tuners': len(self.tuners_in_use()), 'max_streams': self.settings.max_streams,
             'single_cable': self.settings.single_cable, 'satellites': sorted({satellite_of(r) for r in self.active} - {None}),
             'recent_events': list(self.events),
+            'guide': self.epg_summary if self.settings.guide else False,
         }
 
     async def stream(self, writer, encoded, query, method):

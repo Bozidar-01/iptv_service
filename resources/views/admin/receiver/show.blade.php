@@ -72,8 +72,8 @@
     <div class="card">
         <div class="card-header"><div><h2>{{ __('TV guide from the receiver') }}</h2><p>{{ __('The programmes the receiver itself has collected, for its channels: often the only guide for satellite channels. It is imported every night with the other guides.') }}</p></div></div>
         <div class="card-body stack" style="gap: 12px">
-            @if($status['version'] && version_compare($status['version'], '1.4', '<'))
-                <div class="alert alert-warning" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ __('This needs relay 1.4 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.', ['version' => $status['version']]) }}</div></div>
+            @if($status['version'] && version_compare($status['version'], '1.5', '<'))
+                <div class="alert alert-warning" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ __('This needs relay 1.5 or newer on the receiver (it has :version). Copy the new relay file to the receiver and restart it.', ['version' => $status['version']]) }}</div></div>
             @endif
             @if($guide)
                 <p>
@@ -85,7 +85,7 @@
                     <div class="alert alert-danger" style="margin: 0"><x-icon name="alert" /><div class="alert-body">{{ $guide->last_error }}</div></div>
                 @endif
             @endif
-            <p class="help" style="margin: 0">{{ __('The relay reads the guide a minute after it starts and every 6 hours; with many bouquets that takes a few minutes, so an import right after a restart may have to wait. Enigma2 only keeps programmes of channels it has tuned. An EPG import plugin, or the nightly EPG refresh in the receiver\'s settings, fills it for all channels.') }}</p>
+            <p class="help" style="margin: 0">{{ __('The relay reads the guide 5 minutes after it starts and every 6 hours, one channel at a time; with many bouquets that takes 10 to 15 minutes, so an import right after a restart may have to wait. Enigma2 only keeps programmes of channels it has tuned. An EPG import plugin, or the nightly EPG refresh in the receiver\'s settings, fills it for all channels.') }}</p>
             <form method="POST" action="{{ route('admin.receiver.guide', $source) }}" class="inline-form">
                 @csrf
                 <button class="btn btn-secondary"><x-icon name="clock" /> {{ $guide ? __('Import the guide now') : __('Use the receiver\'s TV guide') }}</button>
