@@ -15,7 +15,7 @@ beforeEach(function () {
 
 it('adds the receiver\'s guide once, without the relay key in its address, and imports it', function () {
     Queue::fake();
-    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.3'])]);
+    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.4'])]);
 
     $this->actingAs($this->admin)->post(route('admin.receiver.guide', $this->source))->assertSessionHas('success');
     $this->post(route('admin.receiver.guide', $this->source));
@@ -43,9 +43,9 @@ it('downloads the guide with the key and never stores the key in an error', func
 });
 
 it('says when the relay is too old for it', function () {
-    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.2'])]);
+    Http::fake(['relay.test:28080/status*' => fn () => Http::response(['ok' => true, 'version' => '1.3'])]);
 
-    $this->actingAs($this->admin)->get(route('admin.receiver.show', $this->source))->assertSee('This needs relay 1.3 or newer');
+    $this->actingAs($this->admin)->get(route('admin.receiver.show', $this->source))->assertSee('This needs relay 1.4 or newer');
 });
 
 it('is only for receiver sources', function () {

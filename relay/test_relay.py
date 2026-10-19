@@ -282,6 +282,12 @@ class StreamTest(unittest.IsolatedAsyncioTestCase):
     async def test_protects_playlist_and_status(self):
         self.assertEqual((await self.get('http://127.0.0.1:%d/status' % self.port))[0], 403)
         self.assertEqual((await self.get('http://127.0.0.1:%d/epg.xml?key=wrong' % self.port))[0], 403)
+
+    async def test_says_the_guide_is_not_ready_until_it_was_read(self):
+        url = 'http://127.0.0.1:%d/epg.xml?key=test-secret-1234567890' % self.port
+        self.assertEqual((await self.get(url))[0], 503)
+        self.relay.epg = '<tv></tv>'
+        self.assertEqual(await self.get(url), (200, b'<tv></tv>'))
         self.assertEqual((await self.get('http://127.0.0.1:%d/playlist.m3u?key=wrong' % self.port))[0], 403)
 
 
@@ -289,7 +295,10 @@ class FakeWebif(http.server.BaseHTTPRequestHandler):
     """OpenWebif's JSON API: one bouquet with two channels, guide events for one of them."""
     multi = True
 
+    paths = []
+
     def do_GET(self):
+        FakeWebif.paths.append(self.path)
         url = urllib.parse.urlsplit(self.path)
         query = dict(urllib.parse.parse_qsl(url.query))
         now = int(query.get('time') or time.time())
@@ -299,7 +308,7 @@ class FakeWebif(http.server.BaseHTTPRequestHandler):
         ]
         body = {
             '/api/bouquets': {'bouquets': [['1:7:1:0:0:0:0:0:0:0:FROM BOUQUET "userbouquet.it.tv"', 'Italia'], ['1:7:1:x', 'Other']]},
-            '/api/epgmulti': {'events': events if FakeWebif.multi and 'it.tv' in query.get('bRef', '') else []},
+            '/api/epgmulti': ({'events': events if 'it.tv' in query.get('bRef', '') else []} if FakeWebif.multi else None),
             '/api/getservices': {'services': [{'servicereference': RAI1, 'servicename': 'Rai 1 HD'}, {'servicereference': '1:0:1:7A:4B0:110:820000:0:0:0:', 'servicename': 'Canale5'}]},
             '/api/epgservice': {'events': [{k: v for k, v in e.items() if k not in ('sref', 'sname')} for e in events] if query.get('sRef') == RAI1 else []},
         }.get(url.path)
@@ -321,6 +330,7 @@ class EpgTest(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown()
         FakeWebif.multi = True
+        FakeWebif.paths = []
 
     def test_writes_the_guide_of_the_chosen_bouquets_as_xmltv(self):
         xml = relay.build_epg(self.settings, now=1792399000)
@@ -332,6 +342,12 @@ class EpgTest(unittest.TestCase):
         self.assertEqual(programmes[0].get('stop'), relay.xmltv_time(1792401800))
         self.assertEqual(programmes[0].findtext('title'), 'Tg1 & Meteo')
         self.assertEqual(programmes[0].findtext('desc'), 'News <live>')
+
+    def test_does_not_read_each_channel_of_a_bouquet_without_guide(self):
+        self.settings.bouquets = ['Other']
+        root = ElementTree.fromstring(relay.build_epg(self.settings, now=1792399000))
+        self.assertEqual(root.findall('channel'), [])
+        self.assertFalse(any('/api/epgservice' in p for p in FakeWebif.paths))
 
     def test_reads_each_channel_when_the_receiver_has_no_multi_epg(self):
         FakeWebif.multi = False
