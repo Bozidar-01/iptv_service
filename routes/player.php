@@ -27,6 +27,7 @@ Route::middleware('throttle:player')->group(function () {
 // A subscriber's own page (status, expiry, playlist link, "ask to renew"): see SelfServiceController
 Route::middleware('throttle:me')->group(function () {
     Route::get('/me/{token}', [SelfServiceController::class, 'show'])->name('me');
+    Route::post('/me/{token}/favourite', [SelfServiceController::class, 'favourite'])->name('me.favourite');
     Route::post('/me/{token}/renew', [SelfServiceController::class, 'renew'])->name('me.renew');
 });
 

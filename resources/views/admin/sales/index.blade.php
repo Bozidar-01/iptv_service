@@ -80,7 +80,7 @@
                     <tr>
                         <td class="cell-main">
                             @if($row['id'])
-                                <a href="{{ route('admin.users.show', $row['id']) }}">{{ $row['name'] }}</a>
+                                <a href="{{ route('admin.users.show', $row['id']) }}">{{ $row['name'] }}</a> <a href="{{ route('admin.statements.index', ['reseller' => $row['id']]) }}" class="faint" style="font-size: 12px">{{ __('Statement') }}</a>
                             @else
                                 {{ __('Your own users') }}
                             @endif

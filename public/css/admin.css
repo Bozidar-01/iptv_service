@@ -921,3 +921,11 @@ dialog.modal-wide { width: min(880px, calc(100vw - 32px)); }
 .recovery-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; padding: 16px; background: var(--surface-2); border-radius: var(--radius); font-family: var(--mono); font-size: 14px; list-style: none; }
 .code-input { max-width: 200px; letter-spacing: 0.2em; text-align: center; font-family: var(--mono); }
 .setup-grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+
+/* Printing a statement: just the page, no menu or buttons */
+@media print {
+    .sidebar, .header-bar, .topbar, .nav-overlay, .page-actions, .toolbar { display: none !important; }
+    .shell { display: block; }
+    .main { padding: 0; }
+    .card { box-shadow: none; break-inside: avoid; }
+}

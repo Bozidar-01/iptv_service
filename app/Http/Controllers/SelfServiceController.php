@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\StreamAlert;
 use App\Models\User;
+use App\Services\FavoriteService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -21,9 +22,12 @@ class SelfServiceController extends Controller
 
     protected $userService;
 
-    public function __construct(UserService $userService)
+    protected $favorites;
+
+    public function __construct(UserService $userService, FavoriteService $favorites)
     {
         $this->userService = $userService;
+        $this->favorites = $favorites;
     }
 
     public function show(Request $request, string $token)
@@ -41,6 +45,10 @@ class SelfServiceController extends Controller
             'channelCount' => $this->userService->channelCount($user),
             'canRenew' => $user->expiration_date !== null && $user->expiration_date->lt(now()->addDays(30)),
             'sent' => $request->query('sent'),
+            'favourites' => $this->favorites->channels($user),
+            'favouritesMax' => FavoriteService::MAX,
+            'search' => is_string($request->query('q')) ? trim($request->query('q')) : '',
+            'found' => is_string($request->query('q')) ? $this->favorites->search($user, $request->query('q')) : collect(),
             'lang' => App::getLocale(),
         ]);
     }
@@ -59,6 +67,25 @@ class SelfServiceController extends Controller
         }
 
         return redirect()->route('me', array_filter(['token' => $token, 'sent' => $recent ? 'again' : 'yes', 'lang' => $request->query('lang')]));
+    }
+
+    /** Add (`add`), remove (`remove`), or move up / down (`up`, `down`) a favourite channel. */
+    public function favourite(Request $request, string $token)
+    {
+        $user = $this->subscriber($token);
+        // This route has no session, so a bad request is simply refused
+        $do = (string) $request->input('do');
+        abort_unless(in_array($do, ['add', 'remove', 'up', 'down'], true) && ctype_digit((string) $request->input('channel')), 422);
+        $channel = (int) $request->input('channel');
+
+        match ($do) {
+            'add' => $this->favorites->add($user, $channel),
+            'remove' => $this->favorites->remove($user, $channel),
+            'up' => $this->favorites->move($user, $channel, -1),
+            'down' => $this->favorites->move($user, $channel, 1),
+        };
+
+        return redirect()->to(route('me', array_filter(['token' => $token, 'lang' => $request->query('lang'), 'q' => $request->query('q')])).'#favourites');
     }
 
     private function subscriber(string $token): User

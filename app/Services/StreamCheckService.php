@@ -127,6 +127,7 @@ class StreamCheckService
             ->with('source:id,alert_on_down')
             ->get(['id', 'name', 'source_id', 'stream_url', 'http_user_agent', 'http_referrer', 'stream_status', 'alert_on_down', 'tvg_id', 'backup_channel_id']);
 
+        $this->qualities = [];
         $errors = $this->probe($channels);
 
         // A single timeout or hiccup shouldn't switch a channel off: try the failed ones once more
@@ -150,6 +151,7 @@ class StreamCheckService
         Channel::whereIn('id', [...$online, ...array_keys($backups)])->where('auto_disabled', true)->update(['is_active' => true, 'auto_disabled' => false]);
         Channel::whereIn('id', $online)->update(['stream_status' => self::STATUS_ONLINE, 'stream_error' => null, 'stream_checked_at' => $now, 'using_backup_id' => null]);
         Channel::whereIn('id', $withoutBackup)->update(['using_backup_id' => null]);
+        $this->saveQualities($online);
         $this->setBackups($backups);
 
         // One update per distinct reason (a handful), not per channel
@@ -312,6 +314,12 @@ class StreamCheckService
             $id = $channel->id;
             $response = $responses[(string) $id] ?? null;
 
+            // A master playlist tells the picture sizes on offer: keep the best for the channels that work
+            $body = $response instanceof Response ? $response->body() : (isset($heads[$id]) ? $sinks[$id]->contents() : '');
+            if (($quality = self::parseQuality($body)) !== null) {
+                $this->qualities[$id] = $quality;
+            }
+
             $errors[$id] = match (true) {
                 $response instanceof Response => $this->diagnose($response->status(), $response->header('Content-Type'), $response->body()),
                 // Aborted on purpose once the sink was full (or timed out mid-stream): judge what arrived
@@ -321,6 +329,62 @@ class StreamCheckService
         }
 
         return $errors;
+    }
+
+    /** @var array<int, array{0: int, 1: int}> channel id => [height, kbps] found by the last probe() */
+    private array $qualities = [];
+
+    /**
+     * The best picture of an HLS master playlist: the tallest RESOLUTION and the highest BANDWIDTH, or null when the text is not a
+     * master playlist (a media playlist, a raw stream or an error page tells nothing).
+     *
+     * @return array{0: int, 1: int}|null [height in pixels, bitrate in kbps]
+     */
+    public static function parseQuality(string $body): ?array
+    {
+        if (!str_contains($body, '#EXT-X-STREAM-INF')) {
+            return null;
+        }
+
+        $height = $kbps = 0;
+        foreach (preg_split('/\R/', $body) as $line) {
+            if (!str_starts_with($line, '#EXT-X-STREAM-INF')) {
+                continue;
+            }
+            if (preg_match('/RESOLUTION=\d+x(\d+)/i', $line, $m)) {
+                $height = max($height, (int) $m[1]);
+            }
+            if (preg_match('/(?<![A-Z-])BANDWIDTH=(\d+)/i', $line, $m)) {
+                $kbps = max($kbps, intdiv((int) $m[1], 1000));
+            }
+        }
+
+        return $height > 0 || $kbps > 0 ? [min($height, 65000), $kbps] : null;
+    }
+
+    /**
+     * Save what the last probe() found for these (working) channels: one query for all.
+     *
+     * @param  array<int>  $ids
+     */
+    private function saveQualities(array $ids): void
+    {
+        $found = array_intersect_key($this->qualities, array_flip($ids));
+        if ($found === []) {
+            return;
+        }
+
+        $cases = implode(' ', array_fill(0, count($found), 'WHEN ? THEN ?'));
+        $marks = implode(',', array_fill(0, count($found), '?'));
+        $bindings = [];
+        foreach ($found as $id => [$height]) {
+            array_push($bindings, $id, $height);
+        }
+        foreach ($found as $id => [, $kbps]) {
+            array_push($bindings, $id, $kbps);
+        }
+
+        DB::update("UPDATE channels SET quality_height = CASE id {$cases} END, quality_kbps = CASE id {$cases} END WHERE id IN ({$marks})", [...$bindings, ...array_keys($found)]);
     }
 
     /**

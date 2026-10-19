@@ -28,6 +28,7 @@
         ['route' => 'admin.credits.index', 'match' => 'admin.credits.*', 'icon' => 'package', 'label' => __('Credits')],
         ['route' => 'admin.sales.index', 'match' => 'admin.sales.*', 'icon' => 'package', 'label' => __('Sales')],
         ['route' => 'admin.statistics.index', 'match' => 'admin.statistics.*', 'icon' => 'signal', 'label' => __('Statistics')],
+        ['route' => 'admin.statements.index', 'match' => 'admin.statements.*', 'icon' => 'package', 'label' => __('Statement')],
         ['route' => 'admin.alerts.index', 'match' => 'admin.alerts.*', 'icon' => 'bell', 'label' => __('Alerts')],
         ['section' => __('Account')],
         ['route' => 'admin.security.index', 'match' => 'admin.security.*', 'icon' => 'shield', 'label' => __('Security')],
@@ -38,7 +39,7 @@
 
     // A reseller gets only their own part of the panel: dashboard, users, activity, alerts, security
     if (!Auth::user()->isAdmin()) {
-        $allowed = ['admin.dashboard', 'admin.users.index', 'admin.hide-channels.index', 'admin.live.index', 'admin.logs.index', 'admin.credits.index', 'admin.alerts.index', 'admin.security.index'];
+        $allowed = ['admin.dashboard', 'admin.users.index', 'admin.hide-channels.index', 'admin.live.index', 'admin.logs.index', 'admin.credits.index', 'admin.statements.index', 'admin.alerts.index', 'admin.security.index'];
         $nav = array_values(array_filter($nav, fn ($item) => isset($item['section']) || in_array($item['route'], $allowed, true)));
         // drop section headings that ended up without a link below them
         $nav = array_values(array_filter($nav, fn ($item, $i) => !isset($item['section']) || (isset($nav[$i + 1]) && !isset($nav[$i + 1]['section'])), ARRAY_FILTER_USE_BOTH));

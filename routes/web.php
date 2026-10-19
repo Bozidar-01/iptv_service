@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\ReceiverController;
 use App\Http\Controllers\Admin\SalesReportController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SourceController;
+use App\Http\Controllers\Admin\StatementController;
 use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\TrialController;
 use App\Http\Controllers\Admin\UserController;
@@ -66,6 +67,8 @@ Route::middleware(['auth', 'staff'])->prefix('admin')->name('admin.')->group(fun
     Route::get('hide-channels', [HiddenChannelController::class, 'index'])->name('hide-channels.index');
     Route::post('hide-channels', [HiddenChannelController::class, 'bulk'])->name('hide-channels.bulk');
 
+    Route::get('statement', [StatementController::class, 'index'])->name('statements.index');
+    Route::get('statement/csv', [StatementController::class, 'csv'])->name('statements.csv');
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
     Route::get('logs', [LogController::class, 'index'])->name('logs.index');

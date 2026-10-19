@@ -66,24 +66,13 @@ class TokenService
             ? '#EXTM3U x-tvg-url="'.$this->escapeAttribute($guideUrl).'" url-tvg="'.$this->escapeAttribute($guideUrl)."\"\n"
             : "#EXTM3U\n";
 
-        foreach ($channels->lazy(1000) as $channel) {
-            $categoryName = $channel->category ? $channel->category->name : 'General';
-            // One pass (strtr): a value that happens to contain the other placeholder is not replaced again
-            $playUrl = strtr($playTemplate, [
-                '__NEBOTV_ID__' => (string) $channel->id,
-                '__NEBOTV_TOKEN__' => $tokenValue.$this->streamExtension($channel->stream_url),
-            ]);
+        // The viewer's favourites first, in their own category, then everything in the usual order
+        foreach (app(FavoriteService::class)->channels($user) as $channel) {
+            $buffer .= $this->m3uEntry($channel, FavoriteService::CATEGORY, $playTemplate, $tokenValue);
+        }
 
-            $buffer .= sprintf(
-                "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s%s\n",
-                $this->escapeAttribute($channel->guideId() ?: (string) $channel->id),
-                $this->escapeAttribute($channel->name),
-                $this->escapeAttribute($channel->logo_url),
-                $this->escapeAttribute($categoryName),
-                $this->stripLineBreaks($channel->name),
-                $this->vlcOptions($channel),
-                $playUrl
-            );
+        foreach ($channels->lazy(1000) as $channel) {
+            $buffer .= $this->m3uEntry($channel, $channel->category ? $channel->category->name : 'General', $playTemplate, $tokenValue);
 
             if (strlen($buffer) >= 65536) {
                 $write($buffer);
@@ -92,6 +81,27 @@ class TokenService
         }
 
         $write($buffer);
+    }
+
+    /** One playlist entry. */
+    private function m3uEntry(Channel $channel, string $categoryName, string $playTemplate, string $tokenValue): string
+    {
+        // One pass (strtr): a value that happens to contain the other placeholder is not replaced again
+        $playUrl = strtr($playTemplate, [
+            '__NEBOTV_ID__' => (string) $channel->id,
+            '__NEBOTV_TOKEN__' => $tokenValue.$this->streamExtension($channel->stream_url),
+        ]);
+
+        return sprintf(
+            "#EXTINF:-1 tvg-id=\"%s\" tvg-name=\"%s\" tvg-logo=\"%s\" group-title=\"%s\",%s\n%s%s\n",
+            $this->escapeAttribute($channel->guideId() ?: (string) $channel->id),
+            $this->escapeAttribute($channel->name),
+            $this->escapeAttribute($channel->logo_url),
+            $this->escapeAttribute($categoryName),
+            $this->stripLineBreaks($channel->name),
+            $this->vlcOptions($channel),
+            $playUrl
+        );
     }
 
     /**

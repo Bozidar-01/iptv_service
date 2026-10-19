@@ -40,6 +40,9 @@ Model helpers: `isAdmin()`, `isActive()` (status active **and** not expired), `i
 ### owner_hidden_channels
 `id`, `owner_id` FK → users nullable (`ON DELETE CASCADE`; null = the admins' own users, those without a reseller), `channel_id` FK → channels (`CASCADE`), unique (`owner_id`, `channel_id`; MySQL allows several null owners, so `ChannelHideService` skips rows that exist). A channel hidden for all users of that owner.
 
+### user_favorites
+`user_id` FK → users, `channel_id` FK → channels (both `ON DELETE CASCADE`), `position` (order in the list), primary key (`user_id`, `channel_id`). See [features/favourites.md](features/favourites.md).
+
 ### denied_plays
 `id`, `user_id` FK → users nullable (`SET NULL`), `channel_id` FK → channels nullable (`SET NULL`), `reason` (`disabled`, `expired`, `device_blocked`, `channel_off`, `hidden`, `not_in_bouquet`, `connection_limit`; indexed), `ip`, `user_agent`, `created_at` (indexed). Written by `StreamService::authorize`; pruned after `LOG_RETENTION_DAYS`.
 
@@ -100,6 +103,7 @@ Helpers: `isBusy()` (queued/syncing), `isDueForSync()`, `isReceiver()`, `playlis
 | category_id | FK → categories, nullable, `ON DELETE SET NULL` | |
 | is_active | bool, default true | inactive channels are hidden from M3U and refused on play; never changed by re-syncs |
 | stream_status | string(10), nullable | `online` / `offline` from the last stream check; null = never checked |
+| quality_height, quality_kbps | smallint / int, nullable | best picture height and bitrate the stream check read from an HLS master playlist; null = not known |
 | stream_checked_at | timestamp, nullable | |
 | stream_error | string(20), nullable | why the last check failed: `http:{code}`, `timeout`, `connect`, `html`, `empty` |
 | auto_disabled | bool, default false | the stream check switched it off (and will switch it back on); cleared when an admin enables/disables it |
