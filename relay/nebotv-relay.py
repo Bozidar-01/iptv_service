@@ -18,7 +18,9 @@ exposing the receiver itself:
       JSON health report for the panel.
   GET /epg.xml?key=<secret>
       The receiver's own TV guide for the configured bouquets, as XMLTV, for the panel to import (channel ids are the
-      service references, like the playlist's tvg-id). Only channels the receiver has programmes for are listed.
+      service references, like the playlist's tvg-id). Only channels the receiver has programmes for are listed. Read
+      in the background a minute after the start and every 6 hours (a box with hundreds of bouquets needs minutes);
+      503 + Retry-After until the first one is ready.
   GET /picon/<file>.png
       Channel logos from the receiver.
 
@@ -44,7 +46,7 @@ import urllib.parse
 import urllib.request
 from xml.sax.saxutils import escape, quoteattr
 
-VERSION = '1.3'
+VERSION = '1.4'
 CONFIG_PATHS = [
     '/etc/nebotv-relay.conf',
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nebotv-relay.conf'),
@@ -227,7 +229,8 @@ def build_playlist(settings, base_url):
 
 
 EPG_DAYS = 3
-EPG_CACHE_SECONDS = 1800
+EPG_REFRESH_SECONDS = 6 * 3600
+EPG_FIRST_DELAY = 60
 
 
 def xmltv_time(timestamp):
@@ -235,12 +238,11 @@ def xmltv_time(timestamp):
 
 
 def epg_events(settings, bouquet_ref, start, end):
-    """The guide of one bouquet: OpenWebif's multi-EPG in one request, else each channel's own guide."""
+    """The guide of one bouquet: OpenWebif's multi-EPG in one request. Only when the receiver can't answer that (an old
+    OpenWebif) each channel's own guide is read; a bouquet the receiver simply has no guide for stays empty."""
     try:
         query = urllib.parse.urlencode({'bRef': bouquet_ref, 'time': start, 'endTime': end})
-        events = json.loads(webif_get(settings, '/api/epgmulti?' + query, timeout=60)).get('events') or []
-        if events:
-            return events
+        return json.loads(webif_get(settings, '/api/epgmulti?' + query, timeout=120)).get('events') or []
     except Exception as error:
         log.info('Multi-EPG not available (%s): reading each channel', error)
     events = []
@@ -267,7 +269,9 @@ def build_epg(settings, now=None):
     channels = {}
     programmes = []
     seen = set()
-    for ref, _ in selected_bouquets(settings):
+    bouquets = selected_bouquets(settings)
+    started = time.time()
+    for ref, _ in bouquets:
         for event in epg_events(settings, ref, now, end):
             sref = event.get('sref') or ''
             begin = int(event.get('begin_timestamp') or event.get('begin') or 0)
@@ -289,7 +293,7 @@ def build_epg(settings, now=None):
         lines.append('<programme start="%s" stop="%s" channel=%s><title>%s</title>%s</programme>' % (
             xmltv_time(start), xmltv_time(stop), quoteattr(sref), escape(title), '<desc>%s</desc>' % escape(description) if description else ''))
     lines.append('</tv>')
-    log.info('Guide: %d channels, %d programmes', len(channels), len(programmes))
+    log.info('Guide: %d channels, %d programmes from %d bouquets in %ds', len(channels), len(programmes), len(bouquets), time.time() - started)
     return '\n'.join(lines) + '\n'
 
 
@@ -300,7 +304,7 @@ class Relay:
         self.settings = settings
         self.active = {}  # service ref -> number of viewers
         self.events = collections.deque(maxlen=20)  # latest refusals and streams without video, for /status
-        self.epg = (0, '')  # (made at, XMLTV): reading the whole guide takes a while
+        self.epg = ''  # XMLTV, read in the background (refresh_epg): reading the whole guide takes minutes
 
     def note(self, kind, ref, reason):
         self.events.append({'t': int(time.time()), 'kind': kind, 'ref': ref, 'reason': reason})
@@ -362,9 +366,9 @@ class Relay:
             if url.path == '/epg.xml':
                 if not self.authorised(query):
                     return await self.reply(writer, 403, 'Forbidden')
-                if time.time() - self.epg[0] > EPG_CACHE_SECONDS:
-                    self.epg = (time.time(), await asyncio.get_running_loop().run_in_executor(None, build_epg, self.settings))
-                return await self.reply(writer, 200, self.epg[1], 'application/xml; charset=utf-8')
+                if not self.epg:
+                    return await self.reply(writer, 503, 'The guide is still being read, try again in a few minutes', retry_after=300)
+                return await self.reply(writer, 200, self.epg, 'application/xml; charset=utf-8')
             if url.path == '/status':
                 if not self.authorised(query):
                     return await self.reply(writer, 403, 'Forbidden')
@@ -376,6 +380,16 @@ class Relay:
             log.warning('%s %s failed: %s', method, url.path, error)
             return await self.reply(writer, 502, 'Receiver error')
         return await self.reply(writer, 404, 'Not found')
+
+    async def refresh_epg(self, first_delay=EPG_FIRST_DELAY):
+        """Read the guide a minute after the start (streams come first), then every EPG_REFRESH_SECONDS."""
+        await asyncio.sleep(first_delay)
+        while True:
+            try:
+                self.epg = await asyncio.get_running_loop().run_in_executor(None, build_epg, self.settings)
+            except Exception as error:
+                log.warning('Reading the guide failed: %s', error)
+            await asyncio.sleep(EPG_REFRESH_SECONDS)
 
     def authorised(self, query):
         return hmac.compare_digest(query.get('key', ''), self.settings.secret)
@@ -494,6 +508,7 @@ async def main():
     log.info('NeboTV relay %s on port %d, max %d tuners%s, bouquets: %s', VERSION, settings.port, settings.max_streams, ' (one cable: one satellite at a time)' if settings.single_cable else '', ', '.join(settings.bouquets) or 'all')
     if settings.duckdns_domain and settings.duckdns_token:
         asyncio.ensure_future(update_duckdns(settings))
+    asyncio.ensure_future(relay.refresh_epg())
     async with server:
         await server.serve_forever()
 

@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Relay 1.4: the receiver's guide is read in the background
+- On the Octagon (274 bouquets) asking for the guide hung: bouquets without guide data made relay 1.3 ask every channel one by one, and the whole guide was built while the panel waited. Relay **1.4** reads it a minute after the start and every 6 hours in the background, answers `503` + `Retry-After` until the first read is done, and asks per channel only when the box can't answer the multi-channel guide request. The Receiver page asks for 1.4 and says an import right after a restart may have to wait. Update the relay on the box.
+- Tests: 22 relay tests (2 more).
+- Files: `relay/nebotv-relay.py`, `relay/test_relay.py`, `resources/views/admin/receiver/show.blade.php`, `tests/Feature/ReceiverGuideTest.php`, `lang/mk.json`, `docs/features/receiver.md`.
+
 ### 2026-10-21 — Backup copies, viewing statistics, payments, the receiver's TV guide
 - **Backup copies:** Find duplicates now keeps the other copies as hidden backups of the kept one by default (`channels.backup_for_id`): not listed or playable by themselves, still checked, and the first stand-ins when the kept one stops working. *Switch the others off* is still there. Channels: status *Backup copies*, badge *Backup copy*, bulk action *List again*.
 - **Statistics:** most streams at once (and per day, from `iptv:sample-viewing` every 5 minutes into `viewing_samples`), plays / viewers / most at once per source, and the listed channels nobody played (Channels filter *Not watched in 30 days*).
