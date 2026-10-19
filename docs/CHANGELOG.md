@@ -4,6 +4,11 @@ Format: newest first. Each entry: date, short description, files touched. Add ne
 
 ## Unreleased
 
+### 2026-10-21 — Relay 1.6: a slow bouquet no longer fails the Octagon sync
+- The Octagon sync failed with HTTP 502: one of 274 bouquets took more than 10 s to list (`GET /playlist.m3u failed: timed out`) and the relay gave up on the whole playlist. Relay **1.6** waits up to 60 s and tries twice per bouquet, then uses the bouquet's last good channel list, so no channels disappear from the panel; a bouquet never read since the relay started still fails the request, which keeps the panel's channels as they are. The guide uses the same reading. Update the relay on the box.
+- Tests: relay 23 (+1).
+- Files: `relay/nebotv-relay.py`, `relay/test_relay.py`, `docs/features/receiver.md`.
+
 ### 2026-10-21 — Relay start script: stop and status match only the relay
 - `status` said "running" while only the restart loop was left, and `stop` matched by a pattern that also fits the loop's own command line. Both now match only the relay's process (command line ending in the program). Docs warn against stopping it with `pkill -f nebotv-relay.py`, which also kills the loop and the shell running it. Update the start script on the box.
 - Files: `relay/nebotv-relay.init`, `docs/features/receiver.md`.
