@@ -106,3 +106,16 @@ describe('the page', function () {
         $this->actingAs(User::factory()->create())->get(route('admin.statements.index'))->assertRedirect(route('login'));
     });
 });
+
+it('shows the month\'s credits as a ledger and keeps the page markup balanced', function () {
+    tx($this->a, 20, CreditTransaction::GIVEN, '2026-10-02', 20);
+    tx($this->a, -3, CreditTransaction::NEW_SUBSCRIPTION, '2026-10-05', 17);
+
+    $html = $this->actingAs($this->admin)->get(route('admin.statements.index', ['reseller' => $this->a->id]))->assertOk()
+        ->assertSeeInOrder(['Opening balance', 'Credits given', '+20', 'Used for new subscriptions', '−3', 'Closing balance', '17'])->getContent();
+
+    expect(substr_count($html, '<div'))->toBe(substr_count($html, '</div>'));
+
+    $unlimited = User::factory()->create(['role' => 'reseller', 'credits' => null]);
+    $this->actingAs($this->admin)->get(route('admin.statements.index', ['reseller' => $unlimited->id]))->assertSee('Not limited by credits');
+});

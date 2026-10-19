@@ -1028,5 +1028,6 @@
     "Search": "Пребарај",
     "Type at least 2 letters.": "Внесете најмалку 2 букви.",
     "No channel found.": "Не е најден канал.",
-    "You have reached the limit of :count favourites.": "Го достигнавте лимитот од :count омилени."
+    "You have reached the limit of :count favourites.": "Го достигнавте лимитот од :count омилени.",
+    "How the balance moved this month.": "Како се движеше салдото овој месец."
 }

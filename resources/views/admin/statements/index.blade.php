@@ -44,19 +44,25 @@
                     <div class="card stat"><div class="stat-label">{{ __('Users added') }}</div><div class="stat-value">{{ number_format($statement['users']['added']) }}</div><div class="stat-meta">{{ __(':count active now', ['count' => number_format($statement['users']['active_now'])]) }}</div></div>
                     <div class="card stat"><div class="stat-label">{{ __('Subscriptions ended') }}</div><div class="stat-value">{{ number_format($statement['users']['ended']) }}</div><div class="stat-meta">{{ __('of :count users', ['count' => number_format($statement['users']['total'])]) }}</div></div>
                 </div>
-                <dl class="dl" style="margin-top: 16px">
-                    @if($statement['reseller']['unlimited'])
-                        <dt>{{ __('Credits') }}</dt><dd>{{ __('Not limited by credits') }}</dd>
-                    @else
-                        <dt>{{ __('Opening balance') }}</dt><dd>{{ $statement['credits']['opening'] === null ? '–' : number_format($statement['credits']['opening']) }}</dd>
-                        <dt>{{ __('Credits given') }}</dt><dd>{{ number_format($statement['credits']['given']) }}</dd>
-                        <dt>{{ __('Credits taken back') }}</dt><dd>{{ number_format($statement['credits']['taken_back']) }}</dd>
-                        <dt>{{ __('Used for new subscriptions') }}</dt><dd>{{ number_format($statement['credits']['used_new']) }}</dd>
-                        <dt>{{ __('Used for renewals') }}</dt><dd>{{ number_format($statement['credits']['used_renewals']) }}</dd>
-                        <dt>{{ __('Closing balance') }}</dt><dd><strong>{{ $statement['credits']['closing'] === null ? '–' : number_format($statement['credits']['closing']) }}</strong></dd>
-                    @endif
-                </dl>
             </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><div><h2>{{ __('Credits') }}</h2><p>{{ __('How the balance moved this month.') }}</p></div></div>
+            @if($statement['reseller']['unlimited'])
+                <div class="empty" style="padding: 28px 20px"><p>{{ __('Not limited by credits') }}</p></div>
+            @else
+                @php($c = $statement['credits'])
+                @php($num = fn ($n) => $n === null ? '–' : number_format($n))
+                <ul class="list ledger">
+                    <li><span>{{ __('Opening balance') }}</span><strong>{{ $num($c['opening']) }}</strong></li>
+                    <li><span>{{ __('Credits given') }}</span><strong class="ledger-in">{{ $c['given'] ? '+' : '' }}{{ $num($c['given']) }}</strong></li>
+                    <li><span>{{ __('Credits taken back') }}</span><strong class="ledger-out">{{ $c['taken_back'] ? '−' : '' }}{{ $num($c['taken_back']) }}</strong></li>
+                    <li><span>{{ __('Used for new subscriptions') }}</span><strong class="ledger-out">{{ $c['used_new'] ? '−' : '' }}{{ $num($c['used_new']) }}</strong></li>
+                    <li><span>{{ __('Used for renewals') }}</span><strong class="ledger-out">{{ $c['used_renewals'] ? '−' : '' }}{{ $num($c['used_renewals']) }}</strong></li>
+                    <li class="ledger-total"><span>{{ __('Closing balance') }}</span><strong>{{ $num($c['closing']) }}</strong></li>
+                </ul>
+            @endif
         </div>
 
         <div class="card">

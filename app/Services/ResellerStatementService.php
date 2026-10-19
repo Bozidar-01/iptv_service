@@ -27,7 +27,8 @@ class ResellerStatementService
 
         $before = CreditTransaction::where('user_id', $reseller->id)->where('created_at', '<', $from)->latest('id')->first();
         $last = (clone $transactions)->latest('id')->first();
-        $opening = $before?->balance_after;
+        // Nothing before this month means the reseller started at 0 (every credit change is in the history)
+        $opening = $before ? $before->balance_after : ($unlimited ? null : 0);
         $closing = $last ? $last->balance_after : ($before ? $before->balance_after : null);
         if ($closing === null && $month->isSameMonth(now())) {
             $closing = $reseller->credits;
