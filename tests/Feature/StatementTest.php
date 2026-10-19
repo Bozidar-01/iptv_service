@@ -70,7 +70,9 @@ describe('the page', function () {
         tx($this->b, 99, CreditTransaction::GIVEN, '2026-10-02', 99);
 
         $this->actingAs($this->a)->get(route('admin.statements.index', ['reseller' => $this->b->id]))->assertOk()
-            ->assertSee('resA')->assertSee('Credits given')->assertDontSee('99');
+            // Not "99" anywhere: the page also carries the stylesheet's version (a file time), which can contain it
+            ->assertSee('resA')->assertSee('Credits given')->assertDontSee('resB')
+            ->assertViewHas('statement', fn ($statement) => $statement['reseller']['id'] === $this->a->id && $statement['credits']['given'] === 20);
         $this->actingAs($this->a)->get(route('admin.statements.csv', ['reseller' => $this->b->id, 'month' => '2026-10']))->assertOk()->assertHeader('Content-Disposition', 'attachment; filename=statement-resA-2026-10.csv');
     });
 
